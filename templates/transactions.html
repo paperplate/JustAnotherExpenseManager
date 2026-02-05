@@ -45,15 +45,6 @@
         </div>
         <button type="submit" class="btn">Add Transaction</button>
     </form>
-    
-    <!-- Custom Category Section -->
-    <div class="custom-category-section">
-        <h4 style="margin-bottom: 10px; color: #333;">Add Custom Category</h4>
-        <div class="custom-category-form">
-            <input type="text" id="new-category" placeholder="Enter new category name">
-            <button type="button" class="btn" onclick="addCustomCategory()">Add Category</button>
-        </div>
-    </div>
 </div>
 
 <!-- Import from CSV -->
@@ -84,6 +75,54 @@
         <div class="empty-state">Loading transactions...</div>
     </div>
 </div>
+
+<!-- Edit Transaction Modal -->
+<div id="editModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Transaction</h2>
+            <span class="close" onclick="closeEditModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="edit-form">
+                <input type="hidden" id="edit-id">
+                <div class="form-group">
+                    <label for="edit-description">Description</label>
+                    <input type="text" id="edit-description" name="description" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-amount">Amount ($)</label>
+                    <input type="number" id="edit-amount" name="amount" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-type">Type</label>
+                    <select id="edit-type" name="type" required>
+                        <option value="expense">Expense</option>
+                        <option value="income">Income</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-date">Date</label>
+                    <input type="date" id="edit-date" name="date" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-category">Category</label>
+                    <select id="edit-category" name="category" required>
+                        <option value="">Select category...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-tags">Tags (comma-separated)</label>
+                    <input type="text" id="edit-tags" name="tags">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditModal()">Cancel</button>
+            <button class="btn" onclick="saveEditTransaction()">Save Changes</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -108,38 +147,6 @@
             });
         } catch (error) {
             console.error('Error loading categories:', error);
-        }
-    }
-    
-    async function addCustomCategory() {
-        const input = document.getElementById('new-category');
-        const categoryName = input.value.trim().toLowerCase();
-        
-        if (!categoryName) {
-            alert('Please enter a category name');
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/categories', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ name: categoryName })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert(`✓ Category "${categoryName}" added successfully!`);
-                input.value = '';
-                loadCategories();
-            } else {
-                alert(`❌ ${result.error}`);
-            }
-        } catch (error) {
-            alert(`❌ Error: ${error.message}`);
         }
     }
     
@@ -190,5 +197,81 @@
     
     // Load categories on page load
     loadCategories();
+    
+    // Edit transaction functions
+    async function editTransaction(id, description, amount, type, date, category, tags) {
+        // Load categories in modal
+        try {
+            const response = await fetch('/api/categories');
+            const categories = await response.json();
+            
+            const select = document.getElementById('edit-category');
+            select.innerHTML = '<option value="">Select category...</option>';
+            
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+                if (cat.name === category) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+        
+        // Populate form
+        document.getElementById('edit-id').value = id;
+        document.getElementById('edit-description').value = description;
+        document.getElementById('edit-amount').value = amount;
+        document.getElementById('edit-type').value = type;
+        document.getElementById('edit-date').value = date;
+        
+        // Handle tags - remove category tags
+        const tagArray = tags.split(',').filter(t => t && !t.startsWith('category:'));
+        document.getElementById('edit-tags').value = tagArray.join(', ');
+        
+        // Show modal
+        document.getElementById('editModal').style.display = 'block';
+    }
+    
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+    
+    async function saveEditTransaction() {
+        const id = document.getElementById('edit-id').value;
+        const formData = new FormData();
+        formData.append('description', document.getElementById('edit-description').value);
+        formData.append('amount', document.getElementById('edit-amount').value);
+        formData.append('type', document.getElementById('edit-type').value);
+        formData.append('date', document.getElementById('edit-date').value);
+        formData.append('category', document.getElementById('edit-category').value);
+        formData.append('tags', document.getElementById('edit-tags').value);
+        
+        try {
+            const response = await fetch(`/api/transactions/${id}`, {
+                method: 'PUT',
+                body: formData
+            });
+            
+            if (response.ok) {
+                closeEditModal();
+                // Refresh transactions list
+                htmx.trigger('#transactions-list', 'load');
+                htmx.trigger('body', 'refreshStats');
+            } else {
+                alert('Failed to update transaction');
+            }
+        } catch (error) {
+            alert('Error: ' + error.message);
+        }
+    }
+    
+    // Make functions globally available
+    window.editTransaction = editTransaction;
+    window.closeEditModal = closeEditModal;
+    window.saveEditTransaction = saveEditTransaction;
 </script>
 {% endblock %}

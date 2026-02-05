@@ -19,8 +19,10 @@ def summary():
 
 @stats_bp.route('/api/stats')
 def get_stats():
-    """Get statistics data."""
-    category_filter = request.args.get('category', None)
+    """Get statistics data with support for multiple categories and tags."""
+    # Handle multiple categories
+    categories_param = request.args.get('categories', None)
+    tags_param = request.args.get('tags', None)
     time_range = request.args.get('range', None)
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
@@ -32,19 +34,19 @@ def get_stats():
         service = StatsService(db, DATABASE_TYPE)
         
         # Get summary stats
-        stats = service.get_summary_stats(category_filter, time_range, start_date, end_date)
+        stats = service.get_summary_stats(categories_param, time_range, start_date, end_date, tags_param)
         
         # Get all categories for dropdown
         categories = db.query(Tag).filter(Tag.name.like('category:%')).all()
         
         # Get category breakdown
-        category_breakdown = service.get_category_breakdown(category_filter, time_range, start_date, end_date)
+        category_breakdown = service.get_category_breakdown(categories_param, time_range, start_date, end_date, tags_param)
         
         # Get monthly data with pagination
-        monthly = service.get_monthly_data(category_filter, time_range, start_date, end_date, limit=per_page)
+        monthly = service.get_monthly_data(categories_param, time_range, start_date, end_date, limit=per_page, tag_filter=tags_param)
         
         # Calculate pagination for monthly data
-        total_months = service.count_months(category_filter, time_range, start_date, end_date)
+        total_months = service.count_months(categories_param, time_range, start_date, end_date, tags_param)
         total_pages = (total_months + per_page - 1) // per_page if total_months > 0 else 1
         
         return render_template('stats.html',
@@ -52,7 +54,7 @@ def get_stats():
                              expenses=stats['expenses'],
                              net=stats['net'],
                              categories=categories,
-                             selected_category=category_filter,
+                             selected_category=categories_param,
                              time_range=time_range,
                              start_date=start_date,
                              end_date=end_date,
@@ -65,8 +67,9 @@ def get_stats():
 
 @stats_bp.route('/api/chart-data')
 def chart_data():
-    """Get chart data in JSON format."""
-    category_filter = request.args.get('category', None)
+    """Get chart data in JSON format with support for multiple categories and tags."""
+    categories_param = request.args.get('categories', None)
+    tags_param = request.args.get('tags', None)
     time_range = request.args.get('range', None)
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
@@ -76,10 +79,10 @@ def chart_data():
         service = StatsService(db, DATABASE_TYPE)
         
         # Category data
-        category_data = service.get_category_breakdown(category_filter, time_range, start_date, end_date)
+        category_data = service.get_category_breakdown(categories_param, time_range, start_date, end_date, tags_param)
         
         # Monthly data
-        monthly_data = service.get_monthly_data(category_filter, time_range, start_date, end_date, limit=12)
+        monthly_data = service.get_monthly_data(categories_param, time_range, start_date, end_date, limit=12, tag_filter=tags_param)
         
         return jsonify({
             'categories': {

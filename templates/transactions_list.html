@@ -37,6 +37,10 @@
                 {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
             </td>
             <td>
+                <button class="btn btn-edit btn-small" 
+                        onclick="editTransaction({{ trans.id }}, '{{ trans.description }}', {{ trans.amount }}, '{{ trans.type }}', '{{ trans.date }}', '{{ trans.category or '' }}', '{{ trans.tags|join(',') }}')">
+                    Edit
+                </button>
                 <button class="btn btn-delete" 
                         hx-delete="/api/transactions/{{ trans.id }}"
                         hx-target="#transactions-list"

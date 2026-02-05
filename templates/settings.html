@@ -11,6 +11,33 @@
         <p><strong>Database:</strong> {{ config.DATABASE_TYPE|default('SQLite') }}</p>
     </div>
     
+    <!-- Category Management -->
+    <div class="settings-section">
+        <h3>Category Management</h3>
+        
+        <div class="setting-item">
+            <div class="setting-label">Add New Category</div>
+            <div class="setting-description">
+                Create custom categories to organize your transactions.
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <input type="text" id="new-category" placeholder="Enter category name" style="flex: 1; margin-bottom: 0;">
+                <button class="btn" onclick="addCategory()">Add Category</button>
+            </div>
+            <div id="add-category-result" style="margin-top: 10px;"></div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-label">Existing Categories</div>
+            <div class="setting-description">
+                Manage your existing categories. Click edit to rename or delete to remove.
+            </div>
+            <div id="categories-list" style="margin-top: 15px;">
+                <div style="text-align: center; color: #666;">Loading categories...</div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Development Tools -->
     {% if debug_mode %}
     <div class="settings-section">
@@ -68,16 +95,9 @@
         </div>
         
         <div class="setting-item">
-            <div class="setting-label">Categories</div>
-            <div class="setting-description">
-                Default categories are pre-loaded. You can add custom categories from the Transactions page.
-            </div>
-        </div>
-        
-        <div class="setting-item">
             <div class="setting-label">Tags</div>
             <div class="setting-description">
-                Tags can be added to any transaction. Categories are special tags with the <code>category:</code> prefix.
+                Tags can be added to any transaction for flexible organization and filtering.
             </div>
         </div>
     </div>
@@ -93,8 +113,29 @@
             </div>
             <p style="color: #666; font-size: 14px; margin-top: 10px;">
                 <strong>Features:</strong> Income & Expense Tracking, Custom Categories, Flexible Tagging,
-                Interactive Charts, CSV Import/Export, Multiple Database Backends
+                Interactive Charts, CSV Import/Export, Multiple Database Backends, Transaction Editing
             </p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Category Modal -->
+<div id="editCategoryModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Edit Category</h2>
+            <span class="close" onclick="closeEditCategoryModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-category-old">
+            <div class="form-group">
+                <label for="edit-category-name">Category Name</label>
+                <input type="text" id="edit-category-name" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditCategoryModal()">Cancel</button>
+            <button class="btn" onclick="saveEditCategory()">Save Changes</button>
         </div>
     </div>
 </div>
@@ -102,6 +143,135 @@
 
 {% block extra_scripts %}
 <script>
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            const categories = await response.json();
+            
+            const list = document.getElementById('categories-list');
+            
+            if (categories.length === 0) {
+                list.innerHTML = '<p style="color: #666; text-align: center;">No categories yet. Add one above!</p>';
+                return;
+            }
+            
+            list.innerHTML = '<div class="category-list"></div>';
+            const categoryList = list.querySelector('.category-list');
+            
+            categories.forEach(cat => {
+                const item = document.createElement('div');
+                item.className = 'category-item';
+                item.innerHTML = `
+                    <span class="category-name">${cat.name}</span>
+                    <div class="category-actions">
+                        <button class="btn btn-edit btn-small" onclick="editCategory('${cat.name}')">Edit</button>
+                        <button class="btn btn-delete btn-small" onclick="deleteCategory('${cat.name}')">Delete</button>
+                    </div>
+                `;
+                categoryList.appendChild(item);
+            });
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    async function addCategory() {
+        const input = document.getElementById('new-category');
+        const categoryName = input.value.trim().toLowerCase();
+        const resultDiv = document.getElementById('add-category-result');
+        
+        if (!categoryName) {
+            resultDiv.innerHTML = '<p style="color: #d63031;">Please enter a category name</p>';
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: categoryName })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ Category "${categoryName}" added successfully!</p>`;
+                input.value = '';
+                loadCategories();
+                setTimeout(() => resultDiv.innerHTML = '', 3000);
+            } else {
+                resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+        }
+    }
+    
+    function editCategory(name) {
+        document.getElementById('edit-category-old').value = name;
+        document.getElementById('edit-category-name').value = name;
+        document.getElementById('editCategoryModal').style.display = 'block';
+    }
+    
+    function closeEditCategoryModal() {
+        document.getElementById('editCategoryModal').style.display = 'none';
+    }
+    
+    async function saveEditCategory() {
+        const oldName = document.getElementById('edit-category-old').value;
+        const newName = document.getElementById('edit-category-name').value.trim().toLowerCase();
+        
+        if (!newName) {
+            alert('Please enter a category name');
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/categories/${oldName}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: newName })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                closeEditCategoryModal();
+                loadCategories();
+            } else {
+                alert('❌ ' + result.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+    
+    async function deleteCategory(name) {
+        if (!confirm(`Are you sure you want to delete the category "${name}"? This will remove the category tag from all associated transactions.`)) {
+            return;
+        }
+        
+        try {
+            const response = await fetch(`/api/categories/${name}`, {
+                method: 'DELETE'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                loadCategories();
+            } else {
+                alert('❌ ' + result.error);
+            }
+        } catch (error) {
+            alert('❌ Error: ' + error.message);
+        }
+    }
+    
     async function populateTestData() {
         if (!confirm('This will add approximately 80 sample transactions to your database. Continue?')) {
             return;
@@ -129,5 +299,8 @@
             resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
         }
     }
+    
+    // Load categories on page load
+    loadCategories();
 </script>
 {% endblock %}

@@ -26,6 +26,10 @@
 </div>
 
 <script>
+    // Store chart instances globally to destroy them when updating
+    let categoryChartInstance = null;
+    let monthlyChartInstance = null;
+    
     // Fetch chart data and render charts
     const categoryFilter = '{{ selected_category or "" }}';
     const timeRange = '{{ time_range or "" }}';
@@ -50,7 +54,12 @@
             // Category Pie Chart
             const categoryCtx = document.getElementById('categoryChart');
             if (categoryCtx && data.categories.labels.length > 0) {
-                new Chart(categoryCtx, {
+                // Destroy existing chart if it exists
+                if (categoryChartInstance) {
+                    categoryChartInstance.destroy();
+                }
+                
+                categoryChartInstance = new Chart(categoryCtx, {
                     type: 'doughnut',
                     data: {
                         labels: data.categories.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
@@ -92,7 +101,12 @@
             // Monthly Line Chart
             const monthlyCtx = document.getElementById('monthlyChart');
             if (monthlyCtx && data.monthly.labels.length > 0) {
-                new Chart(monthlyCtx, {
+                // Destroy existing chart if it exists
+                if (monthlyChartInstance) {
+                    monthlyChartInstance.destroy();
+                }
+                
+                monthlyChartInstance = new Chart(monthlyCtx, {
                     type: 'line',
                     data: {
                         labels: data.monthly.labels,

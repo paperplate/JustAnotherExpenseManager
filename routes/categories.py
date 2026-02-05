@@ -40,3 +40,52 @@ def add_category():
         return jsonify({'success': True, 'category': category_name})
     finally:
         db.close()
+
+
+@categories_bp.route('/api/categories/<category_name>', methods=['PUT'])
+def update_category(category_name):
+    """Update a category name."""
+    new_name = request.json.get('name', '').strip().lower()
+    
+    if not new_name:
+        return jsonify({'error': 'Category name required'}), 400
+    
+    db = get_db()
+    try:
+        service = CategoryService(db)
+        success, error = service.update_category(category_name, new_name)
+        
+        if error:
+            return jsonify({'error': error}), 400
+        
+        return jsonify({'success': True, 'category': new_name})
+    finally:
+        db.close()
+
+
+@categories_bp.route('/api/categories/<category_name>', methods=['DELETE'])
+def delete_category(category_name):
+    """Delete a category."""
+    db = get_db()
+    try:
+        service = CategoryService(db)
+        success, error = service.delete_category(category_name)
+        
+        if error:
+            return jsonify({'error': error}), 400
+        
+        return jsonify({'success': True})
+    finally:
+        db.close()
+
+
+@categories_bp.route('/api/tags', methods=['GET'])
+def get_tags():
+    """Get all non-category tags."""
+    db = get_db()
+    try:
+        service = CategoryService(db)
+        tags = service.get_all_tags()
+        return jsonify(tags)
+    finally:
+        db.close()

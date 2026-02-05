@@ -70,6 +70,43 @@ def add_transaction():
         db.close()
 
 
+@transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
+def update_transaction(transaction_id):
+    """Update a transaction."""
+    description = request.form.get('description')
+    amount = float(request.form.get('amount'))
+    trans_type = request.form.get('type')
+    date = request.form.get('date')
+    category = request.form.get('category')
+    tags_input = request.form.get('tags', '')
+    
+    db = get_db()
+    try:
+        service = TransactionService(db)
+        tags = [t.strip() for t in tags_input.split(',') if t.strip()]
+        
+        success, error = service.update_transaction(
+            transaction_id=transaction_id,
+            description=description,
+            amount=amount,
+            trans_type=trans_type,
+            date=date,
+            category=category,
+            tags=tags
+        )
+        
+        if error:
+            return jsonify({'error': error}), 400
+        
+        # Return first page of transactions
+        result = service.get_all_transactions(page=1, per_page=50)
+        return render_template('transactions_list.html',
+                             transactions=result['transactions'],
+                             pagination=result)
+    finally:
+        db.close()
+
+
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
     """Delete a transaction."""

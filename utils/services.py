@@ -59,6 +59,38 @@ class TransactionService:
 
         return transaction
 
+    def update_transaction(self, transaction_id, description, amount, trans_type, date, category=None, tags=None):
+        """Update an existing transaction."""
+        transaction = self.db.query(Transaction).filter(Transaction.id == transaction_id).first()
+        
+        if not transaction:
+            return False, "Transaction not found"
+        
+        # Update basic fields
+        transaction.description = description
+        transaction.amount = amount
+        transaction.type = trans_type
+        transaction.date = date
+        
+        # Clear existing tags
+        transaction.tags = []
+        
+        # Add category tag
+        if category:
+            category_tag = self._get_or_create_tag(f'category:{category}')
+            transaction.tags.append(category_tag)
+        
+        # Add additional tags
+        if tags:
+            tag_names = [t.strip() for t in tags if t.strip() and not t.strip().startswith('category:')]
+            for tag_name in tag_names:
+                tag = self._get_or_create_tag(tag_name)
+                if tag not in transaction.tags:
+                    transaction.tags.append(tag)
+        
+        self.db.commit()
+        return True, None
+
     def delete_transaction(self, transaction_id):
         """Delete a transaction by ID."""
         transaction = self.db.query(Transaction).filter(Transaction.id == transaction_id).first()
@@ -102,27 +134,59 @@ class StatsService:
         start = ranges.get(time_range, lambda: None)()
         return f"date >= '{start}'" if start else ""
 
-    def get_summary_stats(self, category_filter=None, time_range=None, start_date=None, end_date=None):
-        """Get summary statistics."""
+    def get_summary_stats(self, category_filter=None, time_range=None, start_date=None, end_date=None, tag_filter=None):
+        """Get summary statistics with support for multiple categories and tags."""
         from sqlalchemy import text
         date_filter = self._get_date_filter(time_range, start_date, end_date)
         filters = []
+        
+        # Handle multiple categories
         if category_filter:
-            filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE t.name = 'category:{category_filter}')")
+            categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            if categories:
+                category_conditions = " OR ".join([f"t.name = 'category:{cat}'" for cat in categories])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})")
+        
+        # Handle multiple tags
+        if tag_filter:
+            tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            if tags:
+                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})")
+        
         if date_filter:
             filters.append(date_filter)
+        
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
         income_q = f"SELECT COALESCE(SUM(amount), 0) FROM transactions {where_clause}{' AND' if where_clause else ' WHERE'} type = 'income'"
         expense_q = f"SELECT COALESCE(SUM(amount), 0) FROM transactions {where_clause}{' AND' if where_clause else ' WHERE'} type = 'expense'"
-        return {'income': self.db.execute(text(income_q)).scalar() or 0, 'expenses': self.db.execute(text(expense_q)).scalar() or 0, 'net': (self.db.execute(text(income_q)).scalar() or 0) - (self.db.execute(text(expense_q)).scalar() or 0)}
+        
+        return {
+            'income': self.db.execute(text(income_q)).scalar() or 0,
+            'expenses': self.db.execute(text(expense_q)).scalar() or 0,
+            'net': (self.db.execute(text(income_q)).scalar() or 0) - (self.db.execute(text(expense_q)).scalar() or 0)
+        }
 
-    def get_category_breakdown(self, category_filter=None, time_range=None, start_date=None, end_date=None):
-        """Get breakdown by category."""
+    def get_category_breakdown(self, category_filter=None, time_range=None, start_date=None, end_date=None, tag_filter=None):
+        """Get breakdown by category with tag filtering support."""
         if category_filter:
             return []
         from sqlalchemy import text
         date_filter = self._get_date_filter(time_range, start_date, end_date)
-        where_clause = f"AND {date_filter}" if date_filter else ""
+        
+        filters = []
+        if date_filter:
+            filters.append(date_filter)
+        
+        # Handle tag filtering
+        if tag_filter:
+            tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            if tags:
+                tag_conditions = " OR ".join([f"t2.name = '{tag}'" for tag in tags])
+                filters.append(f"tr.id IN (SELECT transaction_id FROM transaction_tags tt2 JOIN tags t2 ON tt2.tag_id = t2.id WHERE {tag_conditions})")
+        
+        where_clause = "AND " + " AND ".join(filters) if filters else ""
+        
         queries = {
             'postgresql': f"SELECT REPLACE(t.name, 'category:', '') as category, SUM(CASE WHEN tr.type = 'expense' THEN tr.amount ELSE 0 END) as expenses, SUM(CASE WHEN tr.type = 'income' THEN tr.amount ELSE 0 END) as income FROM tags t JOIN transaction_tags tt ON t.id = tt.tag_id JOIN transactions tr ON tt.transaction_id = tr.id WHERE t.name LIKE 'category:%' {where_clause} GROUP BY t.name ORDER BY expenses DESC",
             'mysql': f"SELECT REPLACE(t.name, 'category:', '') as category, SUM(CASE WHEN tr.type = 'expense' THEN tr.amount ELSE 0 END) as expenses, SUM(CASE WHEN tr.type = 'income' THEN tr.amount ELSE 0 END) as income FROM tags t JOIN transaction_tags tt ON t.id = tt.tag_id JOIN transactions tr ON tt.transaction_id = tr.id WHERE t.name LIKE 'category:%' {where_clause} GROUP BY t.name ORDER BY expenses DESC",
@@ -130,16 +194,31 @@ class StatsService:
         }
         return self.db.execute(text(queries.get(self.database_type, queries['sqlite']))).fetchall()
 
-    def get_monthly_data(self, category_filter=None, time_range=None, start_date=None, end_date=None, limit=12):
-        """Get monthly breakdown."""
+    def get_monthly_data(self, category_filter=None, time_range=None, start_date=None, end_date=None, limit=12, tag_filter=None):
+        """Get monthly breakdown with support for multiple categories and tags."""
         from sqlalchemy import text
         date_filter = self._get_date_filter(time_range, start_date, end_date)
         filters = []
+        
+        # Handle multiple categories
         if category_filter:
-            filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE t.name = 'category:{category_filter}')")
+            categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            if categories:
+                category_conditions = " OR ".join([f"t.name = 'category:{cat}'" for cat in categories])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})")
+        
+        # Handle multiple tags
+        if tag_filter:
+            tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            if tags:
+                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})")
+        
         if date_filter:
             filters.append(date_filter)
+        
         filter_clause = "WHERE " + " AND ".join(filters) if filters else ""
+        
         queries = {
             'postgresql': f"SELECT TO_CHAR(date::date, 'YYYY-MM') as month, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income FROM transactions {filter_clause} GROUP BY TO_CHAR(date::date, 'YYYY-MM') ORDER BY month DESC LIMIT {limit}",
             'mysql': f"SELECT DATE_FORMAT(STR_TO_DATE(date, '%Y-%m-%d'), '%Y-%m') as month, SUM(CASE WHEN type = 'expense' THEN amount ELSE 0 END) as expenses, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as income FROM transactions {filter_clause} GROUP BY DATE_FORMAT(STR_TO_DATE(date, '%Y-%m-%d'), '%Y-%m') ORDER BY month DESC LIMIT {limit}",
@@ -147,22 +226,38 @@ class StatsService:
         }
         return self.db.execute(text(queries.get(self.database_type, queries['sqlite']))).fetchall()
 
-    def count_months(self, category_filter=None, time_range=None, start_date=None, end_date=None):
-        """Count total months."""
+    def count_months(self, category_filter=None, time_range=None, start_date=None, end_date=None, tag_filter=None):
+        """Count total months with support for multiple categories and tags."""
         from sqlalchemy import text
         date_filter = self._get_date_filter(time_range, start_date, end_date)
         filters = []
+        
+        # Handle multiple categories
         if category_filter:
-            filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE t.name = 'category:{category_filter}')")
+            categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            if categories:
+                category_conditions = " OR ".join([f"t.name = 'category:{cat}'" for cat in categories])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})")
+        
+        # Handle multiple tags
+        if tag_filter:
+            tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            if tags:
+                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})")
+        
         if date_filter:
             filters.append(date_filter)
+        
         filter_clause = "WHERE " + " AND ".join(filters) if filters else ""
+        
         queries = {
             'postgresql': f"SELECT COUNT(DISTINCT TO_CHAR(date::date, 'YYYY-MM')) FROM transactions {filter_clause}",
             'mysql': f"SELECT COUNT(DISTINCT DATE_FORMAT(STR_TO_DATE(date, '%Y-%m-%d'), '%Y-%m')) FROM transactions {filter_clause}",
             'sqlite': f"SELECT COUNT(DISTINCT strftime('%Y-%m', date)) FROM transactions {filter_clause}"
         }
         return self.db.execute(text(queries.get(self.database_type, queries['sqlite']))).scalar() or 0
+
 
 class CategoryService:
     """Service class for category operations."""
@@ -178,6 +273,11 @@ class CategoryService:
             'full_name': cat.name
         } for cat in categories]
 
+    def get_all_tags(self):
+        """Get all non-category tags."""
+        tags = self.db.query(Tag).filter(~Tag.name.like('category:%')).all()
+        return [tag.name for tag in tags]
+
     def create_category(self, category_name):
         """Create a new category."""
         tag_name = f'category:{category_name}'
@@ -191,6 +291,39 @@ class CategoryService:
         self.db.commit()
 
         return tag, None
+
+    def update_category(self, old_name, new_name):
+        """Update a category name."""
+        old_tag_name = f'category:{old_name}'
+        new_tag_name = f'category:{new_name}'
+        
+        # Check if new name already exists
+        existing = self.db.query(Tag).filter_by(name=new_tag_name).first()
+        if existing:
+            return False, 'Category with new name already exists'
+        
+        # Find and update the tag
+        tag = self.db.query(Tag).filter_by(name=old_tag_name).first()
+        if not tag:
+            return False, 'Category not found'
+        
+        tag.name = new_tag_name
+        self.db.commit()
+        
+        return True, None
+
+    def delete_category(self, category_name):
+        """Delete a category."""
+        tag_name = f'category:{category_name}'
+        tag = self.db.query(Tag).filter_by(name=tag_name).first()
+        
+        if not tag:
+            return False, 'Category not found'
+        
+        self.db.delete(tag)
+        self.db.commit()
+        
+        return True, None
 
 
 class TestDataService:
