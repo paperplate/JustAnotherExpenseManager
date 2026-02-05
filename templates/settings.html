@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Expense Manager{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .settings-section {
+        margin-bottom: 30px;
+    }
+    
+    .settings-section h3 {
+        color: #333;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .setting-item {
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 6px;
+        margin-bottom: 15px;
+    }
+    
+    .setting-label {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 5px;
+    }
+    
+    .setting-description {
+        color: #666;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+    
+    .warning-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: #fff3cd;
+        color: #856404;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-left: 10px;
+    }
+    
+    .info-box {
+        background: #e7f3ff;
+        border-left: 4px solid #0984e3;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+    }
+    
+    .info-box p {
+        margin: 5px 0;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h1 style="color: #333; margin-bottom: 30px;">Settings</h1>
+    
+    <div class="info-box">
+        <p><strong>Application Mode:</strong> {% if debug_mode %}Debug/Development{% else %}Production{% endif %}</p>
+        <p><strong>Database:</strong> {{ config.DATABASE_TYPE|default('SQLite') }}</p>
+    </div>
+    
+    <!-- Development Tools -->
+    {% if debug_mode %}
+    <div class="settings-section">
+        <h3>Development Tools <span class="warning-badge">DEBUG MODE ONLY</span></h3>
+        
+        <div class="setting-item">
+            <div class="setting-label">Test Data Generator</div>
+            <div class="setting-description">
+                Populate your database with sample transactions for testing. This will add approximately 80 transactions
+                including both income and expenses with various categories and tags.
+            </div>
+            <button class="btn btn-secondary" onclick="populateTestData()">
+                📊 Generate Test Data
+            </button>
+            <div id="test-data-result" style="margin-top: 10px;"></div>
+        </div>
+    </div>
+    {% else %}
+    <div class="settings-section">
+        <h3>Development Tools</h3>
+        <div class="setting-item">
+            <p style="color: #666;">
+                Development tools are only available when the application is running in debug mode.
+                To enable debug mode, set <code>FLASK_ENV=development</code> in your environment or docker-compose configuration.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Database Settings -->
+    <div class="settings-section">
+        <h3>Database Information</h3>
+        
+        <div class="setting-item">
+            <div class="setting-label">Database Type</div>
+            <div class="setting-description">
+                Current database backend: <strong>{{ config.DATABASE_TYPE|default('SQLite') }}</strong>
+            </div>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                To change database backend, update the <code>DATABASE_TYPE</code> environment variable and restart the application.
+                See <code>DATABASE_GUIDE.md</code> for detailed instructions.
+            </p>
+        </div>
+    </div>
+    
+    <!-- Application Settings -->
+    <div class="settings-section">
+        <h3>Application Settings</h3>
+        
+        <div class="setting-item">
+            <div class="setting-label">Pagination</div>
+            <div class="setting-description">
+                Transactions are displayed 50 per page. Monthly charts show 6 months per view.
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-label">Categories</div>
+            <div class="setting-description">
+                Default categories are pre-loaded. You can add custom categories from the Transactions page.
+            </div>
+        </div>
+        
+        <div class="setting-item">
+            <div class="setting-label">Tags</div>
+            <div class="setting-description">
+                Tags can be added to any transaction. Categories are special tags with the <code>category:</code> prefix.
+            </div>
+        </div>
+    </div>
+    
+    <!-- About -->
+    <div class="settings-section">
+        <h3>About</h3>
+        
+        <div class="setting-item">
+            <div class="setting-label">Expense Manager</div>
+            <div class="setting-description">
+                A modern expense tracking application built with Flask, HTMX, and Chart.js.
+            </div>
+            <p style="color: #666; font-size: 14px; margin-top: 10px;">
+                <strong>Features:</strong> Income & Expense Tracking, Custom Categories, Flexible Tagging,
+                Interactive Charts, CSV Import/Export, Multiple Database Backends
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    async function populateTestData() {
+        if (!confirm('This will add approximately 80 sample transactions to your database. Continue?')) {
+            return;
+        }
+        
+        const resultDiv = document.getElementById('test-data-result');
+        resultDiv.innerHTML = '<p style="color: #666;">⏳ Generating test data...</p>';
+        
+        try {
+            const response = await fetch('/api/populate-test-data', {
+                method: 'POST'
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
+                setTimeout(() => {
+                    window.location.href = '/summary';
+                }, 2000);
+            } else {
+                resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+        }
+    }
+</script>
+{% endblock %}

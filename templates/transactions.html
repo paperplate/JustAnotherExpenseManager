@@ -1,0 +1,348 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - Expense Manager{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .form-group {
+        margin-bottom: 15px;
+    }
+    
+    label {
+        display: block;
+        margin-bottom: 5px;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    input, select, textarea {
+        width: 100%;
+        padding: 10px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: #667eea;
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .form-row-full {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .transactions-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .transactions-table th {
+        background: #f5f5f5;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .transactions-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .transactions-table tr:hover {
+        background: #f9f9f9;
+    }
+    
+    .type-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    
+    .type-income {
+        background: #d5f4e6;
+        color: #00b894;
+    }
+    
+    .type-expense {
+        background: #ffe5e5;
+        color: #d63031;
+    }
+    
+    .tag-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        margin: 2px;
+        background: #e8f4f8;
+        color: #0984e3;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+    
+    .category-tag {
+        background: #f0e5ff;
+        color: #6c5ce7;
+        font-weight: 600;
+    }
+    
+    .amount {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    
+    .amount-income {
+        color: #00b894;
+    }
+    
+    .amount-expense {
+        color: #d63031;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #999;
+    }
+    
+    .custom-category-section {
+        margin-top: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 6px;
+    }
+    
+    .custom-category-form {
+        display: flex;
+        gap: 10px;
+        align-items: end;
+    }
+    
+    .custom-category-form input {
+        flex: 1;
+        margin-bottom: 0;
+    }
+    
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .form-row-full {
+            grid-template-columns: 1fr;
+        }
+        
+        .transactions-table {
+            font-size: 14px;
+        }
+        
+        .transactions-table th,
+        .transactions-table td {
+            padding: 8px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Add Transaction Form -->
+<div class="card">
+    <h2 style="margin-bottom: 20px; color: #333;">Add Transaction</h2>
+    <form hx-post="/api/transactions" 
+          hx-target="#transactions-list" 
+          hx-swap="innerHTML"
+          hx-on::after-request="this.reset(); htmx.trigger('body', 'refreshStats')">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="description">Description</label>
+                <input type="text" id="description" name="description" required placeholder="e.g., Grocery shopping">
+            </div>
+            <div class="form-group">
+                <label for="amount">Amount ($)</label>
+                <input type="number" id="amount" name="amount" step="0.01" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label for="type">Type</label>
+                <select id="type" name="type" required>
+                    <option value="expense">Expense</option>
+                    <option value="income">Income</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="date">Date</label>
+                <input type="date" id="date" name="date" required>
+            </div>
+        </div>
+        <div class="form-row-full">
+            <div class="form-group">
+                <label for="category">Category</label>
+                <select id="category" name="category" required>
+                    <option value="">Select category...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="tags">Tags (comma-separated, optional)</label>
+                <input type="text" id="tags" name="tags" placeholder="recurring, urgent, planned">
+            </div>
+        </div>
+        <button type="submit" class="btn">Add Transaction</button>
+    </form>
+    
+    <!-- Custom Category Section -->
+    <div class="custom-category-section">
+        <h4 style="margin-bottom: 10px; color: #333;">Add Custom Category</h4>
+        <div class="custom-category-form">
+            <input type="text" id="new-category" placeholder="Enter new category name">
+            <button type="button" class="btn" onclick="addCustomCategory()">Add Category</button>
+        </div>
+    </div>
+</div>
+
+<!-- Import from CSV -->
+<div class="card">
+    <h2 style="margin-bottom: 20px; color: #333;">Import from CSV</h2>
+    <p style="margin-bottom: 15px; color: #666;">
+        CSV format: description, amount, type, category, date, tags (optional)
+    </p>
+    <form id="import-form" enctype="multipart/form-data">
+        <div style="display: flex; gap: 15px; align-items: end;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label for="csv_file">CSV File</label>
+                <input type="file" id="csv_file" name="csv_file" accept=".csv" required>
+            </div>
+            <button type="submit" class="btn">Import CSV</button>
+        </div>
+    </form>
+    <div id="import-result" style="margin-top: 15px;"></div>
+</div>
+
+<!-- Transactions List -->
+<div class="card">
+    <h2 style="margin-bottom: 20px; color: #333;">Transactions</h2>
+    <div id="transactions-list" 
+         hx-get="/api/transactions" 
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        <div class="empty-state">Loading transactions...</div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // Set today's date as default
+    document.getElementById('date').valueAsDate = new Date();
+    
+    // Load categories
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            const categories = await response.json();
+            
+            const select = document.getElementById('category');
+            select.innerHTML = '<option value="">Select category...</option>';
+            
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    async function addCustomCategory() {
+        const input = document.getElementById('new-category');
+        const categoryName = input.value.trim().toLowerCase();
+        
+        if (!categoryName) {
+            alert('Please enter a category name');
+            return;
+        }
+        
+        try {
+            const response = await fetch('/api/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name: categoryName })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`✓ Category "${categoryName}" added successfully!`);
+                input.value = '';
+                loadCategories();
+            } else {
+                alert(`❌ ${result.error}`);
+            }
+        } catch (error) {
+            alert(`❌ Error: ${error.message}`);
+        }
+    }
+    
+    // Handle CSV import
+    document.getElementById('import-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const resultDiv = document.getElementById('import-result');
+        
+        resultDiv.innerHTML = '<p style="color: #666;">⏳ Importing...</p>';
+        
+        try {
+            const response = await fetch('/api/transactions/import', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                let message = `<p style="color: #00b894; font-weight: 600;">✓ Successfully imported ${result.imported} transaction(s)!</p>`;
+                
+                if (result.errors && result.errors.length > 0) {
+                    message += `<p style="color: #e17055; margin-top: 10px;">⚠️ ${result.errors.length} error(s):</p>`;
+                    message += '<ul style="margin-left: 20px; color: #e17055;">';
+                    result.errors.forEach(error => {
+                        message += `<li>${error}</li>`;
+                    });
+                    message += '</ul>';
+                }
+                
+                resultDiv.innerHTML = message;
+                
+                // Refresh transactions list and stats
+                htmx.trigger('#transactions-list', 'load');
+                htmx.trigger('body', 'refreshStats');
+                
+                // Reset form
+                e.target.reset();
+            } else {
+                resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+        }
+    });
+    
+    // Load categories on page load
+    loadCategories();
+</script>
+{% endblock %}

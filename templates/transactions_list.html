@@ -1,0 +1,89 @@
+{% if transactions %}
+<table class="transactions-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th>Category & Tags</th>
+            <th>Amount</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for trans in transactions %}
+        <tr>
+            <td>{{ trans.date }}</td>
+            <td>{{ trans.description }}</td>
+            <td>
+                <span class="type-badge type-{{ trans.type }}">
+                    {{ trans.type|capitalize }}
+                </span>
+            </td>
+            <td>
+                {% for tag in trans.tags %}
+                    {% if tag.name.startswith('category:') %}
+                        <span class="tag-badge category-tag">
+                            {{ tag.name.replace('category:', '')|capitalize }}
+                        </span>
+                    {% else %}
+                        <span class="tag-badge">
+                            {{ tag.name }}
+                        </span>
+                    {% endif %}
+                {% endfor %}
+            </td>
+            <td class="amount amount-{{ trans.type }}">
+                {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
+            </td>
+            <td>
+                <button class="btn btn-delete" 
+                        hx-delete="/api/transactions/{{ trans.id }}"
+                        hx-target="#transactions-list"
+                        hx-swap="innerHTML"
+                        hx-confirm="Are you sure you want to delete this transaction?"
+                        hx-on::after-request="htmx.trigger('body', 'refreshStats')">
+                    Delete
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination -->
+{% if pagination.total_pages > 1 %}
+<div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
+    {% if pagination.page > 1 %}
+        <button class="btn" 
+                hx-get="/api/transactions?page={{ pagination.page - 1 }}"
+                hx-target="#transactions-list"
+                hx-swap="innerHTML">
+            ← Previous
+        </button>
+    {% endif %}
+    
+    <span style="color: #666; font-weight: 600;">
+        Page {{ pagination.page }} of {{ pagination.total_pages }}
+    </span>
+    
+    {% if pagination.page < pagination.total_pages %}
+        <button class="btn" 
+                hx-get="/api/transactions?page={{ pagination.page + 1 }}"
+                hx-target="#transactions-list"
+                hx-swap="innerHTML">
+            Next →
+        </button>
+    {% endif %}
+</div>
+<div style="text-align: center; margin-top: 10px; color: #666;">
+    Total: {{ pagination.total }} transactions
+</div>
+{% endif %}
+
+{% else %}
+<div class="empty-state">
+    <p style="font-size: 3rem;">📝</p>
+    <p>No transactions yet. Add your first transaction above or load test data from Settings!</p>
+</div>
+{% endif %}

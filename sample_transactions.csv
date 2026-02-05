@@ -1,0 +1,51 @@
+description,amount,type,category,date,tags
+Concert,75.28,expense,entertainment,2025-12-02,personal
+Streaming service,184.88,expense,entertainment,2025-12-02,personal
+Electronics,99.58,expense,shopping,2025-12-02,
+Vitamins,318.2,expense,healthcare,2025-12-03,subscription
+Fast food,130.82,expense,food,2025-12-04,subscription
+Pizza delivery,63.41,expense,food,2025-12-05,
+Coffee shop,7.97,expense,food,2025-12-06,
+Home goods,85.0,expense,shopping,2025-12-06,
+Books,388.33,expense,shopping,2025-12-07,
+Farmers market,125.24,expense,food,2025-12-07,subscription
+Streaming service,118.69,expense,entertainment,2025-12-08,recurring
+Car wash,34.62,expense,transport,2025-12-09,
+Dividend payment,1135.44,income,investment,2025-12-09,
+Monthly salary,5287.43,income,salary,2025-12-10,
+Trash service,127.78,expense,utilities,2025-12-11,
+Home goods,489.82,expense,shopping,2025-12-12,
+Gas station,58.04,expense,transport,2025-12-14,personal
+Streaming service,27.27,expense,entertainment,2025-12-15,
+Restaurant lunch,19.05,expense,food,2025-12-15,"business,planned"
+Furniture,110.15,expense,shopping,2025-12-15,
+Video game,52.11,expense,entertainment,2025-12-16,
+Freelance work,2642.65,income,freelance,2025-12-16,
+Sports event,194.87,expense,entertainment,2025-12-17,personal
+Freelance work,375.39,income,freelance,2025-12-17,
+Clothing store,478.3,expense,shopping,2025-12-19,"one-time,recurring"
+Bus pass,34.9,expense,transport,2025-12-20,personal
+Internet,296.37,expense,utilities,2025-12-26,business
+Restaurant lunch,115.56,expense,food,2025-12-26,
+Electric bill,211.52,expense,utilities,2025-12-28,"urgent,planned"
+Post office,28.84,expense,other,2025-12-31,
+Restaurant lunch,69.18,expense,food,2025-12-31,subscription
+Doctor visit,326.62,expense,healthcare,2025-12-31,"urgent,business"
+Gift,58.0,expense,other,2025-12-31,
+Dividend payment,1093.44,income,investment,2026-01-01,
+Haircut,32.92,expense,other,2026-01-02,planned
+Monthly salary,2240.41,income,salary,2026-01-04,
+Restaurant lunch,142.02,expense,food,2026-01-05,
+Phone bill,113.29,expense,utilities,2026-01-11,planned
+Trash service,37.87,expense,utilities,2026-01-14,one-time
+Video game,80.27,expense,entertainment,2026-01-17,recurring
+Pharmacy,31.75,expense,healthcare,2026-01-18,
+Electric bill,211.43,expense,utilities,2026-01-18,
+Car wash,66.13,expense,transport,2026-01-19,
+Vitamins,339.9,expense,healthcare,2026-01-20,
+Stock sale,813.48,income,investment,2026-01-20,
+Museum entry,45.35,expense,entertainment,2026-01-23,urgent
+Haircut,6.2,expense,other,2026-01-24,planned
+Side gig,1197.69,income,freelance,2026-01-25,
+Quarterly bonus,6249.38,income,salary,2026-01-30,
+Monthly salary,6440.18,income,salary,2026-01-30,

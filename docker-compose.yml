@@ -1,0 +1,15 @@
+services:
+  expense-manager:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - expense-data:/app/data
+    environment:
+      - FLASK_ENV=development
+      - DATABASE_TYPE=sqlite
+      - SQLITE_PATH=/app/data/expenses.db
+    restart: unless-stopped
+
+volumes:
+  expense-data:
