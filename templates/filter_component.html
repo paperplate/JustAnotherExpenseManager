@@ -1,0 +1,106 @@
+<!-- Reusable Filter Component -->
+<div class="filter-section">
+    <div>
+        <label for="time-range">Time Range:</label>
+        <select id="time-range" onchange="filterByTimeRange(this.value)">
+            <option value="">All Time</option>
+            <option value="current_month">Current Month</option>
+            <option value="3_months">Last 3 Months</option>
+            <option value="6_months" {% if default_range == '6_months' %}selected{% endif %}>Last 6 Months</option>
+            <option value="1_year">Last Year</option>
+            <option value="custom">Custom Range...</option>
+        </select>
+    </div>
+    <div>
+        <label for="category-filter">Filter by Category:</label>
+        <select id="category-filter" onchange="filterByCategory(this.value)">
+            <option value="">All Categories</option>
+        </select>
+    </div>
+</div>
+
+<!-- Custom date range picker (hidden by default) -->
+<div id="custom-range-picker">
+    <div>
+        <div>
+            <label for="start-date">Start Date:</label>
+            <input type="date" id="start-date">
+        </div>
+        <div>
+            <label for="end-date">End Date:</label>
+            <input type="date" id="end-date">
+        </div>
+        <button class="btn" onclick="applyCustomRange()">Apply</button>
+    </div>
+</div>
+
+<script>
+    // Load categories for filter
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/categories');
+            const categories = await response.json();
+            
+            const select = document.getElementById('category-filter');
+            categories.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.name;
+                option.textContent = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+                select.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Error loading categories:', error);
+        }
+    }
+    
+    function filterByCategory(category) {
+        const timeRange = document.getElementById('time-range').value;
+        applyFilters(category, timeRange);
+    }
+    
+    function filterByTimeRange(range) {
+        const customPicker = document.getElementById('custom-range-picker');
+        
+        if (range === 'custom') {
+            customPicker.style.display = 'block';
+            return;
+        } else {
+            customPicker.style.display = 'none';
+        }
+        
+        const category = document.getElementById('category-filter').value;
+        applyFilters(category, range);
+    }
+    
+    function applyCustomRange() {
+        const startDate = document.getElementById('start-date').value;
+        const endDate = document.getElementById('end-date').value;
+        
+        if (!startDate || !endDate) {
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        const category = document.getElementById('category-filter').value;
+        applyFilters(category, 'custom', startDate, endDate);
+    }
+    
+    function applyFilters(category, range, startDate, endDate) {
+        let url = '{{ target_url }}';
+        const params = [];
+        
+        if (category) params.push(`category=${category}`);
+        if (range && range !== 'custom') params.push(`range=${range}`);
+        if (startDate) params.push(`start_date=${startDate}`);
+        if (endDate) params.push(`end_date=${endDate}`);
+        
+        if (params.length > 0) {
+            url += '?' + params.join('&');
+        }
+        
+        htmx.ajax('GET', url, {target: '{{ target_element }}', swap: 'innerHTML'});
+    }
+    
+    // Load categories on page load
+    loadCategories();
+</script>
