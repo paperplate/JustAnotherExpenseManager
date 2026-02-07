@@ -20,15 +20,15 @@ def populate_test_data():
     """Populate database with test data (only in debug mode)."""
     if not current_app.debug:
         return jsonify({'error': 'Test data generation is only available in debug mode'}), 403
-    
+
     db = get_db()
     try:
         service = TestDataService(db)
         count, error = service.populate_test_data()
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({
             'success': True,
             'message': f'Added {count} test transactions',

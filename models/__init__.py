@@ -17,13 +17,13 @@ transaction_tags = Table('transaction_tags', Base.metadata,
 
 class Tag(Base):
     """Tag model for categorization and labeling."""
-    
+
     __tablename__ = 'tags'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     def to_dict(self):
         """Convert tag to dictionary representation."""
         return {
@@ -32,7 +32,7 @@ class Tag(Base):
             'is_category': self.name.startswith('category:'),
             'category_name': self.name.replace('category:', '') if self.name.startswith('category:') else None
         }
-    
+
     def __repr__(self):
         return f"<Tag(id={self.id}, name='{self.name}')>"
 
@@ -48,10 +48,10 @@ class Transaction(Base):
     type = Column(String(20), nullable=False)  # 'income' or 'expense' TODO: convert to bool
     date = Column(String(10), nullable=False)  # YYYY-MM-DD format
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     # Relationship to tags
     tags = relationship('Tag', secondary=transaction_tags, backref='transactions')
-    
+
     def to_dict(self):
         """Convert transaction to dictionary representation."""
         return {
@@ -65,6 +65,6 @@ class Transaction(Base):
                             if tag.name.startswith('category:')), None),
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
-    
+
     def __repr__(self):
         return f"<Transaction(id={self.id}, type='{self.type}', amount={self.amount})>"

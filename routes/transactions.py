@@ -24,12 +24,12 @@ def get_transactions():
     """Get paginated list of transactions."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
-    
+
     db = get_db()
     try:
         service = TransactionService(db)
         result = service.get_all_transactions(page=page, per_page=per_page)
-        
+
         return render_template('transactions_list.html', 
                              transactions=result['transactions'],
                              pagination=result)
@@ -49,17 +49,17 @@ def add_transaction():
         date = request.form.get('date', '').strip()
         category = request.form.get('category', '').strip()
         tags_input = request.form.get('tags', '').strip()
-        
+
         # Validation
         if not description:
             return jsonify({'error': 'Description is required'}), 400
-        
+
         if not amount_str:
             return jsonify({'error': 'Amount is required'}), 400
-        
+
         if not date:
             return jsonify({'error': 'Date is required'}), 400
-        
+
         # Validate amount
         try:
             amount = float(amount_str)
@@ -67,22 +67,22 @@ def add_transaction():
                 return jsonify({'error': 'Amount must be positive'}), 400
         except ValueError:
             return jsonify({'error': 'Invalid amount format'}), 400
-        
+
         # Validate type
         if trans_type not in ['income', 'expense']:
             return jsonify({'error': 'Type must be income or expense'}), 400
-        
+
         # Validate date format
         try:
             datetime.strptime(date, '%Y-%m-%d')
         except ValueError:
             return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
-        
+
         # Get database connection after validation
         db = get_db()
         service = TransactionService(db)
         tags = [t.strip() for t in tags_input.split(',') if t.strip()]
-        
+
         service.create_transaction(
             description=description,
             amount=amount,
@@ -91,7 +91,7 @@ def add_transaction():
             category=category if category else None,
             tags=tags
         )
-        
+
         # Return first page of transactions
         result = service.get_all_transactions(page=1, per_page=50)
         return render_template('transactions_list.html',
@@ -118,17 +118,17 @@ def update_transaction(transaction_id):
         date = request.form.get('date', '').strip()
         category = request.form.get('category', '').strip()
         tags_input = request.form.get('tags', '').strip()
-        
+
         # Validation
         if not description:
             return jsonify({'error': 'Description is required'}), 400
-        
+
         if not amount_str:
             return jsonify({'error': 'Amount is required'}), 400
-        
+
         if not date:
             return jsonify({'error': 'Date is required'}), 400
-        
+
         # Validate amount
         try:
             amount = float(amount_str)
@@ -136,22 +136,22 @@ def update_transaction(transaction_id):
                 return jsonify({'error': 'Amount must be positive'}), 400
         except ValueError:
             return jsonify({'error': 'Invalid amount format'}), 400
-        
+
         # Validate type
         if trans_type not in ['income', 'expense']:
             return jsonify({'error': 'Type must be income or expense'}), 400
-        
+
         # Validate date format
         try:
             datetime.strptime(date, '%Y-%m-%d')
         except ValueError:
             return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
-        
+
         # Get database connection after validation
         db = get_db()
         service = TransactionService(db)
         tags = [t.strip() for t in tags_input.split(',') if t.strip()]
-        
+
         success, error = service.update_transaction(
             transaction_id=transaction_id,
             description=description,
@@ -161,10 +161,10 @@ def update_transaction(transaction_id):
             category=category if category else None,
             tags=tags
         )
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         # Return first page of transactions
         result = service.get_all_transactions(page=1, per_page=50)
         return render_template('transactions_list.html',
@@ -186,7 +186,7 @@ def delete_transaction(transaction_id):
     try:
         service = TransactionService(db)
         service.delete_transaction(transaction_id)
-        
+
         # Return first page of transactions
         result = service.get_all_transactions(page=1, per_page=50)
         return render_template('transactions_list.html',
@@ -201,24 +201,24 @@ def import_transactions():
     """Import transactions from CSV."""
     if 'csv_file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
-    
+
     file = request.files['csv_file']
-    
+
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
-    
+
     if not file.filename.endswith('.csv'):
         return jsonify({'error': 'File must be a CSV'}), 400
-    
+
     try:
         stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
         csv_reader = csv.DictReader(stream)
-        
+
         db = get_db()
         service = TransactionService(db)
         imported_count = 0
         errors = []
-        
+
         for row_num, row in enumerate(csv_reader, start=2):
             try:
                 description = row.get('description', '').strip()
@@ -227,11 +227,11 @@ def import_transactions():
                 category = row.get('category', '').strip().lower()
                 date_str = row.get('date', '').strip()
                 tags_str = row.get('tags', '').strip()
-                
+
                 if not all([description, amount_str, date_str]):
                     errors.append(f"Row {row_num}: Missing required fields")
                     continue
-                
+
                 try:
                     amount = float(amount_str)
                     if amount <= 0:
@@ -240,19 +240,19 @@ def import_transactions():
                 except ValueError:
                     errors.append(f"Row {row_num}: Invalid amount '{amount_str}'")
                     continue
-                
+
                 if trans_type not in ['income', 'expense']:
                     errors.append(f"Row {row_num}: Type must be 'income' or 'expense'")
                     continue
-                
+
                 try:
                     datetime.strptime(date_str, '%Y-%m-%d')
                 except ValueError:
                     errors.append(f"Row {row_num}: Invalid date format '{date_str}' (use YYYY-MM-DD)")
                     continue
-                
+
                 tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
-                
+
                 service.create_transaction(
                     description=description,
                     amount=amount,
@@ -261,24 +261,25 @@ def import_transactions():
                     category=category if category else None,
                     tags=tags
                 )
-                
+
                 imported_count += 1
-                
+
             except Exception as e:
                 errors.append(f"Row {row_num}: {str(e)}")
                 db.rollback()  # Rollback on error
-        
+
         db.commit()  # Commit all successful imports
         db.close()
-        
+
         return jsonify({
             'success': True,
             'imported': imported_count,
             'errors': errors
         })
-        
+
     except Exception as e:
         if 'db' in locals():
             db.rollback()
             db.close()
-        return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
+        return jsonify(
+            {'error': f'Failed to process CSV: {str(e)}'}), 500

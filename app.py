@@ -31,7 +31,7 @@ try:
     config = dotenv_values('.env')
 except Exception as err:
     print(f"Unexpected {err=}, {type(err)=}")
-    exit(1)
+    sys.exit(1)
 
 
 if __name__ == '__main__':

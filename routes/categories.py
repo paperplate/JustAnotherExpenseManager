@@ -25,26 +25,27 @@ def get_categories():
 def add_category():
     """Add a new category."""
     category_name = request.json.get('name', '').strip().lower()
-    
+
     # Validate category name
     if not category_name:
         return jsonify({'error': 'Category name required'}), 400
-    
+
     if len(category_name) > 50:
         return jsonify({'error': 'Category name too long (max 50 characters)'}), 400
-    
+
     # Check for invalid characters
     if not category_name.replace('_', '').replace('-', '').isalnum():
-        return jsonify({'error': 'Category name can only contain letters, numbers, hyphens and underscores'}), 400
-    
+        return jsonify(
+            {'error': 'Category name can only contain letters, numbers, hyphens and underscores'}), 400
+
     db = get_db()
     try:
         service = CategoryService(db)
         tag, error = service.create_category(category_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True, 'category': category_name})
     except Exception as e:
         db.rollback()
@@ -57,18 +58,18 @@ def add_category():
 def update_category(category_name):
     """Update a category name."""
     new_name = request.json.get('name', '').strip().lower()
-    
+
     if not new_name:
         return jsonify({'error': 'Category name required'}), 400
-    
+
     db = get_db()
     try:
         service = CategoryService(db)
         success, error = service.update_category(category_name, new_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True, 'category': new_name})
     finally:
         db.close()
@@ -81,10 +82,10 @@ def delete_category(category_name):
     try:
         service = CategoryService(db)
         success, error = service.delete_category(category_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True})
     finally:
         db.close()
