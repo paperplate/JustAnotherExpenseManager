@@ -92,9 +92,18 @@ async function handleCSVImport(e) {
 }
 
 /**
- * Edit transaction - opens modal with transaction data
+ * Edit transaction - opens modal with transaction data from button data attributes
  */
-async function editTransaction(id, description, amount, type, date, category, tags) {
+async function editTransaction(button) {
+    // Get data from button attributes
+    const id = button.dataset.transactionId;
+    const description = button.dataset.description;
+    const amount = button.dataset.amount;
+    const type = button.dataset.type;
+    const date = button.dataset.date;
+    const category = button.dataset.category;
+    const tags = button.dataset.tags;
+    
     // Load categories in modal
     try {
         const response = await fetch('/api/categories');
@@ -123,9 +132,8 @@ async function editTransaction(id, description, amount, type, date, category, ta
     document.getElementById('edit-type').value = type;
     document.getElementById('edit-date').value = date;
     
-    // Handle tags - remove category tags
-    const tagArray = tags.split(',').filter(t => t && !t.startsWith('category:'));
-    document.getElementById('edit-tags').value = tagArray.join(', ');
+    // Handle tags
+    document.getElementById('edit-tags').value = tags || '';
     
     // Show modal
     document.getElementById('editModal').style.display = 'block';

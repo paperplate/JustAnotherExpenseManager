@@ -26,8 +26,16 @@ def add_category():
     """Add a new category."""
     category_name = request.json.get('name', '').strip().lower()
     
+    # Validate category name
     if not category_name:
         return jsonify({'error': 'Category name required'}), 400
+    
+    if len(category_name) > 50:
+        return jsonify({'error': 'Category name too long (max 50 characters)'}), 400
+    
+    # Check for invalid characters
+    if not category_name.replace('_', '').replace('-', '').isalnum():
+        return jsonify({'error': 'Category name can only contain letters, numbers, hyphens and underscores'}), 400
     
     db = get_db()
     try:
@@ -38,6 +46,9 @@ def add_category():
             return jsonify({'error': error}), 400
         
         return jsonify({'success': True, 'category': category_name})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'error': f'Failed to create category: {str(e)}'}), 500
     finally:
         db.close()
 

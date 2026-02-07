@@ -38,7 +38,14 @@
             </td>
             <td>
                 <button class="btn btn-edit btn-small" 
-                        onclick="editTransaction({{ trans.id }}, '{{ trans.description }}', {{ trans.amount }}, '{{ trans.type }}', '{{ trans.date }}', '{{ trans.category or '' }}', '{{ trans.tags|join(',') }}')">
+                        data-transaction-id="{{ trans.id }}"
+                        data-description="{{ trans.description|escape }}"
+                        data-amount="{{ trans.amount }}"
+                        data-type="{{ trans.type }}"
+                        data-date="{{ trans.date }}"
+                        data-category="{{ trans.category or '' }}"
+                        data-tags="{{ trans.tags|map(attribute='name')|reject('match', '^category:')|join(',') }}"
+                        onclick="editTransaction(this)">
                     Edit
                 </button>
                 <button class="btn btn-delete" 

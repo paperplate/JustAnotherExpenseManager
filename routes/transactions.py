@@ -40,15 +40,46 @@ def get_transactions():
 @transaction_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     """Add a new transaction."""
-    description = request.form.get('description')
-    amount = float(request.form.get('amount'))
-    trans_type = request.form.get('type', 'expense')
-    date = request.form.get('date')
-    category = request.form.get('category')
-    tags_input = request.form.get('tags', '')
-    
-    db = get_db()
+    db = None
     try:
+        # Validate required fields
+        description = request.form.get('description', '').strip()
+        amount_str = request.form.get('amount', '').strip()
+        trans_type = request.form.get('type', 'expense').strip()
+        date = request.form.get('date', '').strip()
+        category = request.form.get('category', '').strip()
+        tags_input = request.form.get('tags', '').strip()
+        
+        # Validation
+        if not description:
+            return jsonify({'error': 'Description is required'}), 400
+        
+        if not amount_str:
+            return jsonify({'error': 'Amount is required'}), 400
+        
+        if not date:
+            return jsonify({'error': 'Date is required'}), 400
+        
+        # Validate amount
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                return jsonify({'error': 'Amount must be positive'}), 400
+        except ValueError:
+            return jsonify({'error': 'Invalid amount format'}), 400
+        
+        # Validate type
+        if trans_type not in ['income', 'expense']:
+            return jsonify({'error': 'Type must be income or expense'}), 400
+        
+        # Validate date format
+        try:
+            datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
+        
+        # Get database connection after validation
+        db = get_db()
         service = TransactionService(db)
         tags = [t.strip() for t in tags_input.split(',') if t.strip()]
         
@@ -57,7 +88,7 @@ def add_transaction():
             amount=amount,
             trans_type=trans_type,
             date=date,
-            category=category,
+            category=category if category else None,
             tags=tags
         )
         
@@ -66,22 +97,58 @@ def add_transaction():
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
                              pagination=result)
+    except Exception as e:
+        if db:
+            db.rollback()
+        return jsonify({'error': f'Failed to create transaction: {str(e)}'}), 500
     finally:
-        db.close()
+        if db:
+            db.close()
 
 
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
     """Update a transaction."""
-    description = request.form.get('description')
-    amount = float(request.form.get('amount'))
-    trans_type = request.form.get('type')
-    date = request.form.get('date')
-    category = request.form.get('category')
-    tags_input = request.form.get('tags', '')
-    
-    db = get_db()
+    db = None
     try:
+        # Validate required fields
+        description = request.form.get('description', '').strip()
+        amount_str = request.form.get('amount', '').strip()
+        trans_type = request.form.get('type', '').strip()
+        date = request.form.get('date', '').strip()
+        category = request.form.get('category', '').strip()
+        tags_input = request.form.get('tags', '').strip()
+        
+        # Validation
+        if not description:
+            return jsonify({'error': 'Description is required'}), 400
+        
+        if not amount_str:
+            return jsonify({'error': 'Amount is required'}), 400
+        
+        if not date:
+            return jsonify({'error': 'Date is required'}), 400
+        
+        # Validate amount
+        try:
+            amount = float(amount_str)
+            if amount <= 0:
+                return jsonify({'error': 'Amount must be positive'}), 400
+        except ValueError:
+            return jsonify({'error': 'Invalid amount format'}), 400
+        
+        # Validate type
+        if trans_type not in ['income', 'expense']:
+            return jsonify({'error': 'Type must be income or expense'}), 400
+        
+        # Validate date format
+        try:
+            datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
+        
+        # Get database connection after validation
+        db = get_db()
         service = TransactionService(db)
         tags = [t.strip() for t in tags_input.split(',') if t.strip()]
         
@@ -91,7 +158,7 @@ def update_transaction(transaction_id):
             amount=amount,
             trans_type=trans_type,
             date=date,
-            category=category,
+            category=category if category else None,
             tags=tags
         )
         
@@ -103,8 +170,13 @@ def update_transaction(transaction_id):
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
                              pagination=result)
+    except Exception as e:
+        if db:
+            db.rollback()
+        return jsonify({'error': f'Failed to update transaction: {str(e)}'}), 500
     finally:
-        db.close()
+        if db:
+            db.close()
 
 
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
@@ -194,7 +266,9 @@ def import_transactions():
                 
             except Exception as e:
                 errors.append(f"Row {row_num}: {str(e)}")
+                db.rollback()  # Rollback on error
         
+        db.commit()  # Commit all successful imports
         db.close()
         
         return jsonify({
@@ -204,4 +278,7 @@ def import_transactions():
         })
         
     except Exception as e:
+        if 'db' in locals():
+            db.rollback()
+            db.close()
         return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500

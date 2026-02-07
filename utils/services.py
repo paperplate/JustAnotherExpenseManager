@@ -137,34 +137,59 @@ class StatsService:
     def get_summary_stats(self, category_filter=None, time_range=None, start_date=None, end_date=None, tag_filter=None):
         """Get summary statistics with support for multiple categories and tags."""
         from sqlalchemy import text
+        import re
+        
         date_filter = self._get_date_filter(time_range, start_date, end_date)
         filters = []
+        params = {}
         
-        # Handle multiple categories
+        # Handle multiple categories - SANITIZED
         if category_filter:
             categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            # Validate category names - only alphanumeric, hyphens, underscores
+            categories = [c for c in categories if re.match(r'^[a-zA-Z0-9_-]+$', c)]
             if categories:
-                category_conditions = " OR ".join([f"t.name = 'category:{cat}'" for cat in categories])
-                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})")
+                category_placeholders = ", ".join([f":cat{i}" for i in range(len(categories))])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({category_placeholders}))")
+                for i, cat in enumerate(categories):
+                    params[f'cat{i}'] = f'category:{cat}'
         
-        # Handle multiple tags
+        # Handle multiple tags - SANITIZED
         if tag_filter:
             tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            # Validate tag names - only alphanumeric, hyphens, underscores
+            tags = [t for t in tags if re.match(r'^[a-zA-Z0-9_-]+$', t)]
             if tags:
-                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
-                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})")
+                tag_placeholders = ", ".join([f":tag{i}" for i in range(len(tags))])
+                filters.append(f"id IN (SELECT transaction_id FROM transaction_tags tt JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({tag_placeholders}))")
+                for i, tag in enumerate(tags):
+                    params[f'tag{i}'] = tag
         
+        # Validate dates before using them
         if date_filter:
-            filters.append(date_filter)
+            if start_date and end_date:
+                # Validate date format
+                try:
+                    from datetime import datetime
+                    datetime.strptime(start_date, '%Y-%m-%d')
+                    datetime.strptime(end_date, '%Y-%m-%d')
+                    filters.append("date BETWEEN :start_date AND :end_date")
+                    params['start_date'] = start_date
+                    params['end_date'] = end_date
+                except ValueError:
+                    pass  # Skip invalid dates
+            elif time_range:
+                # time_range is from a dropdown, so it's safe
+                filters.append(date_filter)
         
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
         income_q = f"SELECT COALESCE(SUM(amount), 0) FROM transactions {where_clause}{' AND' if where_clause else ' WHERE'} type = 'income'"
         expense_q = f"SELECT COALESCE(SUM(amount), 0) FROM transactions {where_clause}{' AND' if where_clause else ' WHERE'} type = 'expense'"
         
         return {
-            'income': self.db.execute(text(income_q)).scalar() or 0,
-            'expenses': self.db.execute(text(expense_q)).scalar() or 0,
-            'net': (self.db.execute(text(income_q)).scalar() or 0) - (self.db.execute(text(expense_q)).scalar() or 0)
+            'income': self.db.execute(text(income_q), params).scalar() or 0,
+            'expenses': self.db.execute(text(expense_q), params).scalar() or 0,
+            'net': (self.db.execute(text(income_q), params).scalar() or 0) - (self.db.execute(text(expense_q), params).scalar() or 0)
         }
 
     def get_category_breakdown(self, category_filter=None, time_range=None, start_date=None, end_date=None, tag_filter=None):
