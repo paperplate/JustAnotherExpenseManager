@@ -19,3 +19,7 @@
     <div class="card">Loading statistics...</div>
 </div>
 {% endblock %}
+
+{% block extra_scripts %}
+<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

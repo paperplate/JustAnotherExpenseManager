@@ -25,6 +25,8 @@
         {% block content %}{% endblock %}
     </div>
     
+    <!-- Common JavaScript files -->
+    <script src="{{ url_for('static', filename='js/filter_component.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>
