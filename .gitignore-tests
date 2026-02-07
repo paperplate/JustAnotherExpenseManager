@@ -1,0 +1,27 @@
+# Playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
+# Node modules
+node_modules/
+
+# Test databases
+test-*.db
+*-test.db
+
+# Temporary test files
+tests/temp-*.csv
+tests/*.txt
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Screenshots and videos
+screenshots/
+videos/
+
+# Logs
+*.log
+npm-debug.log*

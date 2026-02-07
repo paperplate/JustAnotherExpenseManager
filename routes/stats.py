@@ -28,48 +28,27 @@ def get_stats():
     end_date = request.args.get('end_date', None)
     page = request.args.get('page', 1, type=int)
     per_page = 6  # Show 6 months per page
-
+    
     db = get_db()
     try:
         service = StatsService(db, DATABASE_TYPE)
-
+        
         # Get summary stats
-        stats = service.get_summary_stats(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            tags_param)
-
+        stats = service.get_summary_stats(categories_param, time_range, start_date, end_date, tags_param)
+        
         # Get all categories for dropdown
         categories = db.query(Tag).filter(Tag.name.like('category:%')).all()
-
+        
         # Get category breakdown
-        category_breakdown = service.get_category_breakdown(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            tags_param)
-
+        category_breakdown = service.get_category_breakdown(categories_param, time_range, start_date, end_date, tags_param)
+        
         # Get monthly data with pagination
-        monthly = service.get_monthly_data(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            limit=per_page,
-            tag_filter=tags_param)
-
+        monthly = service.get_monthly_data(categories_param, time_range, start_date, end_date, limit=per_page, tag_filter=tags_param)
+        
         # Calculate pagination for monthly data
-        total_months = service.count_months(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            tags_param)
+        total_months = service.count_months(categories_param, time_range, start_date, end_date, tags_param)
         total_pages = (total_months + per_page - 1) // per_page if total_months > 0 else 1
-
+        
         return render_template('stats.html',
                              income=stats['income'],
                              expenses=stats['expenses'],
@@ -94,28 +73,17 @@ def chart_data():
     time_range = request.args.get('range', None)
     start_date = request.args.get('start_date', None)
     end_date = request.args.get('end_date', None)
-
+    
     db = get_db()
     try:
         service = StatsService(db, DATABASE_TYPE)
-
+        
         # Category data
-        category_data = service.get_category_breakdown(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            tags_param)
-
+        category_data = service.get_category_breakdown(categories_param, time_range, start_date, end_date, tags_param)
+        
         # Monthly data
-        monthly_data = service.get_monthly_data(
-            categories_param,
-            time_range,
-            start_date,
-            end_date,
-            limit=12,
-            tag_filter=tags_param)
-
+        monthly_data = service.get_monthly_data(categories_param, time_range, start_date, end_date, limit=12, tag_filter=tags_param)
+        
         return jsonify({
             'categories': {
                 'labels': [cat[0] for cat in category_data],
