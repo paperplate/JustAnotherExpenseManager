@@ -2,7 +2,8 @@
 Routes for category operations.
 """
 
-from flask import Blueprint, request, jsonify
+from typing import Tuple, Union, Any
+from flask import Blueprint, request, jsonify, Response
 from utils.database import get_db
 from utils.services import CategoryService
 
@@ -10,8 +11,13 @@ categories_bp = Blueprint('categories', __name__)
 
 
 @categories_bp.route('/api/categories', methods=['GET'])
-def get_categories():
-    """Get all categories."""
+def get_categories() -> Response:
+    """
+    Get all categories.
+
+    Returns:
+        Response: JSON response with list of categories
+    """
     db = get_db()
     try:
         service = CategoryService(db)
@@ -22,77 +28,111 @@ def get_categories():
 
 
 @categories_bp.route('/api/categories', methods=['POST'])
-def add_category():
-    """Add a new category."""
-    category_name = request.json.get('name', '').strip().lower()
-    
+def add_category() -> Union[Response, Tuple[Response, int]]:
+    """
+    Add a new category.
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    category_name: str = request.json.get('name', '').strip().lower()
+
     # Validate category name
     if not category_name:
         return jsonify({'error': 'Category name required'}), 400
-    
+
     if len(category_name) > 50:
         return jsonify({'error': 'Category name too long (max 50 characters)'}), 400
-    
+
     # Check for invalid characters
     if not category_name.replace('_', '').replace('-', '').isalnum():
-        return jsonify({'error': 'Category name can only contain letters, numbers, hyphens and underscores'}), 400
-    
+        return jsonify({
+            'error': 'Category name can only contain letters, numbers, hyphens and underscores'
+        }), 400
+
     db = get_db()
     try:
         service = CategoryService(db)
         tag, error = service.create_category(category_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True, 'category': category_name})
-    except Exception as e:
+    except Exception as exc:  # pylint: disable=broad-except
         db.rollback()
-        return jsonify({'error': f'Failed to create category: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to create category: {str(exc)}'}), 500
     finally:
         db.close()
 
 
 @categories_bp.route('/api/categories/<category_name>', methods=['PUT'])
-def update_category(category_name):
-    """Update a category name."""
-    new_name = request.json.get('name', '').strip().lower()
-    
+def update_category(category_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Update a category name.
+
+    Args:
+        category_name: Current category name
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    new_name: str = request.json.get('name', '').strip().lower()
+
     if not new_name:
         return jsonify({'error': 'Category name required'}), 400
-    
+
     db = get_db()
     try:
         service = CategoryService(db)
         success, error = service.update_category(category_name, new_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True, 'category': new_name})
     finally:
         db.close()
 
 
 @categories_bp.route('/api/categories/<category_name>', methods=['DELETE'])
-def delete_category(category_name):
-    """Delete a category."""
+def delete_category(category_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Delete a category.
+
+    Args:
+        category_name: Name of category to delete
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
     db = get_db()
     try:
         service = CategoryService(db)
         success, error = service.delete_category(category_name)
-        
+
         if error:
             return jsonify({'error': error}), 400
-        
+
         return jsonify({'success': True})
     finally:
         db.close()
 
 
 @categories_bp.route('/api/tags', methods=['GET'])
-def get_tags():
-    """Get all non-category tags."""
+def get_tags() -> Response:
+    """
+    Get all non-category tags.
+
+    Returns:
+        Response: JSON response with list of tags
+    """
     db = get_db()
     try:
         service = CategoryService(db)
