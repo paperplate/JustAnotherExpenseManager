@@ -8,6 +8,7 @@ This application follows SOLID principles with separation of concerns:
 - Database: Configuration and session management (utils/database.py)
 """
 
+import sys
 from dotenv import dotenv_values
 from flask import Flask
 from utils.database import init_db, shutdown_session
@@ -36,4 +37,4 @@ except Exception as err:
 
 if __name__ == '__main__':
     init_db()
-    app.run(host='0.0.0.0', port=5000, debug=(config['FLASK_ENV'] == 'development'))
+    app.run(host='0.0.0.0', port=5000, debug=(config.get('FLASK_ENV') == 'development'))

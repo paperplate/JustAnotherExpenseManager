@@ -39,9 +39,9 @@ class Tag(Base):
 
 class Transaction(Base):
     """Transaction model for both income and expenses."""
-    
+
     __tablename__ = 'transactions'
-    
+
     id = Column(Integer, primary_key=True, autoincrement=True)
     description = Column(String(500), nullable=False)
     amount = Column(Float, nullable=False)
@@ -61,7 +61,7 @@ class Transaction(Base):
             'type': self.type,
             'date': self.date,
             'tags': [tag.name for tag in self.tags],
-            'category': next((tag.name.replace('category:', '') for tag in self.tags 
+            'category': next((tag.name.replace('category:', '') for tag in self.tags
                             if tag.name.startswith('category:')), None),
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

@@ -2,7 +2,8 @@
 Routes for settings page and test data.
 """
 
-from flask import Blueprint, render_template, jsonify, current_app
+from typing import Tuple, Optional, Union
+from flask import Blueprint, render_template, jsonify, current_app, Response
 from utils.database import get_db
 from utils.services import TestDataService
 
@@ -10,16 +11,28 @@ settings_bp = Blueprint('settings', __name__)
 
 
 @settings_bp.route('/settings')
-def settings_page():
-    """Display settings page."""
+def settings_page() -> str:
+    """
+    Display settings page.
+
+    Returns:
+        str: Rendered settings HTML template
+    """
     return render_template('settings.html', debug_mode=current_app.debug)
 
 
 @settings_bp.route('/api/populate-test-data', methods=['POST'])
-def populate_test_data():
-    """Populate database with test data (only in debug mode)."""
+def populate_test_data() -> Union[Response, Tuple[Response, int]]:
+    """
+    Populate database with test data (only in debug mode).
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
     if not current_app.debug:
-        return jsonify({'error': 'Test data generation is only available in debug mode'}), 403
+        return jsonify({
+            'error': 'Test data generation is only available in debug mode'
+        }), 403
 
     db = get_db()
     try:
@@ -34,8 +47,8 @@ def populate_test_data():
             'message': f'Added {count} test transactions',
             'count': count
         })
-    except Exception as e:
+    except Exception as exc:  # pylint: disable=broad-except
         db.rollback()
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': str(exc)}), 500
     finally:
         db.close()

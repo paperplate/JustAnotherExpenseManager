@@ -59,8 +59,8 @@ def init_db():
     db = SessionLocal()
     try:
         default_categories = [
-            'food', 'transport', 'entertainment', 'utilities', 
-            'shopping', 'healthcare', 'other', 'salary', 
+            'food', 'transport', 'entertainment', 'utilities',
+            'shopping', 'healthcare', 'other', 'salary',
             'investment'
         ]
 
