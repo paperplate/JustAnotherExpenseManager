@@ -25,7 +25,9 @@ function toggleCategoryDropdown() {
     
     if (!dropdown) return;
     
-    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    // Handle initial empty state or 'none'
+    const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+    dropdown.style.display = isHidden ? 'block' : 'none';
     if (tagDropdown) tagDropdown.style.display = 'none';
 }
 
@@ -35,7 +37,9 @@ function toggleTagDropdown() {
     
     if (!dropdown) return;
     
-    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    // Handle initial empty state or 'none'
+    const isHidden = dropdown.style.display === 'none' || dropdown.style.display === '';
+    dropdown.style.display = isHidden ? 'block' : 'none';
     if (categoryDropdown) categoryDropdown.style.display = 'none';
 }
 

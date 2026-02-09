@@ -2,7 +2,7 @@
 Routes for statistics and summary.
 """
 
-from typing import Optional, Dict, Any
+from typing import Optional, Dict
 from flask import Blueprint, render_template, request, jsonify, Response
 from utils.database import get_db, DATABASE_TYPE
 from utils.services import StatsService
