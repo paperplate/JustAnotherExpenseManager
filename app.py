@@ -11,7 +11,8 @@ This application follows SOLID principles with separation of concerns:
 import sys
 from dotenv import dotenv_values
 from flask import Flask
-from utils.database import init_db, shutdown_session
+from utils.database import init_db, shutdown_session, get_db, engine, SessionLocal
+from models import Transaction, Tag
 from routes.transactions import transaction_bp
 from routes.stats import stats_bp
 from routes.categories import categories_bp
