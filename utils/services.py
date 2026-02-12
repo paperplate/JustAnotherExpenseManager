@@ -223,9 +223,9 @@ class StatsService:
         time_range: Optional[str],
         start_date: Optional[str],
         end_date: Optional[str]
-    ) -> str:
+    ) -> Tuple[str, Dict[str, str]]:
         """
-        Generate date filter clause.
+        Generate date filter clause with parameters.
 
         Args:
             time_range: Time range identifier
@@ -233,12 +233,23 @@ class StatsService:
             end_date: End date (YYYY-MM-DD)
 
         Returns:
-            SQL date filter string
+            Tuple of (filter_clause, params_dict)
         """
+        params: Dict[str, str] = {}
+
         if start_date and end_date:
-            return f"date BETWEEN '{start_date}' AND '{end_date}'"
+            # Validate date format
+            try:
+                datetime.strptime(start_date, '%Y-%m-%d')
+                datetime.strptime(end_date, '%Y-%m-%d')
+                params['start_date'] = start_date
+                params['end_date'] = end_date
+                return "date BETWEEN :start_date AND :end_date", params
+            except ValueError:
+                return "", {}
+
         if not time_range:
-            return ""
+            return "", {}
 
         today = datetime.now().date()
         ranges = {
@@ -248,7 +259,10 @@ class StatsService:
             '1_year': lambda: today - timedelta(days=365)
         }
         start = ranges.get(time_range, lambda: None)()
-        return f"date >= '{start}'" if start else ""
+        if start:
+            params['filter_start'] = str(start)
+            return "date >= :filter_start", params
+        return "", {}
 
     def get_summary_stats(
         self,
@@ -271,9 +285,8 @@ class StatsService:
         Returns:
             Dict with income, expenses, and net balance
         """
-        date_filter = self._get_date_filter(time_range, start_date, end_date)
+        date_filter, params = self._get_date_filter(time_range, start_date, end_date)
         filters: List[str] = []
-        params: Dict[str, str] = {}
 
         # Handle multiple categories - SANITIZED
         if category_filter:
@@ -303,21 +316,9 @@ class StatsService:
                 for i, tag in enumerate(tags):
                     params[f'tag{i}'] = tag
 
-        # Validate dates before using them
+        # Add date filter if present
         if date_filter:
-            if start_date and end_date:
-                # Validate date format
-                try:
-                    datetime.strptime(start_date, '%Y-%m-%d')
-                    datetime.strptime(end_date, '%Y-%m-%d')
-                    filters.append("date BETWEEN :start_date AND :end_date")
-                    params['start_date'] = start_date
-                    params['end_date'] = end_date
-                except ValueError:
-                    pass  # Skip invalid dates
-            elif time_range:
-                # time_range is from a dropdown, so it's safe
-                filters.append(date_filter)
+            filters.append(date_filter)
 
         where_clause = "WHERE " + " AND ".join(filters) if filters else ""
         income_q = (
@@ -362,21 +363,24 @@ class StatsService:
         if category_filter:
             return []
 
-        date_filter = self._get_date_filter(time_range, start_date, end_date)
-
+        date_filter, params = self._get_date_filter(time_range, start_date, end_date)
         filters: List[str] = []
         if date_filter:
             filters.append(date_filter)
 
-        # Handle tag filtering
+        # Handle tag filtering - SANITIZED
         if tag_filter:
             tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            # Validate tag names - only alphanumeric, hyphens, underscores
+            tags = [t for t in tags if re.match(r'^[a-zA-Z0-9_-]+$', t)]
             if tags:
-                tag_conditions = " OR ".join([f"t2.name = '{tag}'" for tag in tags])
+                tag_placeholders = ", ".join([f":tag{i}" for i in range(len(tags))])
                 filters.append(
                     f"tr.id IN (SELECT transaction_id FROM transaction_tags tt2 "
-                    f"JOIN tags t2 ON tt2.tag_id = t2.id WHERE {tag_conditions})"
+                    f"JOIN tags t2 ON tt2.tag_id = t2.id WHERE t2.name IN ({tag_placeholders}))"
                 )
+                for i, tag in enumerate(tags):
+                    params[f'tag{i}'] = tag
 
         where_clause = "AND " + " AND ".join(filters) if filters else ""
 
@@ -390,14 +394,7 @@ class StatsService:
             f"GROUP BY t.name ORDER BY expenses DESC"
         )
 
-        queries = {
-            'postgresql': query,
-            'mysql': query,
-            'sqlite': query
-        }
-        return self.db.execute(
-            text(queries.get(self.database_type, queries['sqlite']))
-        ).fetchall()
+        return self.db.execute(text(query), params).fetchall()
 
     def get_monthly_data(
         self,
@@ -422,30 +419,36 @@ class StatsService:
         Returns:
             List of tuples (month, expenses, income)
         """
-        date_filter = self._get_date_filter(time_range, start_date, end_date)
+        date_filter, params = self._get_date_filter(time_range, start_date, end_date)
         filters: List[str] = []
 
-        # Handle multiple categories
+        # Handle multiple categories - SANITIZED
         if category_filter:
             categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            # Validate category names - only alphanumeric, hyphens, underscores
+            categories = [c for c in categories if re.match(r'^[a-zA-Z0-9_-]+$', c)]
             if categories:
-                category_conditions = " OR ".join(
-                    [f"t.name = 'category:{cat}'" for cat in categories]
-                )
+                category_placeholders = ", ".join([f":cat{i}" for i in range(len(categories))])
                 filters.append(
                     f"id IN (SELECT transaction_id FROM transaction_tags tt "
-                    f"JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})"
+                    f"JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({category_placeholders}))"
                 )
+                for i, cat in enumerate(categories):
+                    params[f'cat{i}'] = f'category:{cat}'
 
-        # Handle multiple tags
+        # Handle multiple tags - SANITIZED
         if tag_filter:
             tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            # Validate tag names - only alphanumeric, hyphens, underscores
+            tags = [t for t in tags if re.match(r'^[a-zA-Z0-9_-]+$', t)]
             if tags:
-                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
+                tag_placeholders = ", ".join([f":tag{i}" for i in range(len(tags))])
                 filters.append(
                     f"id IN (SELECT transaction_id FROM transaction_tags tt "
-                    f"JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})"
+                    f"JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({tag_placeholders}))"
                 )
+                for i, tag in enumerate(tags):
+                    params[f'tag{i}'] = tag
 
         if date_filter:
             filters.append(date_filter)
@@ -479,7 +482,7 @@ class StatsService:
             )
         }
         return self.db.execute(
-            text(queries.get(self.database_type, queries['sqlite']))
+            text(queries.get(self.database_type, queries['sqlite'])), params
         ).fetchall()
 
     def count_months(
@@ -503,30 +506,36 @@ class StatsService:
         Returns:
             Number of distinct months
         """
-        date_filter = self._get_date_filter(time_range, start_date, end_date)
+        date_filter, params = self._get_date_filter(time_range, start_date, end_date)
         filters: List[str] = []
 
-        # Handle multiple categories
+        # Handle multiple categories - SANITIZED
         if category_filter:
             categories = [c.strip() for c in category_filter.split(',') if c.strip()]
+            # Validate category names - only alphanumeric, hyphens, underscores
+            categories = [c for c in categories if re.match(r'^[a-zA-Z0-9_-]+$', c)]
             if categories:
-                category_conditions = " OR ".join(
-                    [f"t.name = 'category:{cat}'" for cat in categories]
-                )
+                category_placeholders = ", ".join([f":cat{i}" for i in range(len(categories))])
                 filters.append(
                     f"id IN (SELECT transaction_id FROM transaction_tags tt "
-                    f"JOIN tags t ON tt.tag_id = t.id WHERE {category_conditions})"
+                    f"JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({category_placeholders}))"
                 )
+                for i, cat in enumerate(categories):
+                    params[f'cat{i}'] = f'category:{cat}'
 
-        # Handle multiple tags
+        # Handle multiple tags - SANITIZED
         if tag_filter:
             tags = [t.strip() for t in tag_filter.split(',') if t.strip()]
+            # Validate tag names - only alphanumeric, hyphens, underscores
+            tags = [t for t in tags if re.match(r'^[a-zA-Z0-9_-]+$', t)]
             if tags:
-                tag_conditions = " OR ".join([f"t.name = '{tag}'" for tag in tags])
+                tag_placeholders = ", ".join([f":tag{i}" for i in range(len(tags))])
                 filters.append(
                     f"id IN (SELECT transaction_id FROM transaction_tags tt "
-                    f"JOIN tags t ON tt.tag_id = t.id WHERE {tag_conditions})"
+                    f"JOIN tags t ON tt.tag_id = t.id WHERE t.name IN ({tag_placeholders}))"
                 )
+                for i, tag in enumerate(tags):
+                    params[f'tag{i}'] = tag
 
         if date_filter:
             filters.append(date_filter)
@@ -548,7 +557,7 @@ class StatsService:
             )
         }
         return self.db.execute(
-            text(queries.get(self.database_type, queries['sqlite']))
+            text(queries.get(self.database_type, queries['sqlite'])), params
         ).scalar() or 0
 
 
