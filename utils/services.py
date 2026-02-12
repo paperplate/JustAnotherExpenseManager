@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 import random
 import re
-from sqlalchemy import text
+from sqlalchemy import text, and_, or_
 from sqlalchemy.orm import Session
 from models import Transaction, Tag
 
@@ -23,36 +23,105 @@ class TransactionService:
         """
         self.db = db_session
 
-    def get_all_transactions(
-        self,
-        page: int = 1,
-        per_page: int = 50
-    ) -> Dict[str, Any]:
-        """
-        Get paginated list of transactions.
+def get_all_transactions(
+    self,
+    page: int = 1,
+    per_page: int = 50,
+    categories: Optional[str] = None,
+    tags: Optional[str] = None,
+    time_range: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    group_by_month: bool = False
+) -> Dict[str, Any]:
+    """
+    Get paginated list of transactions with filtering support.
 
-        Args:
-            page: Page number (1-indexed)
-            per_page: Number of transactions per page
+    Args:
+        page: Page number (1-indexed)
+        per_page: Number of transactions per page
+        categories: Comma-separated category names to filter
+        tags: Comma-separated tag names to filter
+        time_range: Time range identifier
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)
+        group_by_month: If True, group transactions by month
 
-        Returns:
-            Dict containing transactions, total count, and pagination info
-        """
-        query = self.db.query(Transaction).order_by(
-            Transaction.date.desc(),
-            Transaction.created_at.desc()
-        )
+    Returns:
+        Dict containing transactions, total count, and pagination info
+    """
+    # Start with base query
+    query = self.db.query(Transaction)
 
-        total: int = query.count()
-        transactions = query.limit(per_page).offset((page - 1) * per_page).all()
+    # Apply filters
+    filters = []
 
-        return {
-            'transactions': transactions,
-            'total': total,
-            'page': page,
-            'per_page': per_page,
-            'total_pages': (total + per_page - 1) // per_page
+    # Date range filtering
+    if start_date and end_date:
+        try:
+            datetime.strptime(start_date, '%Y-%m-%d')
+            datetime.strptime(end_date, '%Y-%m-%d')
+            filters.append(and_(Transaction.date >= start_date, Transaction.date <= end_date))
+        except ValueError:
+            pass
+    elif time_range:
+        today = datetime.now().date()
+        ranges = {
+            'current_month': lambda: today.replace(day=1),
+            '3_months': lambda: today - timedelta(days=90),
+            '6_months': lambda: today - timedelta(days=180),
+            '1_year': lambda: today - timedelta(days=365)
         }
+        start = ranges.get(time_range, lambda: None)()
+        if start:
+            filters.append(Transaction.date >= str(start))
+
+    # Category filtering - SANITIZED
+    if categories:
+        category_list = [c.strip() for c in categories.split(',') if c.strip()]
+        # Validate category names - only alphanumeric, hyphens, underscores
+        category_list = [c for c in category_list if re.match(r'^[a-zA-Z0-9_-]+$', c)]
+        if category_list:
+            category_tag_names = [f'category:{cat}' for cat in category_list]
+            category_tags = self.db.query(Tag).filter(Tag.name.in_(category_tag_names)).all()
+            if category_tags:
+                tag_ids = [tag.id for tag in category_tags]
+                filters.append(Transaction.tags.any(Tag.id.in_(tag_ids)))
+
+    # Tag filtering - SANITIZED
+    if tags:
+        tag_list = [t.strip() for t in tags.split(',') if t.strip()]
+        # Validate tag names - only alphanumeric, hyphens, underscores
+        tag_list = [t for t in tag_list if re.match(r'^[a-zA-Z0-9_-]+$', t)]
+        if tag_list:
+            tag_objs = self.db.query(Tag).filter(Tag.name.in_(tag_list)).all()
+            if tag_objs:
+                tag_ids = [tag.id for tag in tag_objs]
+                filters.append(Transaction.tags.any(Tag.id.in_(tag_ids)))
+
+    # Apply all filters
+    if filters:
+        query = query.filter(and_(*filters))
+
+    # Order by date and created_at
+    query = query.order_by(
+        Transaction.date.desc(),
+        Transaction.created_at.desc()
+    )
+
+    # Get total count
+    total: int = query.count()
+
+    # Apply pagination
+    transactions = query.limit(per_page).offset((page - 1) * per_page).all()
+
+    return {
+        'transactions': transactions,
+        'total': total,
+        'page': page,
+        'per_page': per_page,
+        'total_pages': (total + per_page - 1) // per_page if total > 0 else 1
+    }
 
     def create_transaction(
         self,

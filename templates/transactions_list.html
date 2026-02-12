@@ -1,66 +1,103 @@
 {% if transactions %}
-<table class="transactions-table">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Type</th>
-            <th>Category & Tags</th>
-            <th>Amount</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for trans in transactions %}
-        <tr>
-            <td>{{ trans.date }}</td>
-            <td>{{ trans.description }}</td>
-            <td>
-                <span class="type-badge type-{{ trans.type }}">
-                    {{ trans.type|capitalize }}
-                </span>
-            </td>
-            <td>
-                {% for tag in trans.tags %}
-                    {% if tag.name.startswith('category:') %}
-                        <span class="tag-badge category-tag">
-                            {{ tag.name.replace('category:', '')|capitalize }}
-                        </span>
-                    {% else %}
-                        <span class="tag-badge">
-                            {{ tag.name }}
-                        </span>
-                    {% endif %}
-                {% endfor %}
-            </td>
-            <td class="amount amount-{{ trans.type }}">
-                {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
-            </td>
-            <td>
-                <button class="btn btn-edit btn-small"
-                        data-transaction-id="{{ trans.id }}"
-                        data-description="{{ trans.description|escape }}"
-                        data-amount="{{ trans.amount }}"
-                        data-type="{{ trans.type }}"
-                        data-date="{{ trans.date }}"
-                        data-category="{{ trans.category or '' }}"
-                        data-tags="{% for tag in trans.tags %}{% if not tag.name.startswith('category:') %}{{ tag.name }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}"
-                        onclick="editTransaction(this)">
-                    Edit
-                </button>
-                <button class="btn btn-delete"
-                        hx-delete="/api/transactions/{{ trans.id }}"
-                        hx-target="#transactions-list"
-                        hx-swap="innerHTML"
-                        hx-confirm="Are you sure you want to delete this transaction?"
-                        hx-on::after-request="htmx.trigger('body', 'refreshStats')">
-                    Delete
-                </button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+{# Group transactions by month #}
+{% set months = {} %}
+{% for trans in transactions %}
+    {% set month_key = trans.date[:7] %}  {# Extract YYYY-MM #}
+    {% if month_key not in months %}
+        {% set _ = months.update({month_key: []}) %}
+    {% endif %}
+    {% set _ = months[month_key].append(trans) %}
+{% endfor %}
+
+{# Display transactions grouped by month #}
+{% for month in months.keys()|sort(reverse=True) %}
+<div style="margin-bottom: 30px;">
+    <h3 style="color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
+        {{ month|replace('-', ' ')|title }}
+    </h3>
+
+    <table class="transactions-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Type</th>
+                <th>Category & Tags</th>
+                <th>Amount</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trans in months[month] %}
+            <tr>
+                <td>{{ trans.date }}</td>
+                <td>{{ trans.description }}</td>
+                <td>
+                    <span class="type-badge type-{{ trans.type }}">
+                        {{ trans.type|capitalize }}
+                    </span>
+                </td>
+                <td>
+                    {% for tag in trans.tags %}
+                        {% if tag.name.startswith('category:') %}
+                            <span class="tag-badge category-tag">
+                                {{ tag.name.replace('category:', '')|capitalize }}
+                            </span>
+                        {% else %}
+                            <span class="tag-badge">
+                                {{ tag.name }}
+                            </span>
+                        {% endif %}
+                    {% endfor %}
+                </td>
+                <td class="amount amount-{{ trans.type }}">
+                    {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
+                </td>
+                <td>
+                    <button class="btn btn-edit btn-small"
+                            data-transaction-id="{{ trans.id }}"
+                            data-description="{{ trans.description|escape }}"
+                            data-amount="{{ trans.amount }}"
+                            data-type="{{ trans.type }}"
+                            data-date="{{ trans.date }}"
+                            data-category="{{ trans.category or '' }}"
+                            data-tags="{% for tag in trans.tags %}{% if not tag.name.startswith('category:') %}{{ tag.name }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}"
+                            onclick="editTransaction(this)">
+                        Edit
+                    </button>
+                    <button class="btn btn-delete"
+                            hx-delete="/api/transactions/{{ trans.id }}"
+                            hx-target="#transactions-list"
+                            hx-swap="innerHTML"
+                            hx-confirm="Are you sure you want to delete this transaction?"
+                            hx-on::after-request="htmx.trigger('body', 'refreshStats')">
+                        Delete
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# Monthly summary #}
+    {% set month_income = months[month]|selectattr('type', 'equalto', 'income')|map(attribute='amount')|sum %}
+    {% set month_expense = months[month]|selectattr('type', 'equalto', 'expense')|map(attribute='amount')|sum %}
+    <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; display: flex; gap: 20px; font-size: 14px;">
+        <div style="color: #00b894;">
+            <strong>Income:</strong> ${{ "%.2f"|format(month_income) }}
+        </div>
+        <div style="color: #d63031;">
+            <strong>Expenses:</strong> ${{ "%.2f"|format(month_expense) }}
+        </div>
+        <div style="color: #333;">
+            <strong>Net:</strong> ${{ "%.2f"|format(month_income - month_expense) }}
+        </div>
+        <div style="color: #666; margin-left: auto;">
+            <strong>Transactions:</strong> {{ months[month]|length }}
+        </div>
+    </div>
+</div>
+{% endfor %}
 
 <!-- Pagination -->
 {% if pagination.total_pages > 1 %}

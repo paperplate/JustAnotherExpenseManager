@@ -1,6 +1,7 @@
 /**
  * Filter Component JavaScript
  * Handles multi-select category and tag filtering
+ * Works with both summary and transactions pages
  */
 
 // Close dropdowns when clicking outside
@@ -288,3 +289,12 @@ document.addEventListener('DOMContentLoaded', function() {
         loadTags();
     }
 });
+
+// Make functions globally available
+window.toggleCategoryDropdown = toggleCategoryDropdown;
+window.toggleTagDropdown = toggleTagDropdown;
+window.updateCategorySelection = updateCategorySelection;
+window.updateTagSelection = updateTagSelection;
+window.filterByTimeRange = filterByTimeRange;
+window.applyCustomRange = applyCustomRange;
+window.applyFilters = applyFilters;

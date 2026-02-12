@@ -6,6 +6,7 @@ from flask import Blueprint, render_template, request, jsonify
 import csv
 from io import StringIO
 from datetime import datetime
+from typing import Optional
 from utils.database import get_db
 from utils.services import TransactionService
 
@@ -21,14 +22,29 @@ def transactions_page():
 
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
-    """Get paginated list of transactions."""
+    """Get paginated list of transactions with filtering support."""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
+
+    # Get filter parameters
+    categories_param: Optional[str] = request.args.get('categories', None)
+    tags_param: Optional[str] = request.args.get('tags', None)
+    time_range: Optional[str] = request.args.get('range', None)
+    start_date: Optional[str] = request.args.get('start_date', None)
+    end_date: Optional[str] = request.args.get('end_date', None)
 
     db = get_db()
     try:
         service = TransactionService(db)
-        result = service.get_all_transactions(page=page, per_page=per_page)
+        result = service.get_all_transactions(
+            page=page,
+            per_page=per_page,
+            categories=categories_param,
+            tags=tags_param,
+            time_range=time_range,
+            start_date=start_date,
+            end_date=end_date
+        )
 
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
