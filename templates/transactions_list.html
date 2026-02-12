@@ -37,18 +37,18 @@
                 {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
             </td>
             <td>
-                <button class="btn btn-edit btn-small" 
+                <button class="btn btn-edit btn-small"
                         data-transaction-id="{{ trans.id }}"
                         data-description="{{ trans.description|escape }}"
                         data-amount="{{ trans.amount }}"
                         data-type="{{ trans.type }}"
                         data-date="{{ trans.date }}"
                         data-category="{{ trans.category or '' }}"
-                        data-tags="{{ trans.tags|map(attribute='name')|reject('match', '^category:')|join(',') }}"
+                        data-tags="{% for tag in trans.tags %}{% if not tag.name.startswith('category:') %}{{ tag.name }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}"
                         onclick="editTransaction(this)">
                     Edit
                 </button>
-                <button class="btn btn-delete" 
+                <button class="btn btn-delete"
                         hx-delete="/api/transactions/{{ trans.id }}"
                         hx-target="#transactions-list"
                         hx-swap="innerHTML"
@@ -66,20 +66,20 @@
 {% if pagination.total_pages > 1 %}
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
     {% if pagination.page > 1 %}
-        <button class="btn" 
+        <button class="btn"
                 hx-get="/api/transactions?page={{ pagination.page - 1 }}"
                 hx-target="#transactions-list"
                 hx-swap="innerHTML">
             ← Previous
         </button>
     {% endif %}
-    
+
     <span style="color: #666; font-weight: 600;">
         Page {{ pagination.page }} of {{ pagination.total_pages }}
     </span>
-    
+
     {% if pagination.page < pagination.total_pages %}
-        <button class="btn" 
+        <button class="btn"
                 hx-get="/api/transactions?page={{ pagination.page + 1 }}"
                 hx-target="#transactions-list"
                 hx-swap="innerHTML">
