@@ -26,6 +26,7 @@ Homepage = "https://github.com/paperplate/JustAnotherExpenseManager"
 [project.optional-dependencies]
 test = [
   "coverage",
+  "pytest"
 ]
 
 [tool.setuptools]
