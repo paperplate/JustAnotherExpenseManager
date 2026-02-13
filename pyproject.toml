@@ -1,0 +1,36 @@
+[project]
+name = "JustAnotherExpenseManager"
+version = "0.0.1"
+authors = [
+  {name="paperplate"},
+]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+  "Programming Language ::  Python :: 3",
+  "Operating System :: OS Independent",
+]
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = [
+  "httpx",
+  "Flask >= 3.0.0",
+  "Werkzeug >= 3.0.1",
+  "Flask-SQLAlchemy >= 3.1.1",
+  "python-dotenv >= 1.0.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/paperplate/JustAnotherExpenseManager"
+
+[project.optional-dependencies]
+test = [
+  "coverage",
+]
+
+[tool.setuptools]
+packages = [
+  "utils",
+  "routes",
+  "models"
+]
