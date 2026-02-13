@@ -4,8 +4,8 @@ Routes for category operations.
 
 from typing import Tuple, Union
 from flask import Blueprint, request, jsonify, Response
-from utils.database import get_db
-from utils.services import CategoryService
+from JustAnotherExpenseManager.utils.database import get_db
+from JustAnotherExpenseManager.utils.services import CategoryService
 
 categories_bp = Blueprint('categories', __name__)
 

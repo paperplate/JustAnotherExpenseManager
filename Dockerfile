@@ -4,10 +4,10 @@ WORKDIR /app
 
 COPY pyproject.toml .
 RUN pip install --upgrade pip
-RUN pip install -e .
+RUN pip install --no-cache-dir -e .
 
-COPY JustAnotherExpenseManager .
+COPY JustAnotherExpenseManager JustAnotherExpenseManager/
 
 EXPOSE 5000
 
-CMD ["python", "app.py"]
+CMD ["python", "-m", "JustAnotherExpenseManager"]

@@ -11,15 +11,14 @@ This application follows SOLID principles with separation of concerns:
 import sys
 from dotenv import dotenv_values
 from flask import Flask
-from utils.database import init_db, shutdown_session, get_db, engine, SessionLocal
-from models import Transaction, Tag
-from routes.transactions import transaction_bp
-from routes.stats import stats_bp
-from routes.categories import categories_bp
-from routes.settings import settings_bp
+from JustAnotherExpenseManager.utils.database import init_db, shutdown_session, get_db, engine, SessionLocal
+from JustAnotherExpenseManager.models import Transaction, Tag
+from JustAnotherExpenseManager.routes.transactions import transaction_bp
+from JustAnotherExpenseManager.routes.stats import stats_bp
+from JustAnotherExpenseManager.routes.categories import categories_bp
+from JustAnotherExpenseManager.routes.settings import settings_bp
 
 def create_app(test_config=None):
-
     app = Flask(__name__)
 
     # Register blueprints
@@ -39,7 +38,13 @@ def create_app(test_config=None):
     return app
 
 
-if __name__ == '__main__':
+def main():
+    """Main entry point for the application."""
+    config = dotenv_values('.env')
     init_db()
     app = create_app()
     app.run(host='0.0.0.0', port=5000, debug=(config.get('FLASK_ENV') == 'development'))
+
+
+if __name__ == '__main__':
+    main()

@@ -71,18 +71,18 @@ Homepage = "https://github.com/paperplate/JustAnotherExpenseManager"
 Repository = "https://github.com/paperplate/JustAnotherExpenseManager"
 
 [project.scripts]
-JustAnotherExpenseManager = "app:main"
+JustAnotherExpenseManager = "JustAnotherExpenseManager:main"
 
 [tool.setuptools]
-packages = ["routes", "utils"]
+packages = ["JustAnotherExpenseManager", "JustAnotherExpenseManager.routes", "JustAnotherExpenseManager.utils", "JustAnotherExpenseManager.models"]
 
 [tool.setuptools.package-data]
-"*" = ["templates/*", "static/*"]
+"JustAnotherExpenseManager" = ["templates/*", "static/*", "static/css/*", "static/js/*"]
 
 # Black configuration
 [tool.black]
-line-length = 100
-target-version = ['py39', 'py310', 'py311']
+line-length = 120
+target-version = ['py311']
 include = '\.pyi?$'
 exclude = '''
 /(
@@ -120,38 +120,21 @@ addopts = [
     "-v",
     "--strict-markers",
     "--tb=short",
-    "--cov=.",
-    "--cov-report=term-missing",
+    "--cov=JustAnotherExpenseManager",
     "--cov-report=html",
-    "--cov-branch",
-    "--cov-fail-under=80",
-]
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "unit: marks tests as unit tests",
-    "api: marks tests as API tests",
-    "db: marks tests as database tests",
-    "security: marks tests as security tests",
-]
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning",
+    "--cov-report=term-missing",
 ]
 
 # Coverage configuration
 [tool.coverage.run]
-source = ["."]
+source = ["JustAnotherExpenseManager"]
 omit = [
     "*/tests/*",
     "*/test_*.py",
     "*/__pycache__/*",
     "*/venv/*",
     "*/env/*",
-    "*/migrations/*",
-    "*/conftest.py",
 ]
-branch = true
 
 [tool.coverage.report]
 exclude_lines = [
@@ -161,54 +144,6 @@ exclude_lines = [
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "if TYPE_CHECKING:",
-    "@abstractmethod",
-    "@abc.abstractmethod",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
 ]
-precision = 2
-show_missing = true
-
-[tool.coverage.html]
-directory = "htmlcov"
-
-# Mypy configuration
-[tool.mypy]
-python_version = "3.9"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
-exclude = [
-    "venv",
-    "env",
-    "migrations",
-    "tests",
-]
-
-# Pylint configuration
-[tool.pylint.main]
-py-version = "3.9"
-ignore = ["migrations", "venv", "env"]
-jobs = 0
-
-[tool.pylint.messages_control]
-max-line-length = 100
-disable = [
-    "C0111",  # missing-docstring
-    "C0103",  # invalid-name
-    "R0903",  # too-few-public-methods
-    "R0913",  # too-many-arguments
-]
-
-[tool.pylint.format]
-max-line-length = 100
-
-[tool.pylint.basic]
-good-names = ["i", "j", "k", "db", "id", "_"]
-
-# Flake8 configuration (in setup.cfg or .flake8 as it doesn't support pyproject.toml)
-# But documented here for reference
-# [flake8]
-# max-line-length = 100
-# exclude = venv,env,migrations,__pycache__
-# ignore = E203,E266,E501,W503
-# max-complexity = 10

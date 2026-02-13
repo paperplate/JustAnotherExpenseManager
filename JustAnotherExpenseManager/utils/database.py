@@ -5,7 +5,7 @@ Database configuration and initialization.
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
-from models import Base, Tag
+from JustAnotherExpenseManager.models import Base, Tag
 
 # Database configuration from environment
 DATABASE_TYPE = os.getenv('DATABASE_TYPE', 'sqlite').lower()

@@ -4,9 +4,9 @@ Routes for statistics and summary.
 
 from typing import Optional, Dict
 from flask import Blueprint, render_template, request, jsonify, Response
-from utils.database import get_db, DATABASE_TYPE
-from utils.services import StatsService
-from models import Tag
+from JustAnotherExpenseManager.utils.database import get_db, DATABASE_TYPE
+from JustAnotherExpenseManager.utils.services import StatsService
+from JustAnotherExpenseManager.models import Tag
 
 stats_bp = Blueprint('stats', __name__)
 

@@ -7,8 +7,8 @@ import csv
 from io import StringIO
 from datetime import datetime
 from typing import Optional
-from utils.database import get_db
-from utils.services import TransactionService
+from JustAnotherExpenseManager.utils.database import get_db
+from JustAnotherExpenseManager.utils.services import TransactionService
 
 transaction_bp = Blueprint('transactions', __name__)
 
@@ -56,50 +56,19 @@ def get_transactions():
 @transaction_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     """Add a new transaction."""
-    db = None
+    description = request.form.get('description', '').strip()
+    amount = request.form.get('amount', 0, type=float)
+    trans_type = request.form.get('type', 'expense').lower()
+    date = request.form.get('date', '')
+    category = request.form.get('category', '').lower().strip()
+    tags_str = request.form.get('tags', '').strip()
+
+    tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
+
+    db = get_db()
     try:
-        # Validate required fields
-        description = request.form.get('description', '').strip()
-        amount_str = request.form.get('amount', '').strip()
-        trans_type = request.form.get('type', 'expense').strip()
-        date = request.form.get('date', '').strip()
-        category = request.form.get('category', '').strip()
-        tags_input = request.form.get('tags', '').strip()
-
-        # Validation
-        if not description:
-            return jsonify({'error': 'Description is required'}), 400
-
-        if not amount_str:
-            return jsonify({'error': 'Amount is required'}), 400
-
-        if not date:
-            return jsonify({'error': 'Date is required'}), 400
-
-        # Validate amount
-        try:
-            amount = float(amount_str)
-            if amount <= 0:
-                return jsonify({'error': 'Amount must be positive'}), 400
-        except ValueError:
-            return jsonify({'error': 'Invalid amount format'}), 400
-
-        # Validate type
-        if trans_type not in ['income', 'expense']:
-            return jsonify({'error': 'Type must be income or expense'}), 400
-
-        # Validate date format
-        try:
-            datetime.strptime(date, '%Y-%m-%d')
-        except ValueError:
-            return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
-
-        # Get database connection after validation
-        db = get_db()
         service = TransactionService(db)
-        tags = [t.strip() for t in tags_input.split(',') if t.strip()]
-
-        service.create_transaction(
+        transaction = service.create_transaction(
             description=description,
             amount=amount,
             trans_type=trans_type,
@@ -108,91 +77,15 @@ def add_transaction():
             tags=tags
         )
 
-        # Return first page of transactions
-        result = service.get_all_transactions(page=1, per_page=50)
-        return render_template('transactions_list.html',
-                             transactions=result['transactions'],
-                             pagination=result)
-    except Exception as e:
-        if db:
-            db.rollback()
-        return jsonify({'error': f'Failed to create transaction: {str(e)}'}), 500
+        if transaction:
+            # Return first page of transactions
+            result = service.get_all_transactions(page=1, per_page=50)
+            return render_template('transactions_list.html',
+                                 transactions=result['transactions'],
+                                 pagination=result)
+        return jsonify({'error': 'Failed to add transaction'}), 400
     finally:
-        if db:
-            db.close()
-
-
-@transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
-def update_transaction(transaction_id):
-    """Update a transaction."""
-    db = None
-    try:
-        # Validate required fields
-        description = request.form.get('description', '').strip()
-        amount_str = request.form.get('amount', '').strip()
-        trans_type = request.form.get('type', '').strip()
-        date = request.form.get('date', '').strip()
-        category = request.form.get('category', '').strip()
-        tags_input = request.form.get('tags', '').strip()
-
-        # Validation
-        if not description:
-            return jsonify({'error': 'Description is required'}), 400
-
-        if not amount_str:
-            return jsonify({'error': 'Amount is required'}), 400
-
-        if not date:
-            return jsonify({'error': 'Date is required'}), 400
-
-        # Validate amount
-        try:
-            amount = float(amount_str)
-            if amount <= 0:
-                return jsonify({'error': 'Amount must be positive'}), 400
-        except ValueError:
-            return jsonify({'error': 'Invalid amount format'}), 400
-
-        # Validate type
-        if trans_type not in ['income', 'expense']:
-            return jsonify({'error': 'Type must be income or expense'}), 400
-
-        # Validate date format
-        try:
-            datetime.strptime(date, '%Y-%m-%d')
-        except ValueError:
-            return jsonify({'error': 'Invalid date format (use YYYY-MM-DD)'}), 400
-
-        # Get database connection after validation
-        db = get_db()
-        service = TransactionService(db)
-        tags = [t.strip() for t in tags_input.split(',') if t.strip()]
-
-        success, error = service.update_transaction(
-            transaction_id=transaction_id,
-            description=description,
-            amount=amount,
-            trans_type=trans_type,
-            date=date,
-            category=category if category else None,
-            tags=tags
-        )
-
-        if error:
-            return jsonify({'error': error}), 400
-
-        # Return first page of transactions
-        result = service.get_all_transactions(page=1, per_page=50)
-        return render_template('transactions_list.html',
-                             transactions=result['transactions'],
-                             pagination=result)
-    except Exception as e:
-        if db:
-            db.rollback()
-        return jsonify({'error': f'Failed to update transaction: {str(e)}'}), 500
-    finally:
-        if db:
-            db.close()
+        db.close()
 
 
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
