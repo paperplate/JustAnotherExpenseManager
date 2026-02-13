@@ -18,24 +18,28 @@ from routes.stats import stats_bp
 from routes.categories import categories_bp
 from routes.settings import settings_bp
 
-app = Flask(__name__)
+def create_app(test_config=None):
 
-# Register blueprints
-app.register_blueprint(stats_bp)
-app.register_blueprint(transaction_bp)
-app.register_blueprint(categories_bp)
-app.register_blueprint(settings_bp)
+    app = Flask(__name__)
 
-# Teardown database session
-app.teardown_appcontext(shutdown_session)
+    # Register blueprints
+    app.register_blueprint(stats_bp)
+    app.register_blueprint(transaction_bp)
+    app.register_blueprint(categories_bp)
+    app.register_blueprint(settings_bp)
 
-try:
-    config = dotenv_values('.env')
-except Exception as err:
-    print(f"Unexpected {err=}, {type(err)=}")
-    sys.exit(1)
+    # Teardown database session
+    app.teardown_appcontext(shutdown_session)
+
+    try:
+        config = dotenv_values('.env')
+    except Exception as err:
+        print(f"Unexpected {err=}, {type(err)=}")
+        sys.exit(1)
+    return app
 
 
 if __name__ == '__main__':
     init_db()
+    app = create_app()
     app.run(host='0.0.0.0', port=5000, debug=(config.get('FLASK_ENV') == 'development'))

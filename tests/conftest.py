@@ -9,7 +9,7 @@ under [tool.pytest.ini_options]. This file only contains fixtures.
 import os
 import tempfile
 import pytest
-from app import create_app
+from JustAnotherExpenseManager import create_app
 from utils.database import init_db, get_db
 
 

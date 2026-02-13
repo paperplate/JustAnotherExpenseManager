@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "expense-manager"
+name = "JustAnotherExpenseManager"
 version = "0.0.1"
 description = "A Flask-based expense tracking and management application"
 readme = "README.md"
@@ -63,7 +63,7 @@ docs = [
 
 # All extras combined
 all = [
-    "expense-manager[test,dev,perf,docs]",
+    "JustAnotherExpenseManager[test,dev,perf,docs]",
 ]
 
 [project.urls]
@@ -71,7 +71,7 @@ Homepage = "https://github.com/paperplate/JustAnotherExpenseManager"
 Repository = "https://github.com/paperplate/JustAnotherExpenseManager"
 
 [project.scripts]
-expense-manager = "app:main"
+JustAnotherExpenseManager = "app:main"
 
 [tool.setuptools]
 packages = ["routes", "utils"]
