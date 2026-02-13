@@ -74,15 +74,15 @@ Repository = "https://github.com/paperplate/JustAnotherExpenseManager"
 JustAnotherExpenseManager = "JustAnotherExpenseManager:main"
 
 [tool.setuptools]
-packages = ["JustAnotherExpenseManager", "JustAnotherExpenseManager.routes", "JustAnotherExpenseManager.utils", "JustAnotherExpenseManager.models"]
+packages = {find = {where = ["."], include = ["JustAnotherExpenseManager*"]}}
 
 [tool.setuptools.package-data]
-"JustAnotherExpenseManager" = ["templates/*", "static/*", "static/css/*", "static/js/*"]
+"JustAnotherExpenseManager" = ["templates/**/*", "static/**/*"]
 
 # Black configuration
 [tool.black]
-line-length = 120
-target-version = ['py311']
+line-length = 100
+target-version = ['py39', 'py310', 'py311']
 include = '\.pyi?$'
 exclude = '''
 /(

@@ -8,7 +8,7 @@ import random
 import re
 from sqlalchemy import text, and_, or_
 from sqlalchemy.orm import Session
-from models import Transaction, Tag
+from JustAnotherExpenseManager.models import Transaction, Tag
 
 
 class TransactionService:
