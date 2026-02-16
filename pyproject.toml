@@ -1,6 +1,8 @@
 [build-system]
-requires = ["setuptools>=68.0", "wheel"]
-build-backend = "setuptools.build_meta"
+#requires = ["setuptools>=68.0", "wheel"]
+#build-backend = "setuptools.build_meta"
+requires = ["flit_core<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "JustAnotherExpenseManager"

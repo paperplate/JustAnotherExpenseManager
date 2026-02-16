@@ -3,126 +3,219 @@ Database configuration and initialization.
 """
 
 import os
+from typing import Optional
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
-from JustAnotherExpenseManager.models import Base, Tag
-
-import sqlite3
-from datetime import datetime
-import click
-from flask import current_app, g
-
-# Database configuration from environment
-DATABASE_TYPE = os.getenv('DATABASE_TYPE', 'sqlite').lower()
-DATABASE_HOST = os.getenv('DATABASE_HOST', 'localhost')
-DATABASE_PORT = os.getenv('DATABASE_PORT', '5432')
-DATABASE_NAME = os.getenv('DATABASE_NAME', 'expenses')
-DATABASE_USER = os.getenv('DATABASE_USER', 'expensemanager')
-DATABASE_PASSWORD = os.getenv('DATABASE_PASSWORD', 'expensemanager')
-#SQLITE_PATH = os.getenv('SQLITE_PATH', '/app/data/expenses.db')
-SQLITE_PATH = ''
+from sqlalchemy.orm import sessionmaker, scoped_session, Session, declarative_base
+from sqlalchemy.engine import Engine
 
 
-sqlite3.register_converter(
-    'timestamp', lambda v: datetime.fromisoformat(v.decode())
-)
+class DatabaseManager:
+    """Manages database connections, sessions, and initialization."""
 
+    def __init__(
+        self,
+        db_type: Optional[str] = None,
+        db_host: Optional[str] = None,
+        db_port: Optional[str] = None,
+        db_name: Optional[str] = None,
+        db_user: Optional[str] = None,
+        db_password: Optional[str] = None,
+        sqlite_path: Optional[str] = None
+    ):
+        """
+        Initialize DatabaseManager.
 
-@click.command('init-db')
-def init_db_command():
-    '''Clear the existing data and create new tables'''
-    init_db()
-    click.echo('Initialized the database.')
+        Args:
+            db_type: Database type ('sqlite', 'postgresql', 'mysql')
+            db_host: Database host
+            db_port: Database port
+            db_name: Database name
+            db_user: Database username
+            db_password: Database password
+            sqlite_path: Path to SQLite database file
+        """
+        # Load from environment or use provided values
+        self.db_type = (db_type or os.getenv('DATABASE_TYPE', 'sqlite')).lower()
+        self.db_host = db_host or os.getenv('DATABASE_HOST', 'localhost')
+        self.db_port = db_port or os.getenv('DATABASE_PORT', '5432')
+        self.db_name = db_name or os.getenv('DATABASE_NAME', 'expenses')
+        self.db_user = db_user or os.getenv('DATABASE_USER', 'expensemanager')
+        self.db_password = db_password or os.getenv('DATABASE_PASSWORD', 'expensemanager')
+        self.sqlite_path = sqlite_path or os.getenv('SQLITE_PATH', '/app/data/expenses.db')
 
-
-def init_app(app):
-    app.teardown_appcontext(close_db)
-    app.cli.add_command(init_db_command)
-
-
-def close_db(e=None):
-    db = g.pop('db', None)
-
-    if db is not None:
-        db.close()
-
-
-def get_database_url():
-    """Generate database URL based on configuration."""
-    if DATABASE_TYPE == 'postgresql':
-        return f'postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}'
-    elif DATABASE_TYPE == 'mysql':
-        port = DATABASE_PORT or '3306'
-        return f'mysql+pymysql://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{port}/{DATABASE_NAME}'
-    else:  # sqlite (default)
-        data_dir = os.path.dirname(SQLITE_PATH) if os.path.dirname(SQLITE_PATH) else '.'
-        os.makedirs(data_dir, exist_ok=True)
-        return f'sqlite:///{SQLITE_PATH}'
-
-
-# Create database URL
-DATABASE_URL = get_database_url()
-
-# Create engine and session factory
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False, bind=engine))
-
-
-def get_db():
-    """Get database session."""
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
+        # Initialize engine and session factory
+        self.database_url = self._build_database_url()
+        self.engine: Engine = create_engine(self.database_url, echo=False)
+        self.SessionLocal = scoped_session(
+            sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         )
-        g.db.row_factory = sqlite3.Row
-    return g.db
-    #return SessionLocal()
+        self.Base = declarative_base_base()
+        self.Base.query = self.SessionLocal.query_property()
+
+    def _build_database_url(self) -> str:
+        """
+        Generate database URL based on configuration.
+
+        Returns:
+            str: SQLAlchemy database URL
+        """
+        if self.db_type == 'postgresql':
+            return (
+                f'postgresql://{self.db_user}:{self.db_password}'
+                f'@{self.db_host}:{self.db_port}/{self.db_name}'
+            )
+        elif self.db_type == 'mysql':
+            port = self.db_port or '3306'
+            return (
+                f'mysql+pymysql://{self.db_user}:{self.db_password}'
+                f'@{self.db_host}:{port}/{self.db_name}'
+            )
+        else:  # sqlite (default)
+            data_dir = os.path.dirname(self.sqlite_path) if os.path.dirname(self.sqlite_path) else '.'
+            os.makedirs(data_dir, exist_ok=True)
+            return f'sqlite:///{self.sqlite_path}'
+
+    def get_session(self) -> Session:
+        """
+        Get a new database session.
+
+        Returns:
+            Session: SQLAlchemy session object
+        """
+        return self.SessionLocal()
+
+    def init_database(self) -> None:
+        """Initialize database with tables and default data."""
+        db_exists = os.path.exists(self.sqlite_path) if self.db_type == 'sqlite' else True
+
+        if not db_exists:
+            print(f"Creating new database at: {self.database_url}")
+        else:
+            print(f"Using database: {self.db_type}")
+
+        # Create all tables
+        #Base.metadata.create_all(bind=self.engine)
+        import JustAnotherExpenseManager.models
+        self.Base.metadata.create_all(bind=self.engine)
+
+        # Initialize default categories
+        self._initialize_default_categories()
+
+        if not db_exists:
+            print("Database created successfully!")
+
+        print("Database initialized and ready!")
+
+    def _initialize_default_categories(self) -> None:
+        """Initialize default category tags in the database."""
+        db = self.SessionLocal()
+        try:
+            default_categories = [
+                'food', 'transport', 'entertainment', 'utilities',
+                'shopping', 'healthcare', 'other', 'salary',
+                'investment'
+            ]
+
+            for cat in default_categories:
+                tag_name = f'category:{cat}'
+                existing = db.query(Tag).filter_by(name=tag_name).first()
+                if not existing:
+                    db.add(Tag(name=tag_name))
+
+            db.commit()
+        finally:
+            db.close()
+
+    def shutdown_session(self, exception: Optional[Exception] = None) -> None:
+        """
+        Remove database session at end of request.
+
+        Args:
+            exception: Exception that triggered shutdown (if any)
+        """
+        self.SessionLocal.remove()
+
+    def close_all_connections(self) -> None:
+        """Close all database connections and dispose of the engine."""
+        self.SessionLocal.remove()
+        self.engine.dispose()
+
+    def reset_database(self) -> None:
+        """
+        Drop all tables and recreate them with default data.
+
+        WARNING: This will delete all data!
+        """
+        print("WARNING: Dropping all tables and data!")
+        Base.metadata.drop_all(bind=self.engine)
+        self.init_database()
+
+    @property
+    def url(self) -> str:
+        """Get the database URL."""
+        return self.database_url
+
+    @property
+    def type(self) -> str:
+        """Get the database type."""
+        return self.db_type
 
 
-def init_db():
+# Global instance for backward compatibility
+_db_manager = DatabaseManager()
+
+# Export global variables for backward compatibility
+DATABASE_TYPE = _db_manager.db_type
+DATABASE_URL = _db_manager.database_url
+engine = _db_manager.engine
+SessionLocal = _db_manager.SessionLocal
+
+
+# Backward compatible functions
+def get_db() -> Session:
+    """
+    Get database session.
+
+    Returns:
+        Session: SQLAlchemy session object
+    """
+    return _db_manager.get_session()
+
+
+def init_db() -> None:
     """Initialize database with tables and default data."""
-    db = get_db()
-
-    with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
-    return
-
-    db_exists = os.path.exists(SQLITE_PATH) if DATABASE_TYPE == 'sqlite' else True
-
-    if not db_exists:
-        print(f"Creating new database at: {DATABASE_URL}")
-    else:
-        print(f"Using database: {DATABASE_TYPE}")
-
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
-
-    # Initialize default categories
-    db = SessionLocal()
-    try:
-        default_categories = [
-            'food', 'transport', 'entertainment', 'utilities',
-            'shopping', 'healthcare', 'other', 'salary',
-            'investment'
-        ]
-
-        for cat in default_categories:
-            tag_name = f'category:{cat}'
-            existing = db.query(Tag).filter_by(name=tag_name).first()
-            if not existing:
-                db.add(Tag(name=tag_name))
-
-        db.commit()
-    finally:
-        close_db()
-
-    if not db_exists:
-        print("Database created successfully!")
-
-    print("Database initialized and ready!")
+    _db_manager.init_database()
 
 
-def shutdown_session(exception=None):
-    """Remove database session at end of request."""
-    SessionLocal.remove()
+def shutdown_session(exception: Optional[Exception] = None) -> None:
+    """
+    Remove database session at end of request.
+
+    Args:
+        exception: Exception that triggered shutdown (if any)
+    """
+    _db_manager.shutdown_session(exception)
+
+
+# New convenience functions
+def get_database_manager() -> DatabaseManager:
+    """
+    Get the global DatabaseManager instance.
+
+    Returns:
+        DatabaseManager: Global database manager
+    """
+    return _db_manager
+
+
+def create_database_manager(**kwargs) -> DatabaseManager:
+    """
+    Create a new DatabaseManager instance with custom configuration.
+
+    Args:
+        **kwargs: Configuration parameters for DatabaseManager
+
+    Returns:
+        DatabaseManager: New database manager instance
+    """
+    return DatabaseManager(**kwargs)

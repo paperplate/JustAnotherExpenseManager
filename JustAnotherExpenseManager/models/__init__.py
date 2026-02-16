@@ -2,11 +2,16 @@
 Database models for the Expense Manager application.
 """
 
+import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, Table, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Table, ForeignKey, Enum
 from sqlalchemy.orm import relationship, declarative_base
+from JustAnotherExpenseManager.utils.database import Base
 
-Base = declarative_base()
+class ExpenseType(enum.Enum):
+    EXPENSE = 1
+    INCOME = 2
+
 
 # Association table for transaction-tag relationship
 transaction_tags = Table('transaction_tags', Base.metadata,
@@ -14,27 +19,23 @@ transaction_tags = Table('transaction_tags', Base.metadata,
     Column('tag_id', Integer, ForeignKey('tags.id'))
 )
 
-
 class Tag(Base):
     """Tag model for categorization and labeling."""
 
     __tablename__ = 'tags'
 
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(100), unique=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    name = Column(String(100), primary_key=True, unique=True, nullable=False)
 
     def to_dict(self):
         """Convert tag to dictionary representation."""
         return {
-            'id': self.id,
             'name': self.name,
             'is_category': self.name.startswith('category:'),
             'category_name': self.name.replace('category:', '') if self.name.startswith('category:') else None
         }
 
     def __repr__(self):
-        return f"<Tag(id={self.id}, name='{self.name}')>"
+        return f"<Tag(name='{self.name}')>"
 
 
 class Transaction(Base):
@@ -44,8 +45,8 @@ class Transaction(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     description = Column(String(500), nullable=False)
-    amount = Column(Float, nullable=False)
-    type = Column(String(20), nullable=False)  # 'income' or 'expense' TODO: convert to bool
+    type = Column(Enum(ExpenseType))
+    amount = Column(Integer, nullable=False)
     date = Column(String(10), nullable=False)  # YYYY-MM-DD format
     created_at = Column(DateTime, default=datetime.utcnow)
 
