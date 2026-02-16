@@ -86,14 +86,14 @@ class Transaction(Base):
     Transaction model for both income and expenses.
 
     Amounts are stored as integers (cents) to avoid floating-point precision issues.
-    Use the `amount_float` property to get/set values in dollars.
+    Use the `amount_dollars` property to get/set values in dollars.
     """
 
     __tablename__ = 'transactions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     description = Column(String(500), nullable=False)
-    amount_cents = Column(Integer, nullable=False)  # Stored in cents
+    amount_cents = Column(Integer, nullable=False)
     type = Column(Enum(TransactionType), nullable=False, index=True)
     date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD format
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
@@ -110,7 +110,7 @@ class Transaction(Base):
     def __init__(
         self,
         description: str,
-        amount: float,
+        amount_dollars: float,
         type: TransactionType,
         date: str,
         **kwargs
@@ -120,19 +120,19 @@ class Transaction(Base):
 
         Args:
             description: Transaction description
-            amount: Amount in dollars (will be converted to cents)
+            amount_dollars: Amount in dollars (will be converted to cents)
             type: TransactionType enum value
             date: Date in YYYY-MM-DD format
             **kwargs: Additional arguments
         """
         super().__init__(**kwargs)
         self.description = description
-        self.amount_float = amount  # Uses the property to convert to cents
+        self.amount_dollars = amount_dollars
         self.type = type
         self.date = date
 
     @hybrid_property
-    def amount_float(self) -> float:
+    def amount_dollars(self) -> float:
         """
         Get amount as a float (in dollars).
 
@@ -141,8 +141,8 @@ class Transaction(Base):
         """
         return self.amount_cents / 100.0
 
-    @amount_float.setter
-    def amount_float(self, value: float) -> None:
+    @amount_dollars.setter
+    def amount_dollars(self, value: float) -> None:
         """
         Set amount from a float (in dollars).
 
@@ -155,26 +155,6 @@ class Transaction(Base):
         if value < 0:
             raise ValueError("Amount cannot be negative")
         self.amount_cents = round(value * 100)
-
-    @hybrid_property
-    def amount(self) -> float:
-        """
-        Alias for amount_float for backward compatibility.
-
-        Returns:
-            Amount in dollars
-        """
-        return self.amount_float
-
-    @amount.setter
-    def amount(self, value: float) -> None:
-        """
-        Alias for amount_float setter for backward compatibility.
-
-        Args:
-            value: Amount in dollars
-        """
-        self.amount_float = value
 
     @validates('description')
     def validate_description(self, key: str, description: str) -> str:
@@ -298,9 +278,9 @@ class Transaction(Base):
         return {
             'id': self.id,
             'description': self.description,
-            'amount': self.amount_float,  # Return as float (dollars)
-            'amount_cents': self.amount_cents,  # Also include cents for precision
-            'type': self.type.value,  # Return enum value as string
+            'amount': self.amount_dollars,
+            'amount_cents': self.amount_cents,
+            'type': self.type.value,
             'date': self.date,
             'tags': [tag.name for tag in self.tags],
             'category': self.category,
@@ -312,76 +292,5 @@ class Transaction(Base):
     def __repr__(self) -> str:
         return (
             f"<Transaction(id={self.id}, type={self.type.value}, "
-            f"amount=${self.amount_float:.2f})>"
+            f"amount=${self.amount_dollars:.2f})>"
         )
-
-
-# Utility functions for backward compatibility and convenience
-
-def create_transaction(
-    description: str,
-    amount: float,
-    trans_type: str,
-    date: str,
-    db_session=None
-) -> Transaction:
-    """
-    Create a transaction with string type (for backward compatibility).
-
-    Args:
-        description: Transaction description
-        amount: Amount in dollars
-        trans_type: Transaction type as string ('income' or 'expense')
-        date: Date in YYYY-MM-DD format
-        db_session: Optional database session to add transaction to
-
-    Returns:
-        Transaction instance
-
-    Raises:
-        ValueError: If trans_type is invalid
-    """
-    # Convert string to enum
-    try:
-        if trans_type.lower() == 'income':
-            type_enum = TransactionType.INCOME
-        elif trans_type.lower() == 'expense':
-            type_enum = TransactionType.EXPENSE
-        else:
-            raise ValueError(f"Invalid transaction type: {trans_type}")
-    except AttributeError:
-        raise ValueError(f"Invalid transaction type: {trans_type}")
-
-    transaction = Transaction(
-        description=description,
-        amount=amount,
-        type=type_enum,
-        date=date
-    )
-
-    if db_session:
-        db_session.add(transaction)
-
-    return transaction
-
-
-def get_transaction_type_from_string(type_str: str) -> TransactionType:
-    """
-    Convert string to TransactionType enum.
-
-    Args:
-        type_str: Transaction type as string
-
-    Returns:
-        TransactionType enum
-
-    Raises:
-        ValueError: If type_str is invalid
-    """
-    type_str = type_str.lower()
-    if type_str == 'income':
-        return TransactionType.INCOME
-    elif type_str == 'expense':
-        return TransactionType.EXPENSE
-    else:
-        raise ValueError(f"Invalid transaction type: {type_str}")

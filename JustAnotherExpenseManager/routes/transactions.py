@@ -1,16 +1,39 @@
 """
 Routes for transaction operations.
+
+Handles conversion from frontend strings to backend enums at the API boundary.
 """
 
-from flask import Blueprint, render_template, request, jsonify
+from flask import Blueprint, render_template, request, jsonify, g
 import csv
 from io import StringIO
 from datetime import datetime
 from typing import Optional
-from JustAnotherExpenseManager.utils.database import get_db
-from JustAnotherExpenseManager.utils.services import TransactionService
+from JustAnotherExpenseManager.models import TransactionType
 
 transaction_bp = Blueprint('transactions', __name__)
+
+
+def _parse_transaction_type(type_str: str) -> TransactionType:
+    """
+    Convert string to TransactionType enum.
+
+    Args:
+        type_str: "income" or "expense" string
+
+    Returns:
+        TransactionType enum
+
+    Raises:
+        ValueError: If invalid type
+    """
+    type_str = type_str.lower().strip()
+    if type_str == 'income':
+        return TransactionType.INCOME
+    elif type_str == 'expense':
+        return TransactionType.EXPENSE
+    else:
+        raise ValueError(f"Invalid transaction type: {type_str}")
 
 
 @transaction_bp.route('/transactions')
@@ -23,6 +46,8 @@ def transactions_page():
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
     """Get paginated list of transactions with filtering support."""
+    from JustAnotherExpenseManager.utils.services import TransactionService
+
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 50, type=int)
 
@@ -33,81 +58,123 @@ def get_transactions():
     start_date: Optional[str] = request.args.get('start_date', None)
     end_date: Optional[str] = request.args.get('end_date', None)
 
-    db = get_db()
-    try:
-        service = TransactionService(db)
-        result = service.get_all_transactions(
-            page=page,
-            per_page=per_page,
-            categories=categories_param,
-            tags=tags_param,
-            time_range=time_range,
-            start_date=start_date,
-            end_date=end_date
-        )
+    service = TransactionService(g.db)
+    result = service.get_all_transactions(
+        page=page,
+        per_page=per_page,
+        categories=categories_param,
+        tags=tags_param,
+        time_range=time_range,
+        start_date=start_date,
+        end_date=end_date
+    )
 
-        return render_template('transactions_list.html',
-                             transactions=result['transactions'],
-                             pagination=result)
-    finally:
-        db.close()
+    return render_template('transactions_list.html',
+                         transactions=result['transactions'],
+                         pagination=result)
 
 
 @transaction_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     """Add a new transaction."""
+    from JustAnotherExpenseManager.utils.services import TransactionService
+
     description = request.form.get('description', '').strip()
     amount = request.form.get('amount', 0, type=float)
-    trans_type = request.form.get('type', 'expense').lower()
+    type_str = request.form.get('type', 'expense')
     date = request.form.get('date', '')
     category = request.form.get('category', '').lower().strip()
     tags_str = request.form.get('tags', '').strip()
 
+    # Convert string type to enum at API boundary
+    try:
+        trans_type = _parse_transaction_type(type_str)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
     tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
 
-    db = get_db()
+    service = TransactionService(g.db)
     try:
-        service = TransactionService(db)
-        transaction = service.create_transaction(
+        transaction_id = service.create_transaction(
             description=description,
-            amount=amount,
-            trans_type=trans_type,
+            amount_dollars=amount,
+            type=trans_type,  # Pass enum
             date=date,
             category=category if category else None,
             tags=tags
         )
-
-        if transaction:
-            # Return first page of transactions
-            result = service.get_all_transactions(page=1, per_page=50)
-            return render_template('transactions_list.html',
-                                 transactions=result['transactions'],
-                                 pagination=result)
-        return jsonify({'error': 'Failed to add transaction'}), 400
-    finally:
-        db.close()
-
-
-@transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
-def delete_transaction(transaction_id):
-    """Delete a transaction."""
-    db = get_db()
-    try:
-        service = TransactionService(db)
-        service.delete_transaction(transaction_id)
 
         # Return first page of transactions
         result = service.get_all_transactions(page=1, per_page=50)
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
                              pagination=result)
-    finally:
-        db.close()
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
+def update_transaction(transaction_id):
+    """Update a transaction."""
+    from JustAnotherExpenseManager.utils.services import TransactionService
+
+    description = request.form.get('description', '').strip()
+    amount = request.form.get('amount', 0, type=float)
+    type_str = request.form.get('type', 'expense')
+    date = request.form.get('date', '')
+    category = request.form.get('category', '').lower().strip()
+    tags_str = request.form.get('tags', '').strip()
+
+    # Convert string type to enum at API boundary
+    try:
+        trans_type = _parse_transaction_type(type_str)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+    tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
+
+    service = TransactionService(g.db)
+    try:
+        service.update_transaction(
+            transaction_id=transaction_id,
+            description=description,
+            amount_dollars=amount,
+            type=trans_type,  # Pass enum
+            date=date,
+            category=category if category else None,
+            tags=tags
+        )
+
+        # Return updated transactions list
+        result = service.get_all_transactions(page=1, per_page=50)
+        return render_template('transactions_list.html',
+                             transactions=result['transactions'],
+                             pagination=result)
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+
+@transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
+def delete_transaction(transaction_id):
+    """Delete a transaction."""
+    from JustAnotherExpenseManager.utils.services import TransactionService
+
+    service = TransactionService(g.db)
+    service.delete_transaction(transaction_id)
+
+    # Return first page of transactions
+    result = service.get_all_transactions(page=1, per_page=50)
+    return render_template('transactions_list.html',
+                         transactions=result['transactions'],
+                         pagination=result)
 
 
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
     """Import transactions from CSV."""
+    from JustAnotherExpenseManager.utils.services import TransactionService
+
     if 'csv_file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
@@ -123,8 +190,7 @@ def import_transactions():
         stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
         csv_reader = csv.DictReader(stream)
 
-        db = get_db()
-        service = TransactionService(db)
+        service = TransactionService(g.db)
         imported_count = 0
         errors = []
 
@@ -132,7 +198,7 @@ def import_transactions():
             try:
                 description = row.get('description', '').strip()
                 amount_str = row.get('amount', '').strip()
-                trans_type = row.get('type', 'expense').strip().lower()
+                type_str = row.get('type', 'expense').strip()
                 category = row.get('category', '').strip().lower()
                 date_str = row.get('date', '').strip()
                 tags_str = row.get('tags', '').strip()
@@ -150,7 +216,10 @@ def import_transactions():
                     errors.append(f"Row {row_num}: Invalid amount '{amount_str}'")
                     continue
 
-                if trans_type not in ['income', 'expense']:
+                # Convert string type to enum
+                try:
+                    trans_type = _parse_transaction_type(type_str)
+                except ValueError:
                     errors.append(f"Row {row_num}: Type must be 'income' or 'expense'")
                     continue
 
@@ -164,8 +233,8 @@ def import_transactions():
 
                 service.create_transaction(
                     description=description,
-                    amount=amount,
-                    trans_type=trans_type,
+                    amount_dollars=amount,
+                    type=trans_type,  # Pass enum
                     date=date_str,
                     category=category if category else None,
                     tags=tags
@@ -175,10 +244,9 @@ def import_transactions():
 
             except Exception as e:
                 errors.append(f"Row {row_num}: {str(e)}")
-                db.rollback()  # Rollback on error
+                g.db.rollback()
 
-        db.commit()  # Commit all successful imports
-        db.close()
+        g.db.commit()
 
         return jsonify({
             'success': True,
@@ -187,7 +255,5 @@ def import_transactions():
         })
 
     except Exception as e:
-        if 'db' in locals():
-            db.rollback()
-            db.close()
+        g.db.rollback()
         return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
