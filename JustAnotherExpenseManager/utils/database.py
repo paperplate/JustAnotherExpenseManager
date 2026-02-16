@@ -7,6 +7,7 @@ from typing import Optional
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session, Session, declarative_base
 from sqlalchemy.engine import Engine
+from JustAnotherExpenseManager.models import Base, Tag
 
 
 class DatabaseManager:
@@ -49,8 +50,6 @@ class DatabaseManager:
         self.SessionLocal = scoped_session(
             sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         )
-        self.Base = declarative_base_base()
-        self.Base.query = self.SessionLocal.query_property()
 
     def _build_database_url(self) -> str:
         """
@@ -94,9 +93,7 @@ class DatabaseManager:
             print(f"Using database: {self.db_type}")
 
         # Create all tables
-        #Base.metadata.create_all(bind=self.engine)
-        import JustAnotherExpenseManager.models
-        self.Base.metadata.create_all(bind=self.engine)
+        Base.metadata.create_all(bind=self.engine)
 
         # Initialize default categories
         self._initialize_default_categories()

@@ -1,71 +1,387 @@
 """
 Database models for the Expense Manager application.
+
+This module uses integer storage for monetary amounts (stored in cents)
+and proper enums for transaction types.
 """
 
 import enum
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, DateTime, Table, ForeignKey, Enum
-from sqlalchemy.orm import relationship, declarative_base
-from JustAnotherExpenseManager.utils.database import Base
+from typing import Optional, List, Dict, Any
+from sqlalchemy import Column, Integer, String, DateTime, Table, ForeignKey, Enum
+from sqlalchemy.orm import relationship, declarative_base, validates
+from sqlalchemy.ext.hybrid import hybrid_property
 
-class ExpenseType(enum.Enum):
-    EXPENSE = 1
-    INCOME = 2
+Base = declarative_base()
+
+
+class TransactionType(enum.Enum):
+    """Enum for transaction types."""
+    INCOME = "income"
+    EXPENSE = "expense"
+
+    def __str__(self):
+        return self.value
 
 
 # Association table for transaction-tag relationship
-transaction_tags = Table('transaction_tags', Base.metadata,
-    Column('transaction_id', Integer, ForeignKey('transactions.id')),
-    Column('tag_id', Integer, ForeignKey('tags.id'))
+transaction_tags = Table(
+    'transaction_tags',
+    Base.metadata,
+    Column('transaction_id', Integer, ForeignKey('transactions.id', ondelete='CASCADE')),
+    Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'))
 )
+
 
 class Tag(Base):
     """Tag model for categorization and labeling."""
 
     __tablename__ = 'tags'
 
-    name = Column(String(100), primary_key=True, unique=True, nullable=False)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    def to_dict(self):
-        """Convert tag to dictionary representation."""
+    # Relationships
+    transactions = relationship(
+        'Transaction',
+        secondary=transaction_tags,
+        back_populates='tags',
+        lazy='dynamic'
+    )
+
+    @property
+    def is_category(self) -> bool:
+        """Check if this tag is a category."""
+        return self.name.startswith('category:')
+
+    @property
+    def category_name(self) -> Optional[str]:
+        """Get the category name without the 'category:' prefix."""
+        if self.is_category:
+            return self.name.replace('category:', '')
+        return None
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert tag to dictionary representation.
+
+        Returns:
+            Dict containing tag data
+        """
         return {
+            'id': self.id,
             'name': self.name,
-            'is_category': self.name.startswith('category:'),
-            'category_name': self.name.replace('category:', '') if self.name.startswith('category:') else None
+            'is_category': self.is_category,
+            'category_name': self.category_name,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
 
-    def __repr__(self):
-        return f"<Tag(name='{self.name}')>"
+    def __repr__(self) -> str:
+        return f"<Tag(id={self.id}, name='{self.name}')>"
 
 
 class Transaction(Base):
-    """Transaction model for both income and expenses."""
+    """
+    Transaction model for both income and expenses.
+
+    Amounts are stored as integers (cents) to avoid floating-point precision issues.
+    Use the `amount_float` property to get/set values in dollars.
+    """
 
     __tablename__ = 'transactions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     description = Column(String(500), nullable=False)
-    type = Column(Enum(ExpenseType))
-    amount = Column(Integer, nullable=False)
-    date = Column(String(10), nullable=False)  # YYYY-MM-DD format
-    created_at = Column(DateTime, default=datetime.utcnow)
+    amount_cents = Column(Integer, nullable=False)  # Stored in cents
+    type = Column(Enum(TransactionType), nullable=False, index=True)
+    date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD format
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    # Relationship to tags
-    tags = relationship('Tag', secondary=transaction_tags, backref='transactions')
+    # Relationships
+    tags = relationship(
+        'Tag',
+        secondary=transaction_tags,
+        back_populates='transactions',
+        lazy='joined'
+    )
 
-    def to_dict(self):
-        """Convert transaction to dictionary representation."""
+    def __init__(
+        self,
+        description: str,
+        amount: float,
+        type: TransactionType,
+        date: str,
+        **kwargs
+    ):
+        """
+        Initialize a Transaction.
+
+        Args:
+            description: Transaction description
+            amount: Amount in dollars (will be converted to cents)
+            type: TransactionType enum value
+            date: Date in YYYY-MM-DD format
+            **kwargs: Additional arguments
+        """
+        super().__init__(**kwargs)
+        self.description = description
+        self.amount_float = amount  # Uses the property to convert to cents
+        self.type = type
+        self.date = date
+
+    @hybrid_property
+    def amount_float(self) -> float:
+        """
+        Get amount as a float (in dollars).
+
+        Returns:
+            Amount in dollars
+        """
+        return self.amount_cents / 100.0
+
+    @amount_float.setter
+    def amount_float(self, value: float) -> None:
+        """
+        Set amount from a float (in dollars).
+
+        Args:
+            value: Amount in dollars
+
+        Raises:
+            ValueError: If amount is negative
+        """
+        if value < 0:
+            raise ValueError("Amount cannot be negative")
+        self.amount_cents = round(value * 100)
+
+    @hybrid_property
+    def amount(self) -> float:
+        """
+        Alias for amount_float for backward compatibility.
+
+        Returns:
+            Amount in dollars
+        """
+        return self.amount_float
+
+    @amount.setter
+    def amount(self, value: float) -> None:
+        """
+        Alias for amount_float setter for backward compatibility.
+
+        Args:
+            value: Amount in dollars
+        """
+        self.amount_float = value
+
+    @validates('description')
+    def validate_description(self, key: str, description: str) -> str:
+        """
+        Validate description field.
+
+        Args:
+            key: Field name
+            description: Description value
+
+        Returns:
+            Validated description
+
+        Raises:
+            ValueError: If description is empty
+        """
+        if not description or not description.strip():
+            raise ValueError("Description cannot be empty")
+        return description.strip()
+
+    @validates('date')
+    def validate_date(self, key: str, date: str) -> str:
+        """
+        Validate date field.
+
+        Args:
+            key: Field name
+            date: Date value
+
+        Returns:
+            Validated date string
+
+        Raises:
+            ValueError: If date format is invalid
+        """
+        try:
+            datetime.strptime(date, '%Y-%m-%d')
+        except ValueError:
+            raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+        return date
+
+    @validates('amount_cents')
+    def validate_amount_cents(self, key: str, amount_cents: int) -> int:
+        """
+        Validate amount_cents field.
+
+        Args:
+            key: Field name
+            amount_cents: Amount in cents
+
+        Returns:
+            Validated amount
+
+        Raises:
+            ValueError: If amount is negative
+        """
+        if amount_cents < 0:
+            raise ValueError("Amount cannot be negative")
+        return amount_cents
+
+    @property
+    def category(self) -> Optional[str]:
+        """
+        Get the first category tag associated with this transaction.
+
+        Returns:
+            Category name without 'category:' prefix, or None
+        """
+        for tag in self.tags:
+            if tag.is_category:
+                return tag.category_name
+        return None
+
+    @property
+    def non_category_tags(self) -> List[str]:
+        """
+        Get all non-category tags.
+
+        Returns:
+            List of tag names
+        """
+        return [tag.name for tag in self.tags if not tag.is_category]
+
+    @property
+    def is_income(self) -> bool:
+        """Check if this is an income transaction."""
+        return self.type == TransactionType.INCOME
+
+    @property
+    def is_expense(self) -> bool:
+        """Check if this is an expense transaction."""
+        return self.type == TransactionType.EXPENSE
+
+    def add_tag(self, tag: Tag) -> None:
+        """
+        Add a tag to this transaction.
+
+        Args:
+            tag: Tag instance to add
+        """
+        if tag not in self.tags:
+            self.tags.append(tag)
+
+    def remove_tag(self, tag: Tag) -> None:
+        """
+        Remove a tag from this transaction.
+
+        Args:
+            tag: Tag instance to remove
+        """
+        if tag in self.tags:
+            self.tags.remove(tag)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Convert transaction to dictionary representation.
+
+        Returns:
+            Dict containing transaction data with amount in dollars
+        """
         return {
             'id': self.id,
             'description': self.description,
-            'amount': self.amount,
-            'type': self.type,
+            'amount': self.amount_float,  # Return as float (dollars)
+            'amount_cents': self.amount_cents,  # Also include cents for precision
+            'type': self.type.value,  # Return enum value as string
             'date': self.date,
             'tags': [tag.name for tag in self.tags],
-            'category': next((tag.name.replace('category:', '') for tag in self.tags
-                            if tag.name.startswith('category:')), None),
-            'created_at': self.created_at.isoformat() if self.created_at else None
+            'category': self.category,
+            'non_category_tags': self.non_category_tags,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
-    def __repr__(self):
-        return f"<Transaction(id={self.id}, type='{self.type}', amount={self.amount})>"
+    def __repr__(self) -> str:
+        return (
+            f"<Transaction(id={self.id}, type={self.type.value}, "
+            f"amount=${self.amount_float:.2f})>"
+        )
+
+
+# Utility functions for backward compatibility and convenience
+
+def create_transaction(
+    description: str,
+    amount: float,
+    trans_type: str,
+    date: str,
+    db_session=None
+) -> Transaction:
+    """
+    Create a transaction with string type (for backward compatibility).
+
+    Args:
+        description: Transaction description
+        amount: Amount in dollars
+        trans_type: Transaction type as string ('income' or 'expense')
+        date: Date in YYYY-MM-DD format
+        db_session: Optional database session to add transaction to
+
+    Returns:
+        Transaction instance
+
+    Raises:
+        ValueError: If trans_type is invalid
+    """
+    # Convert string to enum
+    try:
+        if trans_type.lower() == 'income':
+            type_enum = TransactionType.INCOME
+        elif trans_type.lower() == 'expense':
+            type_enum = TransactionType.EXPENSE
+        else:
+            raise ValueError(f"Invalid transaction type: {trans_type}")
+    except AttributeError:
+        raise ValueError(f"Invalid transaction type: {trans_type}")
+
+    transaction = Transaction(
+        description=description,
+        amount=amount,
+        type=type_enum,
+        date=date
+    )
+
+    if db_session:
+        db_session.add(transaction)
+
+    return transaction
+
+
+def get_transaction_type_from_string(type_str: str) -> TransactionType:
+    """
+    Convert string to TransactionType enum.
+
+    Args:
+        type_str: Transaction type as string
+
+    Returns:
+        TransactionType enum
+
+    Raises:
+        ValueError: If type_str is invalid
+    """
+    type_str = type_str.lower()
+    if type_str == 'income':
+        return TransactionType.INCOME
+    elif type_str == 'expense':
+        return TransactionType.EXPENSE
+    else:
+        raise ValueError(f"Invalid transaction type: {type_str}")
