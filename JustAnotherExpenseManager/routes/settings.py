@@ -3,9 +3,8 @@ Routes for settings page and test data.
 """
 
 from typing import Tuple, Optional, Union
-from flask import Blueprint, render_template, jsonify, current_app, Response
-from JustAnotherExpenseManager.utils.database import get_db
-#from JustAnotherExpenseManager.utils.services import TestDataService
+from flask import Blueprint, render_template, jsonify, current_app, Response, g
+from JustAnotherExpenseManager.utils.services import TestDataService
 
 settings_bp = Blueprint('settings', __name__)
 
@@ -34,9 +33,9 @@ def populate_test_data() -> Union[Response, Tuple[Response, int]]:
             'error': 'Test data generation is only available in debug mode'
         }), 403
 
-    db = get_db()
     try:
-        service = TestDataService(db)
+        # Use g.db from Flask context
+        service = TestDataService(g.db)
         count, error = service.populate_test_data()
 
         if error:
@@ -48,7 +47,5 @@ def populate_test_data() -> Union[Response, Tuple[Response, int]]:
             'count': count
         })
     except Exception as exc:  # pylint: disable=broad-except
-        db.rollback()
+        g.db.rollback()
         return jsonify({'error': str(exc)}), 500
-    finally:
-        db.close()

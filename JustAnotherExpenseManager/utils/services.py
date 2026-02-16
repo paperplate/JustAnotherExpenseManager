@@ -6,6 +6,7 @@ This version requires proper types:
 - Float amounts (converted to cents internally by model)
 """
 
+import random
 from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
@@ -292,17 +293,17 @@ class StatsService:
             Dict with 'income', 'expenses', and 'net' in dollars
         """
         # Build base query with filters
-        query = self._build_filtered_query(categories, time_range, start_date, end_date, tags)
+        income_query = self._build_filtered_query(categories, time_range, start_date, end_date, tags)
+        income_query = income_query.filter(Transaction.type == TransactionType.INCOME)
 
-        # Get income total (in cents)
-        income_cents = self.db.query(func.sum(Transaction.amount_cents)).select_from(
-            query.filter(Transaction.type == TransactionType.INCOME).subquery()
-        ).scalar() or 0
+        expense_query = self._build_filtered_query(categories, time_range, start_date, end_date, tags)
+        expense_query = expense_query.filter(Transaction.type == TransactionType.EXPENSE)
 
-        # Get expense total (in cents)
-        expense_cents = self.db.query(func.sum(Transaction.amount_cents)).select_from(
-            query.filter(Transaction.type == TransactionType.EXPENSE).subquery()
-        ).scalar() or 0
+        # Get income total (in cents) - use the query directly, not a subquery
+        income_cents = income_query.with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
+
+        # Get expense total (in cents) - use the query directly, not a subquery
+        expense_cents = expense_query.with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
 
         # Convert to dollars
         income = income_cents / 100.0
@@ -337,25 +338,29 @@ class StatsService:
         for cat_tag in category_tags:
             category_name = cat_tag.category_name
 
-            # Build query for this category
+            # Build filtered query for this category
             base_query = self._build_filtered_query(
                 categories, time_range, start_date, end_date, tags
             )
-
+            
             # Add category filter
-            filtered_query = base_query.join(Transaction.tags).filter(
+            category_query = base_query.join(Transaction.tags).filter(
                 Tag.name == cat_tag.name
             )
 
-            # Get expenses (in cents)
-            expense_cents = self.db.query(func.sum(Transaction.amount_cents)).select_from(
-                filtered_query.filter(Transaction.type == TransactionType.EXPENSE).subquery()
-            ).scalar() or 0
+            # Get expenses (in cents) - use query directly
+            expense_cents = category_query.filter(
+                Transaction.type == TransactionType.EXPENSE
+            ).with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
 
-            # Get income (in cents)
-            income_cents = self.db.query(func.sum(Transaction.amount_cents)).select_from(
-                filtered_query.filter(Transaction.type == TransactionType.INCOME).subquery()
-            ).scalar() or 0
+            # Get income (in cents) - rebuild query to avoid reuse
+            category_query_income = self._build_filtered_query(
+                categories, time_range, start_date, end_date, tags
+            ).join(Transaction.tags).filter(Tag.name == cat_tag.name)
+            
+            income_cents = category_query_income.filter(
+                Transaction.type == TransactionType.INCOME
+            ).with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
 
             # Convert to dollars
             expenses = expense_cents / 100.0
@@ -549,6 +554,98 @@ class TestDataService:
         self.db = db_session
 
     def populate_test_data(self) -> Tuple[int, Optional[str]]:
-        """Generate test transactions."""
-        # Implementation here
-        return 0, None
+        """
+        Generate test transactions.
+
+        Returns:
+            Tuple of (count, error_message)
+        """
+        try:
+            # Sample data for generating realistic transactions
+            expense_descriptions = [
+                ("Grocery Store", "food", 50, 150),
+                ("Gas Station", "transport", 30, 80),
+                ("Restaurant", "food", 20, 100),
+                ("Coffee Shop", "food", 3, 15),
+                ("Electric Bill", "utilities", 80, 150),
+                ("Internet Bill", "utilities", 50, 100),
+                ("Movie Theater", "entertainment", 15, 50),
+                ("Pharmacy", "healthcare", 10, 80),
+                ("Clothing Store", "shopping", 30, 200),
+                ("Uber", "transport", 10, 40),
+                ("Gym Membership", "healthcare", 30, 100),
+                ("Book Store", "entertainment", 10, 50),
+            ]
+
+            income_descriptions = [
+                ("Monthly Salary", "salary", 3000, 6000),
+                ("Freelance Project", "freelance", 500, 2000),
+                ("Investment Return", "investment", 100, 500),
+            ]
+
+            # Generate transactions for last 90 days
+            today = datetime.now().date()
+            transaction_count = 0
+
+            for days_ago in range(90):
+                date = (today - timedelta(days=days_ago)).strftime('%Y-%m-%d')
+
+                # Generate 0-3 random expenses per day
+                num_expenses = random.randint(0, 3)
+                for _ in range(num_expenses):
+                    desc, category, min_amt, max_amt = random.choice(expense_descriptions)
+                    amount = round(random.uniform(min_amt, max_amt), 2)
+
+                    transaction = Transaction(
+                        description=desc,
+                        amount_dollars=amount,
+                        type=TransactionType.EXPENSE,
+                        date=date
+                    )
+
+                    # Add category
+                    category_tag = self._get_or_create_tag(f'category:{category}')
+                    transaction.add_tag(category_tag)
+
+                    self.db.add(transaction)
+                    transaction_count += 1
+
+                # Generate income (less frequent)
+                if random.random() < 0.1:  # 10% chance per day
+                    desc, category, min_amt, max_amt = random.choice(income_descriptions)
+                    amount = round(random.uniform(min_amt, max_amt), 2)
+
+                    transaction = Transaction(
+                        description=desc,
+                        amount_dollars=amount,
+                        type=TransactionType.INCOME,
+                        date=date
+                    )
+
+                    # Add category
+                    category_tag = self._get_or_create_tag(f'category:{category}')
+                    transaction.add_tag(category_tag)
+
+                    # Maybe add a tag
+                    if random.random() < 0.3:
+                        tag = self._get_or_create_tag('recurring')
+                        transaction.add_tag(tag)
+
+                    self.db.add(transaction)
+                    transaction_count += 1
+
+            self.db.commit()
+            return transaction_count, None
+
+        except Exception as e:
+            self.db.rollback()
+            return 0, str(e)
+
+    def _get_or_create_tag(self, tag_name: str) -> Tag:
+        """Get existing tag or create new one."""
+        tag = self.db.query(Tag).filter_by(name=tag_name).first()
+        if not tag:
+            tag = Tag(name=tag_name)
+            self.db.add(tag)
+            self.db.flush()
+        return tag
