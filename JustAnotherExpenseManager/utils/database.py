@@ -42,7 +42,7 @@ class DatabaseManager:
         self.db_name = db_name or os.getenv('DATABASE_NAME', 'expenses')
         self.db_user = db_user or os.getenv('DATABASE_USER', 'expensemanager')
         self.db_password = db_password or os.getenv('DATABASE_PASSWORD', 'expensemanager')
-        self.sqlite_path = sqlite_path or os.getenv('SQLITE_PATH', '/app/data/expenses.db')
+        self.sqlite_path = sqlite_path or os.getenv('SQLITE_PATH', './data/expenses.db')
 
         # Initialize engine and session factory
         self.database_url = self._build_database_url()
