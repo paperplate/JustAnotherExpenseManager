@@ -5,7 +5,7 @@ Tests model creation, relationships, and constraints.
 
 import pytest
 from datetime import datetime
-from models import Transaction, Tag
+from JustAnotherExpenseManager.models import Transaction, Tag
 
 
 class TestTransactionModel:

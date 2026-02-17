@@ -10,7 +10,7 @@ import os
 import tempfile
 import pytest
 from JustAnotherExpenseManager import create_app
-from utils.database import init_db, get_db
+from JustAnotherExpenseManager.utils.database import init_db, get_db
 
 
 @pytest.fixture(scope='session')

@@ -5,7 +5,7 @@ Tests business logic and database operations.
 
 import pytest
 from datetime import datetime, timedelta
-from utils.services import TransactionService, StatsService
+from JustAnotherExpenseManager.utils.services import TransactionService, StatsService
 
 
 class TestTransactionService:
