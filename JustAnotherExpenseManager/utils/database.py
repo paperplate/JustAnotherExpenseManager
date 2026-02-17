@@ -5,7 +5,7 @@ Database configuration and initialization.
 import os
 from typing import Optional
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session, Session, declarative_base
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from sqlalchemy.engine import Engine
 from JustAnotherExpenseManager.models import Base, Tag
 
@@ -55,6 +55,10 @@ class DatabaseManager:
         """
         Generate database URL based on configuration.
 
+        Does NOT create directories or touch the filesystem — that is
+        deferred to init_database() so that importing this module never
+        requires write access to /app or any other path.
+
         Returns:
             str: SQLAlchemy database URL
         """
@@ -70,8 +74,6 @@ class DatabaseManager:
                 f'@{self.db_host}:{port}/{self.db_name}'
             )
         else:  # sqlite (default)
-            data_dir = os.path.dirname(self.sqlite_path) if os.path.dirname(self.sqlite_path) else '.'
-            os.makedirs(data_dir, exist_ok=True)
             return f'sqlite:///{self.sqlite_path}'
 
     def get_session(self) -> Session:
@@ -85,6 +87,15 @@ class DatabaseManager:
 
     def init_database(self) -> None:
         """Initialize database with tables and default data."""
+        if self.db_type == 'sqlite':
+            # Create the data directory only when we are actually initialising
+            # the database, not at import/construction time.  This prevents a
+            # PermissionError when the module is imported during unit tests or
+            # a Docker build where /app does not yet exist.
+            data_dir = os.path.dirname(self.sqlite_path)
+            if data_dir:
+                os.makedirs(data_dir, exist_ok=True)
+
         db_exists = os.path.exists(self.sqlite_path) if self.db_type == 'sqlite' else True
 
         if not db_exists:
@@ -194,7 +205,6 @@ def shutdown_session(exception: Optional[Exception] = None) -> None:
     _db_manager.shutdown_session(exception)
 
 
-# New convenience functions
 def get_database_manager() -> DatabaseManager:
     """
     Get the global DatabaseManager instance.
