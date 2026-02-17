@@ -33,15 +33,16 @@
                 <td>{{ trans.date }}</td>
                 <td>{{ trans.description }}</td>
                 <td>
-                    <span class="type-badge type-{{ trans.type }}">
-                        {{ trans.type|capitalize }}
+                    {# Use .value to get string from enum #}
+                    <span class="type-badge type-{{ trans.type.value }}">
+                        {{ trans.type.value|capitalize }}
                     </span>
                 </td>
                 <td>
                     {% for tag in trans.tags %}
-                        {% if tag.name.startswith('category:') %}
+                        {% if tag.is_category %}
                             <span class="tag-badge category-tag">
-                                {{ tag.name.replace('category:', '')|capitalize }}
+                                {{ tag.category_name|capitalize }}
                             </span>
                         {% else %}
                             <span class="tag-badge">
@@ -50,18 +51,19 @@
                         {% endif %}
                     {% endfor %}
                 </td>
-                <td class="amount amount-{{ trans.type }}">
-                    {% if trans.type == 'income' %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount) }}
+                <td class="amount amount-{{ trans.type.value }}">
+                    {# Use is_income property and amount_dollars #}
+                    {% if trans.is_income %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount_dollars) }}
                 </td>
                 <td>
                     <button class="btn btn-edit btn-small"
                             data-transaction-id="{{ trans.id }}"
                             data-description="{{ trans.description|escape }}"
-                            data-amount="{{ trans.amount }}"
-                            data-type="{{ trans.type }}"
+                            data-amount="{{ trans.amount_dollars }}"
+                            data-type="{{ trans.type.value }}"
                             data-date="{{ trans.date }}"
                             data-category="{{ trans.category or '' }}"
-                            data-tags="{% for tag in trans.tags %}{% if not tag.name.startswith('category:') %}{{ tag.name }}{% if not loop.last %},{% endif %}{% endif %}{% endfor %}"
+                            data-tags="{{ trans.non_category_tags|join(',') }}"
                             onclick="editTransaction(this)">
                         Edit
                     </button>
@@ -79,9 +81,16 @@
         </tbody>
     </table>
 
-    {# Monthly summary #}
-    {% set month_income = months[month]|selectattr('type', 'equalto', 'income')|map(attribute='amount')|sum %}
-    {% set month_expense = months[month]|selectattr('type', 'equalto', 'expense')|map(attribute='amount')|sum %}
+    {# Monthly summary - calculate manually since we can't use selectattr with enums #}
+    {% set month_income = 0 %}
+    {% set month_expense = 0 %}
+    {% for trans in months[month] %}
+        {% if trans.is_income %}
+            {% set month_income = month_income + trans.amount_dollars %}
+        {% else %}
+            {% set month_expense = month_expense + trans.amount_dollars %}
+        {% endif %}
+    {% endfor %}
     <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; display: flex; gap: 20px; font-size: 14px;">
         <div style="color: #00b894;">
             <strong>Income:</strong> ${{ "%.2f"|format(month_income) }}
