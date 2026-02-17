@@ -1,7 +1,5 @@
 """
-Routes for transaction operations.
-
-Handles conversion from frontend strings to backend enums at the API boundary.
+Routes for transaction operations with month-based pagination.
 """
 
 from flask import Blueprint, render_template, request, jsonify, g
@@ -10,23 +8,13 @@ from io import StringIO
 from datetime import datetime
 from typing import Optional
 from JustAnotherExpenseManager.models import TransactionType
+from JustAnotherExpenseManager.utils.services import TransactionService
 
 transaction_bp = Blueprint('transactions', __name__)
 
 
 def _parse_transaction_type(type_str: str) -> TransactionType:
-    """
-    Convert string to TransactionType enum.
-
-    Args:
-        type_str: "income" or "expense" string
-
-    Returns:
-        TransactionType enum
-
-    Raises:
-        ValueError: If invalid type
-    """
+    """Convert string to TransactionType enum."""
     type_str = type_str.lower().strip()
     if type_str == 'income':
         return TransactionType.INCOME
@@ -45,11 +33,8 @@ def transactions_page():
 
 @transaction_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
-    """Get paginated list of transactions with filtering support."""
-    from JustAnotherExpenseManager.utils.services import TransactionService
-
+    """Get paginated list of transactions (one month per page)."""
     page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 50, type=int)
 
     # Get filter parameters
     categories_param: Optional[str] = request.args.get('categories', None)
@@ -61,7 +46,6 @@ def get_transactions():
     service = TransactionService(g.db)
     result = service.get_all_transactions(
         page=page,
-        per_page=per_page,
         categories=categories_param,
         tags=tags_param,
         time_range=time_range,
@@ -71,14 +55,13 @@ def get_transactions():
 
     return render_template('transactions_list.html',
                          transactions=result['transactions'],
+                         current_month=result['current_month'],
                          pagination=result)
 
 
 @transaction_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     """Add a new transaction."""
-    from JustAnotherExpenseManager.utils.services import TransactionService
-
     description = request.form.get('description', '').strip()
     amount = request.form.get('amount', 0, type=float)
     type_str = request.form.get('type', 'expense')
@@ -99,16 +82,17 @@ def add_transaction():
         transaction_id = service.create_transaction(
             description=description,
             amount_dollars=amount,
-            type=trans_type,  # Pass enum
+            type=trans_type,
             date=date,
             category=category if category else None,
             tags=tags
         )
 
         # Return first page of transactions
-        result = service.get_all_transactions(page=1, per_page=50)
+        result = service.get_all_transactions(page=1)
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
+                             current_month=result['current_month'],
                              pagination=result)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -117,8 +101,6 @@ def add_transaction():
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
     """Update a transaction."""
-    from JustAnotherExpenseManager.utils.services import TransactionService
-
     description = request.form.get('description', '').strip()
     amount = request.form.get('amount', 0, type=float)
     type_str = request.form.get('type', 'expense')
@@ -140,16 +122,17 @@ def update_transaction(transaction_id):
             transaction_id=transaction_id,
             description=description,
             amount_dollars=amount,
-            type=trans_type,  # Pass enum
+            type=trans_type,
             date=date,
             category=category if category else None,
             tags=tags
         )
 
         # Return updated transactions list
-        result = service.get_all_transactions(page=1, per_page=50)
+        result = service.get_all_transactions(page=1)
         return render_template('transactions_list.html',
                              transactions=result['transactions'],
+                             current_month=result['current_month'],
                              pagination=result)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
@@ -158,23 +141,20 @@ def update_transaction(transaction_id):
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
     """Delete a transaction."""
-    from JustAnotherExpenseManager.utils.services import TransactionService
-
     service = TransactionService(g.db)
     service.delete_transaction(transaction_id)
 
     # Return first page of transactions
-    result = service.get_all_transactions(page=1, per_page=50)
+    result = service.get_all_transactions(page=1)
     return render_template('transactions_list.html',
                          transactions=result['transactions'],
+                         current_month=result['current_month'],
                          pagination=result)
 
 
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
     """Import transactions from CSV."""
-    from JustAnotherExpenseManager.utils.services import TransactionService
-
     if 'csv_file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
@@ -234,7 +214,7 @@ def import_transactions():
                 service.create_transaction(
                     description=description,
                     amount_dollars=amount,
-                    type=trans_type,  # Pass enum
+                    type=trans_type,
                     date=date_str,
                     category=category if category else None,
                     tags=tags

@@ -1,19 +1,8 @@
 {% if transactions %}
-{# Group transactions by month #}
-{% set months = {} %}
-{% for trans in transactions %}
-    {% set month_key = trans.date[:7] %}  {# Extract YYYY-MM #}
-    {% if month_key not in months %}
-        {% set _ = months.update({month_key: []}) %}
-    {% endif %}
-    {% set _ = months[month_key].append(trans) %}
-{% endfor %}
-
-{# Display transactions grouped by month #}
-{% for month in months.keys()|sort(reverse=True) %}
+{# Display transactions for a single month #}
 <div style="margin-bottom: 30px;">
     <h3 style="color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
-        {{ month|replace('-', ' ')|title }}
+        {{ current_month|replace('-', ' ')|title }}
     </h3>
 
     <table class="transactions-table">
@@ -28,7 +17,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for trans in months[month] %}
+            {% for trans in transactions %}
             <tr>
                 <td>{{ trans.date }}</td>
                 <td>{{ trans.description }}</td>
@@ -81,10 +70,10 @@
         </tbody>
     </table>
 
-    {# Monthly summary - calculate manually since we can't use selectattr with enums #}
+    {# Monthly summary #}
     {% set month_income = 0 %}
     {% set month_expense = 0 %}
-    {% for trans in months[month] %}
+    {% for trans in transactions %}
         {% if trans.is_income %}
             {% set month_income = month_income + trans.amount_dollars %}
         {% else %}
@@ -102,13 +91,12 @@
             <strong>Net:</strong> ${{ "%.2f"|format(month_income - month_expense) }}
         </div>
         <div style="color: #666; margin-left: auto;">
-            <strong>Transactions:</strong> {{ months[month]|length }}
+            <strong>Transactions:</strong> {{ transactions|length }}
         </div>
     </div>
 </div>
-{% endfor %}
 
-<!-- Pagination -->
+<!-- Month Navigation (Pagination) -->
 {% if pagination.total_pages > 1 %}
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
     {% if pagination.page > 1 %}
@@ -116,12 +104,12 @@
                 hx-get="/api/transactions?page={{ pagination.page - 1 }}"
                 hx-target="#transactions-list"
                 hx-swap="innerHTML">
-            ← Previous
+            ← Previous Month
         </button>
     {% endif %}
 
     <span style="color: #666; font-weight: 600;">
-        Page {{ pagination.page }} of {{ pagination.total_pages }}
+        Month {{ pagination.page }} of {{ pagination.total_pages }}
     </span>
 
     {% if pagination.page < pagination.total_pages %}
@@ -129,12 +117,12 @@
                 hx-get="/api/transactions?page={{ pagination.page + 1 }}"
                 hx-target="#transactions-list"
                 hx-swap="innerHTML">
-            Next →
+            Next Month →
         </button>
     {% endif %}
 </div>
 <div style="text-align: center; margin-top: 10px; color: #666;">
-    Total: {{ pagination.total }} transactions
+    Total: {{ pagination.total }} transactions across {{ pagination.total_pages }} months
 </div>
 {% endif %}
 

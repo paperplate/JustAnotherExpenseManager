@@ -36,20 +36,7 @@ class TransactionService:
         category: Optional[str] = None,
         tags: Optional[List[str]] = None
     ) -> int:
-        """
-        Create a new transaction.
-
-        Args:
-            description: Transaction description
-            amount_dollars: Amount in dollars
-            type: TransactionType enum (INCOME or EXPENSE)
-            date: Date in YYYY-MM-DD format
-            category: Category name (without 'category:' prefix)
-            tags: List of tag names
-
-        Returns:
-            Transaction ID
-        """
+        """Create a new transaction."""
         transaction = Transaction(
             description=description,
             amount_dollars=amount_dollars,
@@ -81,7 +68,6 @@ class TransactionService:
     def get_all_transactions(
         self,
         page: int = 1,
-        per_page: int = 50,
         categories: Optional[str] = None,
         tags: Optional[str] = None,
         time_range: Optional[str] = None,
@@ -89,11 +75,11 @@ class TransactionService:
         end_date: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Get paginated list of transactions with filtering.
+        Get paginated list of transactions by month.
+        Each page shows all transactions for one month.
 
         Args:
-            page: Page number (1-indexed)
-            per_page: Number of transactions per page
+            page: Page number (1-indexed) - each page is one month
             categories: Comma-separated category names to filter
             tags: Comma-separated tag names to filter
             time_range: Time range identifier
@@ -140,22 +126,43 @@ class TransactionService:
             if tag_list:
                 query = query.join(Transaction.tags).filter(Tag.name.in_(tag_list))
 
-        # Get total count
-        total = query.count()
+        # Get all filtered transactions
+        all_transactions = query.order_by(Transaction.date.desc(), Transaction.id.desc()).all()
 
-        # Apply pagination
-        query = query.order_by(Transaction.date.desc(), Transaction.id.desc())
-        transactions = query.offset((page - 1) * per_page).limit(per_page).all()
+        # Group by month
+        months = {}
+        for trans in all_transactions:
+            month_key = trans.date[:7]  # YYYY-MM
+            if month_key not in months:
+                months[month_key] = []
+            months[month_key].append(trans)
 
-        # Calculate pagination
-        total_pages = (total + per_page - 1) // per_page if total > 0 else 1
+        # Sort months descending (newest first)
+        sorted_months = sorted(months.keys(), reverse=True)
+        total_months = len(sorted_months)
+
+        # Get transactions for requested page (month)
+        if page < 1:
+            page = 1
+        if page > total_months and total_months > 0:
+            page = total_months
+
+        transactions = []
+        current_month = None
+        if total_months > 0 and page <= total_months:
+            current_month = sorted_months[page - 1]
+            transactions = months[current_month]
+
+        # Total count of transactions
+        total = len(all_transactions)
 
         return {
             'transactions': transactions,
+            'current_month': current_month,
             'total': total,
             'page': page,
-            'per_page': per_page,
-            'total_pages': total_pages
+            'total_pages': total_months,
+            'all_months': sorted_months
         }
 
     def update_transaction(
@@ -168,24 +175,7 @@ class TransactionService:
         category: Optional[str] = None,
         tags: Optional[List[str]] = None
     ) -> bool:
-        """
-        Update an existing transaction.
-
-        Args:
-            transaction_id: ID of transaction to update
-            description: New description
-            amount_dollars: New amount in dollars
-            type: TransactionType enum
-            date: New date
-            category: New category (optional)
-            tags: New tags (optional)
-
-        Returns:
-            True if successful
-
-        Raises:
-            ValueError: If transaction not found
-        """
+        """Update an existing transaction."""
         transaction = self.db.query(Transaction).filter(
             Transaction.id == transaction_id
         ).first()
@@ -220,15 +210,7 @@ class TransactionService:
         return True
 
     def delete_transaction(self, transaction_id: int) -> bool:
-        """
-        Delete a transaction.
-
-        Args:
-            transaction_id: ID of transaction to delete
-
-        Returns:
-            True if deleted, False if not found
-        """
+        """Delete a transaction."""
         transaction = self.db.query(Transaction).filter(
             Transaction.id == transaction_id
         ).first()
@@ -240,15 +222,7 @@ class TransactionService:
         return False
 
     def _get_or_create_tag(self, tag_name: str) -> Tag:
-        """
-        Get existing tag or create new one.
-
-        Args:
-            tag_name: Name of tag
-
-        Returns:
-            Tag object
-        """
+        """Get existing tag or create new one."""
         tag = self.db.query(Tag).filter_by(name=tag_name).first()
         if not tag:
             tag = Tag(name=tag_name)
