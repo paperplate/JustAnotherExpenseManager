@@ -5,6 +5,7 @@ WORKDIR /app
 # Copy package metadata first
 COPY pyproject.toml .
 COPY README.md .
+COPY .flaskenv .
 
 # Install pip
 RUN pip install --upgrade pip

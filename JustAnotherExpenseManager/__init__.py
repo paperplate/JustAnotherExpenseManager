@@ -39,10 +39,10 @@ def create_app(test_config=None, db_manager: DatabaseManager = None):
     # Load configuration
     if test_config is None:
         try:
-            config = dotenv_values('.env')
+            config = dotenv_values('.flaskenv')
             app.config.from_mapping(config)
         except Exception as err:
-            print(f"Warning: Could not load .env file: {err}")
+            print(f"Warning: Could not load .flaskenv file: {err}")
             app.config.from_mapping({})
     else:
         app.config.from_mapping(test_config)
@@ -252,9 +252,9 @@ def main():
     """Main entry point for the application."""
     # Load configuration
     try:
-        config = dotenv_values('.env')
+        config = dotenv_values('.flaskenv')
     except Exception as err:
-        print(f"Warning: Could not load .env file: {err}")
+        print(f"Warning: Could not load .flaskenv file: {err}")
         config = {}
 
     # Initialize database

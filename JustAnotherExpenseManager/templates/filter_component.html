@@ -11,50 +11,46 @@
             <option value="custom">Custom Range...</option>
         </select>
     </div>
-    
+
     <div class="filter-group">
-        <label for="category-filter">Filter by Categories:</label>
-        <div class="multi-select-wrapper">
-            <div class="multi-select-display" id="category-display" onclick="toggleCategoryDropdown()">
-                <span id="category-selected-text">All Categories</span>
-                <span class="dropdown-arrow">▼</span>
-            </div>
-            <div class="multi-select-dropdown" id="category-dropdown" style="display: none;">
-                <div class="multi-select-option">
-                    <label>
-                        <input type="checkbox" value="" onchange="updateCategorySelection()" checked> All Categories
-                    </label>
-                </div>
-                <div id="category-options-list">
-                    <!-- Categories will be loaded here -->
-                </div>
-            </div>
-        </div>
+        <label>Filter by Categories:</label>
+        <details id="category-details" class="filter-details">
+            <summary id="category-summary">All Categories</summary>
+            <fieldset>
+                <legend>Categories</legend>
+                <ul>
+                    <li class="filter-option selected" data-value="" onclick="selectCategory(this)">
+                        All Categories
+                    </li>
+                </ul>
+                <ul id="category-options-list">
+                    <!-- Categories loaded dynamically -->
+                </ul>
+            </fieldset>
+        </details>
     </div>
-    
+
     <div class="filter-group">
-        <label for="tag-filter">Filter by Tags:</label>
-        <div class="multi-select-wrapper">
-            <div class="multi-select-display" id="tag-display" onclick="toggleTagDropdown()">
-                <span id="tag-selected-text">All Tags</span>
-                <span class="dropdown-arrow">▼</span>
-            </div>
-            <div class="multi-select-dropdown" id="tag-dropdown" style="display: none;">
-                <div class="multi-select-option">
-                    <label>
-                        <input type="checkbox" value="" onchange="updateTagSelection()" checked> All Tags
-                    </label>
-                </div>
-                <div id="tag-options-list">
-                    <!-- Tags will be loaded here -->
-                </div>
-            </div>
-        </div>
+        <label>Filter by Tags:</label>
+        <details id="tag-details" class="filter-details">
+            <summary id="tag-summary">All Tags</summary>
+            <fieldset>
+                <legend>Tags</legend>
+                <ul>
+                    <li class="filter-option selected" data-value="" onclick="selectTag(this)">
+                        All Tags
+                    </li>
+                </ul>
+                <ul id="tag-options-list">
+                    <!-- Tags loaded dynamically -->
+                </ul>
+            </fieldset>
+        </details>
     </div>
 </div>
 
 <!-- Custom date range picker (hidden by default) -->
-<div id="custom-range-picker">
+<div id="custom-range-picker" style="display: none;">
     <div>
         <div>
             <label for="start-date">Start Date:</label>
@@ -67,4 +63,3 @@
         <button class="btn" onclick="applyCustomRange()">Apply</button>
     </div>
 </div>
-

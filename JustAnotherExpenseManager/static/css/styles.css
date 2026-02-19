@@ -173,76 +173,108 @@ body {
     border-color: #667eea;
 }
 
-/* Multi-select dropdown */
-.multi-select-wrapper {
+/* Filter details dropdown */
+.filter-details {
     position: relative;
     min-width: 200px;
 }
 
-.multi-select-display {
-    padding: 10px;
+.filter-details summary {
+    padding: 10px 32px 10px 12px;
     border: 2px solid #e0e0e0;
     border-radius: 6px;
     background: white;
     cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: border-color 0.3s;
     font-size: 16px;
+    color: #333;
+    list-style: none;
+    user-select: none;
+    transition: border-color 0.2s;
+    position: relative;
 }
 
-.multi-select-display:hover {
+.filter-details summary::-webkit-details-marker {
+    display: none;
+}
+
+.filter-details summary::after {
+    content: '▼';
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 11px;
+    color: #666;
+    transition: transform 0.2s;
+}
+
+.filter-details[open] summary::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.filter-details summary:hover {
     border-color: #667eea;
 }
 
-.dropdown-arrow {
-    font-size: 12px;
-    color: #666;
+.filter-details[open] summary {
+    border-color: #667eea;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
-.multi-select-dropdown {
+.filter-details fieldset {
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
     background: white;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    margin-top: 4px;
-    max-height: 300px;
+    border: 2px solid #667eea;
+    border-top: none;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+    margin: 0;
+    padding: 0;
+    max-height: 260px;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
 }
 
-.multi-select-option {
+.filter-details legend {
+    display: none;
+}
+
+.filter-details ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.filter-option {
     padding: 10px 12px;
+    cursor: pointer;
+    font-size: 14px;
+    color: #333;
     border-bottom: 1px solid #f0f0f0;
-    transition: background 0.2s;
+    transition: background 0.15s;
 }
 
-.multi-select-option:last-child {
+.filter-option:last-child {
     border-bottom: none;
 }
 
-.multi-select-option:hover {
-    background: #f9f9f9;
+.filter-option:hover {
+    background: #f0f2ff;
 }
 
-.multi-select-option label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    cursor: pointer;
-    font-weight: normal;
-    margin: 0;
+.filter-option.selected {
+    background: #667eea;
+    color: white;
+    font-weight: 600;
 }
 
-.multi-select-option input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-    cursor: pointer;
+.filter-option.selected:hover {
+    background: #5a6fd6;
 }
 
 /* Custom Range Picker */
