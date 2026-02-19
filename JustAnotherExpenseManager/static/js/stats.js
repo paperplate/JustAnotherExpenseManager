@@ -221,6 +221,7 @@ function refreshCharts(queryString) {
 
 /**
  * Fetches the stats partial and renders it into #stats-container.
+ * Also refreshes charts since innerHTML does not execute <script> tags.
  * Called on page load and whenever transactions change.
  */
 async function loadStats() {
@@ -231,6 +232,11 @@ async function loadStats() {
         const response = await fetch('/api/stats' + window.location.search);
         const html = await response.text();
         container.innerHTML = html;
+
+        // innerHTML does not execute <script> tags, so drive the chart
+        // update directly rather than relying on the inline script in stats.html
+        const params = window.location.search.slice(1);
+        refreshCharts(params);
     } catch (error) {
         console.error('Error loading stats:', error);
         container.innerHTML = '<p style="color: #d63031;">Error loading statistics.</p>';

@@ -13,14 +13,6 @@
     </div>
 </div>
 
-<script>
-    updateCharts(
-        {{ category_breakdown | tojson }},
-        {{ monthly | tojson }},
-        '{{ selected_category or "" }}'
-    );
-</script>
-
 {% if not selected_category and category_breakdown %}
 <div class="card" style="margin-top: 20px;">
     <h3 style="margin-bottom: 15px; color: #333;">Category Breakdown</h3>
