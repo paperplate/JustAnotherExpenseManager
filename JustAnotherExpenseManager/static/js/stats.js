@@ -1,64 +1,80 @@
 /**
  * Stats/Charts JavaScript
- * Handles chart rendering with proper instance management
+ * Charts are created once and updated in-place using chart.data + chart.update().
+ * The <canvas> elements live in the stable page shell (summary.html), not in the
+ * HTMX-swapped partial, so they are never torn down between filter changes.
  */
 
-// Store chart instances globally to destroy them when updating
 let categoryChartInstance = null;
 let monthlyChartInstance = null;
 
+const CATEGORY_COLORS = [
+    '#d63031', '#0984e3', '#d63384', '#e17055',
+    '#00b894', '#6c5ce7', '#636e72', '#fdcb6e',
+    '#ff7675', '#74b9ff'
+];
+
 /**
- * Initialize charts with data from the page
- * This function is called after stats.html is loaded into the page
+ * Called by the inline <script> in stats.html after each HTMX swap.
+ * categoryBreakdown: array of [name, expenses, income] tuples from the server.
+ * monthly: array of [month_str, expenses, income] tuples from the server.
+ * selectedCategory: string, may be empty.
  */
-function initializeCharts(categoryFilter, timeRange, startDate, endDate) {
-    let url = '/api/chart-data';
-    const params = [];
-    
-    if (categoryFilter) params.push(`category=${categoryFilter}`);
-    if (timeRange) params.push(`range=${timeRange}`);
-    if (startDate) params.push(`start_date=${startDate}`);
-    if (endDate) params.push(`end_date=${endDate}`);
-    
-    if (params.length > 0) {
-        url += '?' + params.join('&');
+function updateCharts(categoryBreakdown, monthly, selectedCategory) {
+    const chartsContainer = document.getElementById('charts-container');
+    const categoryTitleEl = document.getElementById('category-chart-title');
+    const monthlyTitleEl = document.getElementById('monthly-chart-title');
+
+    const prefix = selectedCategory ? selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1) + ' — ' : '';
+
+    if (categoryTitleEl) categoryTitleEl.textContent = prefix + 'Category Distribution';
+    if (monthlyTitleEl) monthlyTitleEl.textContent = prefix + 'Monthly Trend';
+
+    const categoryData = {
+        labels: categoryBreakdown.map(c => c[0].charAt(0).toUpperCase() + c[0].slice(1)),
+        expenses: categoryBreakdown.map(c => c[1])
+    };
+
+    const monthlyData = {
+        labels: monthly.map(m => m[0]),
+        income: monthly.map(m => m[2]),
+        expenses: monthly.map(m => m[1])
+    };
+
+    const hasData = monthly.length > 0;
+
+    if (chartsContainer) {
+        chartsContainer.style.display = hasData ? '' : 'none';
     }
-    
-    fetch(url)
-        .then(response => response.json())
-        .then(data => {
-            renderCategoryChart(data.categories);
-            renderMonthlyChart(data.monthly);
-        })
-        .catch(error => {
-            console.error('Error loading chart data:', error);
-        });
+
+    if (!hasData) return;
+
+    updateCategoryChart(categoryData);
+    updateMonthlyChart(monthlyData);
 }
 
 /**
- * Render category doughnut chart
+ * Creates the category doughnut chart on first call; updates data on subsequent calls.
  */
-function renderCategoryChart(data) {
-    const categoryCtx = document.getElementById('categoryChart');
-    if (!categoryCtx || !data.labels || data.labels.length === 0) return;
-    
-    // Destroy existing chart if it exists
+function updateCategoryChart(data) {
+    const ctx = document.getElementById('categoryChart');
+    if (!ctx) return;
+
     if (categoryChartInstance) {
-        categoryChartInstance.destroy();
+        categoryChartInstance.data.labels = data.labels;
+        categoryChartInstance.data.datasets[0].data = data.expenses;
+        categoryChartInstance.update();
+        return;
     }
-    
-    categoryChartInstance = new Chart(categoryCtx, {
+
+    categoryChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+            labels: data.labels,
             datasets: [{
                 label: 'Expenses',
                 data: data.expenses,
-                backgroundColor: [
-                    '#d63031', '#0984e3', '#d63384', '#e17055',
-                    '#00b894', '#6c5ce7', '#636e72', '#fdcb6e',
-                    '#ff7675', '#74b9ff'
-                ],
+                backgroundColor: CATEGORY_COLORS,
                 borderWidth: 2,
                 borderColor: '#fff'
             }]
@@ -87,18 +103,21 @@ function renderCategoryChart(data) {
 }
 
 /**
- * Render monthly line chart
+ * Creates the monthly line chart on first call; updates data on subsequent calls.
  */
-function renderMonthlyChart(data) {
-    const monthlyCtx = document.getElementById('monthlyChart');
-    if (!monthlyCtx || !data.labels || data.labels.length === 0) return;
-    
-    // Destroy existing chart if it exists
+function updateMonthlyChart(data) {
+    const ctx = document.getElementById('monthlyChart');
+    if (!ctx) return;
+
     if (monthlyChartInstance) {
-        monthlyChartInstance.destroy();
+        monthlyChartInstance.data.labels = data.labels;
+        monthlyChartInstance.data.datasets[0].data = data.income;
+        monthlyChartInstance.data.datasets[1].data = data.expenses;
+        monthlyChartInstance.update();
+        return;
     }
-    
-    monthlyChartInstance = new Chart(monthlyCtx, {
+
+    monthlyChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: data.labels,
@@ -136,7 +155,7 @@ function renderMonthlyChart(data) {
             maintainAspectRatio: true,
             interaction: {
                 mode: 'index',
-                intersect: false,
+                intersect: false
             },
             plugins: {
                 legend: {
@@ -173,5 +192,51 @@ function renderMonthlyChart(data) {
     });
 }
 
-// Make function globally available
-window.initializeCharts = initializeCharts;
+/**
+ * Fetches fresh chart data for the given query string and updates charts in-place.
+ * Called by filter_component.js when filters change on a page that has charts.
+ */
+function refreshCharts(queryString) {
+    const url = '/api/chart-data' + (queryString ? '?' + queryString : '');
+
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            const categoryBreakdown = data.categories.labels.map((label, i) => [
+                label,
+                data.categories.expenses[i],
+                data.categories.income[i]
+            ]);
+            const monthly = data.monthly.labels.map((label, i) => [
+                label,
+                data.monthly.expenses[i],
+                data.monthly.income[i]
+            ]);
+            updateCharts(categoryBreakdown, monthly, '');
+        })
+        .catch(error => {
+            console.error('Error refreshing chart data:', error);
+        });
+}
+
+/**
+ * Fetches the stats partial and renders it into #stats-container.
+ * Called on page load and whenever transactions change.
+ */
+async function loadStats() {
+    const container = document.getElementById('stats-container');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/api/stats' + window.location.search);
+        const html = await response.text();
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('Error loading stats:', error);
+        container.innerHTML = '<p style="color: #d63031;">Error loading statistics.</p>';
+    }
+}
+
+window.updateCharts = updateCharts;
+window.refreshCharts = refreshCharts;
+window.loadStats = loadStats;

@@ -266,13 +266,20 @@ function applyFilters() {
         : window.location.pathname;
     history.pushState(null, '', newPageUrl);
 
-    // Check if htmx is loaded
-    if (typeof htmx !== 'undefined') {
-        htmx.ajax('GET', url, {target: targetElement, swap: 'innerHTML'});
-    } else {
-        console.error('HTMX is not loaded - falling back to window.location');
-        window.location.href = url;
+    // If charts are present on this page, update them directly without waiting
+    // for the stats swap — avoids a second network round-trip for chart data.
+    if (typeof window.refreshCharts === 'function') {
+        window.refreshCharts(params.join('&'));
     }
+
+    // Fetch the updated partial and swap it into the target element
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            const target = document.querySelector(targetElement);
+            if (target) target.innerHTML = html;
+        })
+        .catch(error => console.error('Error applying filters:', error));
 }
 
 // Initialize filters when DOM is ready
@@ -288,8 +295,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const filterSection = document.querySelector('.filter-section');
         const targetUrl = filterSection?.dataset.targetUrl;
         const targetElement = filterSection?.dataset.targetElement;
-        if (targetUrl && targetElement && typeof htmx !== 'undefined') {
-            htmx.ajax('GET', targetUrl + window.location.search, {target: targetElement, swap: 'innerHTML'});
+        if (targetUrl && targetElement) {
+            fetch(targetUrl + window.location.search)
+                .then(response => response.text())
+                .then(html => {
+                    const target = document.querySelector(targetElement);
+                    if (target) target.innerHTML = html;
+                })
+                .catch(error => console.error('Error restoring filters:', error));
         }
     }
 });

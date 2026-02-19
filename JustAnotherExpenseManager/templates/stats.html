@@ -13,23 +13,13 @@
     </div>
 </div>
 
-{% if monthly %}
-<div class="charts-container">
-    <div class="chart-card">
-        <h3>{% if selected_category %}{{ selected_category|capitalize }} - {% endif %}Category Distribution</h3>
-        <canvas id="categoryChart"></canvas>
-    </div>
-    <div class="chart-card">
-        <h3>{% if selected_category %}{{ selected_category|capitalize }} - {% endif %}Monthly Trend</h3>
-        <canvas id="monthlyChart"></canvas>
-    </div>
-</div>
-
 <script>
-    // Initialize charts with current filter parameters
-    initializeCharts('{{ selected_category or "" }}', '{{ time_range or "" }}', '{{ start_date or "" }}', '{{ end_date or "" }}');
+    updateCharts(
+        {{ category_breakdown | tojson }},
+        {{ monthly | tojson }},
+        '{{ selected_category or "" }}'
+    );
 </script>
-{% endif %}
 
 {% if not selected_category and category_breakdown %}
 <div class="card" style="margin-top: 20px;">

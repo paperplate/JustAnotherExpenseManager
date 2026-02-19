@@ -22,7 +22,6 @@
                 <td>{{ trans.date }}</td>
                 <td>{{ trans.description }}</td>
                 <td>
-                    {# Use .value to get string from enum #}
                     <span class="type-badge type-{{ trans.type.value }}">
                         {{ trans.type.value|capitalize }}
                     </span>
@@ -41,7 +40,6 @@
                     {% endfor %}
                 </td>
                 <td class="amount amount-{{ trans.type.value }}">
-                    {# Use is_income property and amount_dollars #}
                     {% if trans.is_income %}+{% else %}-{% endif %}${{ "%.2f"|format(trans.amount_dollars) }}
                 </td>
                 <td>
@@ -57,11 +55,7 @@
                         Edit
                     </button>
                     <button class="btn btn-delete"
-                            hx-delete="/api/transactions/{{ trans.id }}"
-                            hx-target="#transactions-list"
-                            hx-swap="innerHTML"
-                            hx-confirm="Are you sure you want to delete this transaction?"
-                            hx-on::after-request="htmx.trigger('body', 'refreshStats')">
+                            onclick="deleteTransaction({{ trans.id }})">
                         Delete
                     </button>
                 </td>
@@ -100,10 +94,7 @@
 {% if pagination.total_pages > 1 %}
 <div style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-top: 20px;">
     {% if pagination.page > 1 %}
-        <button class="btn"
-                hx-get="/api/transactions?page={{ pagination.page - 1 }}"
-                hx-target="#transactions-list"
-                hx-swap="innerHTML">
+        <button class="btn" onclick="loadTransactions({{ pagination.page - 1 }})">
             ← Previous Month
         </button>
     {% endif %}
@@ -113,10 +104,7 @@
     </span>
 
     {% if pagination.page < pagination.total_pages %}
-        <button class="btn"
-                hx-get="/api/transactions?page={{ pagination.page + 1 }}"
-                hx-target="#transactions-list"
-                hx-swap="innerHTML">
+        <button class="btn" onclick="loadTransactions({{ pagination.page + 1 }})">
             Next Month →
         </button>
     {% endif %}

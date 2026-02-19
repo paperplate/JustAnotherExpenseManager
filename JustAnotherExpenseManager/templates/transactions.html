@@ -6,10 +6,7 @@
 <!-- Add Transaction Form -->
 <div class="card">
     <h2 style="margin-bottom: 20px; color: #333;">Add Transaction</h2>
-    <form hx-post="/api/transactions"
-          hx-target="#transactions-list"
-          hx-swap="innerHTML"
-          hx-on::after-request="this.reset(); htmx.trigger('body', 'refreshStats')">
+    <form id="add-transaction-form">
         <div class="form-row">
             <div class="form-group">
                 <label for="description">Description</label>
@@ -77,10 +74,7 @@
 <!-- Transactions List -->
 <div class="card">
     <h2 style="margin-bottom: 20px; color: #333;">Transactions</h2>
-    <div id="transactions-list"
-         hx-get="/api/transactions"
-         hx-trigger="load"
-         hx-swap="innerHTML">
+    <div id="transactions-list">
         <div class="empty-state">Loading transactions...</div>
     </div>
 </div>

@@ -5,21 +5,35 @@
 {% block content %}
 <div class="card">
     <h1 style="color: #333; margin-bottom: 20px;">Financial Summary</h1>
-    
+
     {% set target_url = '/api/stats' %}
     {% set target_element = '#stats-container' %}
     {% set default_range = '6_months' %}
     {% include 'filter_component.html' %}
 </div>
 
-<div id="stats-container" 
-     hx-get="/api/stats" 
-     hx-trigger="load, refreshStats from:body"
-     hx-swap="innerHTML">
+<!-- Charts live here, outside the swap target, so canvases are never destroyed -->
+<div class="charts-container" id="charts-container" style="display: none;">
+    <div class="chart-card">
+        <h3 id="category-chart-title">Category Distribution</h3>
+        <canvas id="categoryChart"></canvas>
+    </div>
+    <div class="chart-card">
+        <h3 id="monthly-chart-title">Monthly Trend</h3>
+        <canvas id="monthlyChart"></canvas>
+    </div>
+</div>
+
+<div id="stats-container">
     <div class="card">Loading statistics...</div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
 <script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+<script>
+    // Load stats on page load, and re-load when transactions change
+    loadStats();
+    document.addEventListener('transactionsChanged', loadStats);
+</script>
 {% endblock %}
