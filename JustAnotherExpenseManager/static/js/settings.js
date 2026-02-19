@@ -32,10 +32,10 @@ async function loadCategories() {
             const item = document.createElement('div');
             item.className = 'category-item';
             item.innerHTML = `
-                <span class="category-name">${cat.name}</span>
+                <span class="category-name">${cat.category_name}</span>
                 <div class="category-actions">
-                    <button class="btn btn-edit btn-small" onclick="editCategory('${cat.name}')">Edit</button>
-                    <button class="btn btn-delete btn-small" onclick="deleteCategory('${cat.name}')">Delete</button>
+                    <button class="btn btn-edit btn-small" onclick="editCategory('${cat.category_name}')">Edit</button>
+                    <button class="btn btn-delete btn-small" onclick="deleteCategory('${cat.category_name}')">Delete</button>
                 </div>
             `;
             categoryList.appendChild(item);

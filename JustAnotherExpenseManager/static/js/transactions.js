@@ -67,8 +67,8 @@ async function loadCategorySelect() {
 
         categories.forEach(cat => {
             const option = document.createElement('option');
-            option.value = cat.name;
-            option.textContent = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+            option.value = cat.category_name;
+            option.textContent = cat.category_name.charAt(0).toUpperCase() + cat.category_name.slice(1);
             select.appendChild(option);
         });
     } catch (error) {
@@ -191,9 +191,9 @@ async function editTransaction(button) {
 
         categories.forEach(cat => {
             const option = document.createElement('option');
-            option.value = cat.name;
-            option.textContent = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
-            if (cat.name === category) option.selected = true;
+            option.value = cat.category_name;
+            option.textContent = cat.category_name.charAt(0).toUpperCase() + cat.category_name.slice(1);
+            if (cat.category_name === category) option.selected = true;
             select.appendChild(option);
         });
     } catch (error) {
