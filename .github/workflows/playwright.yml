@@ -35,15 +35,21 @@ jobs:
     
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
-    
+
     - name: Initialize Database
       run: |
-        export DATABASE_TYPE=sqlite
-        export SQLITE_PATH=./test-expenses.db
-        python -c "from utils.database import init_db; init_db()"
-    
+        python -c "
+        from JustAnotherExpenseManager.utils.database import get_database_manager
+        db = get_database_manager()
+        db.init_database()
+        print('Database initialized successfully.')
+        "
+      env:
+        DATABASE_TYPE: sqlite
+        SQLITE_PATH: ./test-expenses.db
+
     - name: Run Playwright tests
-      run: npm test
+      run: npx playwright test --project=chromium
       env:
         CI: true
         DATABASE_TYPE: sqlite

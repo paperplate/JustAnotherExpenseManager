@@ -71,9 +71,13 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'python app.py',
+    command: 'JustAnotherExpenseManager',
     url: 'http://localhost:5000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
+    env: {
+      DATABASE_TYPE: process.env.DATABASE_TYPE || 'sqlite',
+      SQLITE_PATH: process.env.SQLITE_PATH || './data/expenses.db',
+    },
   },
 });
