@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', function() {
         dateInput.valueAsDate = new Date();
     }
 
-    loadCategories();
+    loadCategorySelect();
 
     const addForm = document.getElementById('add-transaction-form');
     if (addForm) {
@@ -55,7 +55,7 @@ async function loadTransactions(page) {
 /**
  * Load categories for the add-transaction category dropdown.
  */
-async function loadCategories() {
+async function loadCategorySelect() {
     try {
         const response = await fetch('/api/categories');
         const categories = await response.json();
