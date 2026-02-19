@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Copy package metadata first
 COPY pyproject.toml .
+COPY README.md .
 
 # Install pip
 RUN pip install --upgrade pip
@@ -16,5 +17,4 @@ RUN pip install -e .
 
 EXPOSE 5000
 
-#CMD ["python", "-m", "JustAnotherExpenseManager"]
 CMD ["flask", "--app", "JustAnotherExpenseManager", "run", "--debug"]
