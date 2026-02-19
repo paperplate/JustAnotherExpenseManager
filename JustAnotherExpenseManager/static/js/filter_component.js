@@ -123,14 +123,14 @@ async function loadCategories() {
 
         categories.forEach(cat => {
             const li = document.createElement('li');
-            const displayName = cat.name.charAt(0).toUpperCase() + cat.name.slice(1);
+            const displayName = cat.category_name.charAt(0).toUpperCase() + cat.category_name.slice(1);
 
             li.className = 'filter-option';
-            li.dataset.value = cat.name;
+            li.dataset.value = cat.category_name;
             li.textContent = displayName;
             li.onclick = () => selectCategory(li);
 
-            if (selectedCategories.includes(cat.name)) {
+            if (selectedCategories.includes(cat.category_name)) {
                 li.classList.add('selected');
             }
 
@@ -144,8 +144,7 @@ async function loadCategories() {
             updateCategorySummary();
             const details = document.getElementById('category-details');
             if (details) details.open = true;
-        }
-    } catch (error) {
+        }    } catch (error) {
         console.error('Error loading categories:', error);
     }
 }
