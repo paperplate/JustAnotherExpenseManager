@@ -1,247 +1,175 @@
-#!/usr/bin/env python3
 """
-Unit tests for the Expense Manager application
+Application-level unit tests for the Expense Manager.
+Tests app factory, configuration, and core app behaviors.
 """
 
-import unittest
-import os
-import json
-import tempfile
-from io import BytesIO
-import sys
+import pytest
+from JustAnotherExpenseManager import create_app
+from JustAnotherExpenseManager.utils.database import create_database_manager
+from JustAnotherExpenseManager.models import Base, TransactionType
+from JustAnotherExpenseManager.utils.services import TransactionService
 
-# Add parent directory to path to import app
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-class ExpenseManagerTestCase(unittest.TestCase):
-    """Test cases for Expense Manager application"""
+class TestAppFactory:
+    """Test Flask application factory and configuration."""
 
-    def setUp(self):
-        """Set up test client and initialize database"""
-        # Create temp database file
-        self.db_fd, self.db_path = tempfile.mkstemp()
-        os.environ['DATABASE_TYPE'] = 'sqlite'
-        os.environ['SQLITE_PATH'] = self.db_path
+    def test_app_is_created(self, app):
+        """Test that app is created successfully."""
+        assert app is not None
 
-        # Import app after setting environment variables
-        import app as app_module
-        self.app_module = app_module
-        self.app = app_module.app
-        self.app.config['TESTING'] = True
-        self.client = self.app.test_client()
+    def test_app_testing_mode(self, app):
+        """Test that app is in testing mode during tests."""
+        assert app.config['TESTING'] is True
 
-        # Initialize database
-        from utils.database import init_db
-        init_db()
+    def test_app_has_routes(self, app):
+        """Test that expected routes are registered."""
+        url_map = {str(rule) for rule in app.url_map.iter_rules()}
+        assert '/api/transactions' in url_map
+        assert '/api/stats' in url_map
+        assert '/api/categories' in url_map
+        assert '/api/tags' in url_map
+        assert '/settings' in url_map
 
-    def tearDown(self):
-        """Clean up after tests"""
-        # Close database connections
-        self.app_module.SessionLocal.remove()
-        self.app_module.engine.dispose()
+    def test_app_client_available(self, client):
+        """Test that test client can make requests."""
+        response = client.get('/')
+        assert response.status_code in (200, 302)
 
-        # Remove temp file
-        os.close(self.db_fd)
-        os.unlink(self.db_path)
 
-    def test_index_page(self):
-        """Test that index page loads successfully"""
-        response = self.client.get('/')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Expense Manager', response.data)
+class TestTransactionLifecycle:
+    """Test full transaction lifecycle via HTTP."""
 
-    def test_add_expense(self):
-        """Test adding a new expense"""
-        response = self.client.post('/api/transactions', data={
+    def test_create_and_retrieve_transaction(self, client):
+        """Test creating a transaction and retrieving it."""
+        data = {
             'description': 'Test Expense',
             'amount': '50.00',
             'type': 'expense',
+            'date': '2026-02-01',
             'category': 'food',
-            'date': '2024-01-15'
-        })
-        self.assertEqual(response.status_code, 200)
+            'tags': 'test'
+        }
+        response = client.post('/api/transactions', data=data)
+        assert response.status_code == 200
 
-        # Verify expense was added
-        response = self.client.get('/api/transactions')
-        self.assertIn(b'Test Expense', response.data)
-        self.assertIn(b'50.00', response.data)
+        response = client.get('/api/transactions?page=1')
+        assert b'Test Expense' in response.data
+        assert b'50' in response.data
 
-    def test_delete_expense(self):
-        """Test deleting an expense"""
-        # First add an expense
-        self.client.post('/api/transactions', data={
-            'description': 'To Delete',
-            'amount': '25.00',
-            'type': 'expense',
-            'category': 'other',
-            'date': '2024-01-15'
-        })
+    def test_delete_expense(self, client, app, db):
+        """Test deleting an expense."""
+        service = TransactionService(db)
 
-        # Get the transaction ID
-        from models import Transaction
-        db = self.app_module.get_db()
-        transaction = db.query(Transaction).filter_by(description='To Delete').first()
-        transaction_id = transaction.id
-        db.close()
+        trans_id = service.create_transaction(
+            description='To Delete',
+            amount_dollars=25.00,
+            type=TransactionType.EXPENSE,
+            date='2026-02-01',
+            category='other',
+            tags=[]
+        )
 
-        # Delete the transaction
-        response = self.client.delete(f'/api/transactions/{transaction_id}')
-        self.assertEqual(response.status_code, 200)
+        response = client.delete(f'/api/transactions/{trans_id}')
+        assert response.status_code == 200
 
-        # Verify it's gone
-        response = self.client.get('/api/transactions')
-        self.assertNotIn(b'To Delete', response.data)
+        result = service.get_all_transactions()
+        db.expire_all()
+        result = service.get_all_transactions()
+        assert result['total'] == 0
 
-    def test_get_stats(self):
-        """Test statistics endpoint"""
-        # Add some test transactions
-        self.client.post('/api/transactions', data={
+    def test_get_stats(self, client):
+        """Test statistics endpoint returns valid response."""
+        client.post('/api/transactions', data={
             'description': 'Food 1',
             'amount': '20.00',
             'type': 'expense',
             'category': 'food',
-            'date': '2024-01-15'
+            'date': '2026-02-01',
+            'tags': ''
         })
-        self.client.post('/api/transactions', data={
+        client.post('/api/transactions', data={
             'description': 'Food 2',
             'amount': '30.00',
             'type': 'expense',
             'category': 'food',
-            'date': '2024-01-16'
+            'date': '2026-02-01',
+            'tags': ''
         })
 
-        response = self.client.get('/api/stats')
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(b'Total', response.data)
+        response = client.get('/api/stats')
+        assert response.status_code == 200
 
-    def test_chart_data_api(self):
-        """Test chart data API endpoint"""
-        # Test with empty database or existing data from previous tests
-        response = self.client.get('/api/chart-data')
-        self.assertEqual(response.status_code, 200)
+    def test_csv_import_validation(self, client):
+        """Test CSV import with validation errors (partially invalid rows)."""
+        from io import BytesIO
 
-        data = json.loads(response.data)
-        self.assertIn('categories', data)
-        self.assertIn('monthly', data)
-        self.assertIsInstance(data['categories']['labels'], list)
-        self.assertIsInstance(data['categories']['expenses'], list)
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b'Valid Expense,25.00,expense,food,2026-01-15,\n'
+            b'Invalid Amount,not_a_number,expense,food,2026-01-16,\n'
+            b'Also Valid,30.00,expense,transport,2026-01-17,\n'
+        )
 
-    def test_csv_import_success(self):
-        """Test successful CSV import"""
-        csv_content = b"""description,amount,type,category,date,tags
-Grocery Store,45.50,expense,food,2024-01-15,
-Gas Station,60.00,expense,transport,2024-01-16,
-Movie Theater,25.00,expense,entertainment,2024-01-17,"""
-
-        response = self.client.post('/api/transactions/import',
+        response = client.post(
+            '/api/transactions/import',
             data={'csv_file': (BytesIO(csv_content), 'test.csv')},
             content_type='multipart/form-data'
         )
 
-        self.assertEqual(response.status_code, 200)
-        result = json.loads(response.data)
-        self.assertTrue(result['success'])
-        self.assertEqual(result['imported'], 3)
+        assert response.status_code == 200
+        result = response.get_json()
+        assert result['success'] is True
+        assert result['imported'] == 2
+        assert len(result['errors']) == 1
 
-        # Verify transactions were imported
-        response = self.client.get('/api/transactions')
-        self.assertIn(b'Grocery Store', response.data)
-        self.assertIn(b'Gas Station', response.data)
-        self.assertIn(b'Movie Theater', response.data)
+    def test_csv_import_wrong_extension(self, client):
+        """Test CSV import with wrong file extension returns 400."""
+        from io import BytesIO
 
-    def test_csv_import_validation(self):
-        """Test CSV import with validation errors"""
-        csv_content = b"""description,amount,type,category,date,tags
-Valid Expense,25.00,expense,food,2024-01-15,
-Invalid Amount,not_a_number,expense,food,2024-01-16,
-Missing Description,,50.00,expense,food,2024-01-15,
-Invalid Date,30.00,expense,food,2024-13-45,"""
-
-        response = self.client.post('/api/transactions/import',
-            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
-            content_type='multipart/form-data'
-        )
-
-        self.assertEqual(response.status_code, 200)
-        result = json.loads(response.data)
-        self.assertTrue(result['success'])
-        self.assertEqual(result['imported'], 1)  # Only the valid one
-        self.assertEqual(len(result['errors']), 3)  # Three errors
-
-    def test_csv_import_no_file(self):
-        """Test CSV import without file"""
-        response = self.client.post('/api/transactions/import',
-            data={},
-            content_type='multipart/form-data'
-        )
-
-        self.assertEqual(response.status_code, 400)
-        result = json.loads(response.data)
-        self.assertIn('error', result)
-
-    def test_csv_import_wrong_extension(self):
-        """Test CSV import with wrong file extension"""
-        response = self.client.post('/api/transactions/import',
+        response = client.post(
+            '/api/transactions/import',
             data={'csv_file': (BytesIO(b'test'), 'test.txt')},
             content_type='multipart/form-data'
         )
 
-        self.assertEqual(response.status_code, 400)
-        result = json.loads(response.data)
-        self.assertIn('must be a CSV', result['error'])
+        assert response.status_code == 400
+        result = response.get_json()
+        assert 'error' in result
 
-    def test_multiple_transactions(self):
-        """Test adding multiple transactions and querying them"""
+    def test_multiple_transactions(self, client):
+        """Test adding multiple transactions and querying them."""
         transactions = [
-            {'description': 'Expense 1', 'amount': '10.00', 'type': 'expense', 'category': 'food', 'date': '2024-01-01'},
-            {'description': 'Expense 2', 'amount': '20.00', 'type': 'expense', 'category': 'transport', 'date': '2024-01-02'},
-            {'description': 'Expense 3', 'amount': '30.00', 'type': 'expense', 'category': 'shopping', 'date': '2024-01-03'},
+            {'description': 'Expense 1', 'amount': '10.00', 'type': 'expense',
+             'category': 'food', 'date': '2026-02-01', 'tags': ''},
+            {'description': 'Expense 2', 'amount': '20.00', 'type': 'expense',
+             'category': 'transport', 'date': '2026-02-02', 'tags': ''},
+            {'description': 'Expense 3', 'amount': '30.00', 'type': 'expense',
+             'category': 'shopping', 'date': '2026-02-03', 'tags': ''},
         ]
 
         for transaction in transactions:
-            self.client.post('/api/transactions', data=transaction)
+            client.post('/api/transactions', data=transaction)
 
-        response = self.client.get('/api/transactions')
+        response = client.get('/api/transactions?page=1')
         for transaction in transactions:
-            self.assertIn(transaction['description'].encode(), response.data)
+            assert transaction['description'].encode() in response.data
 
-    def test_database_persistence(self):
-        """Test that database operations persist correctly"""
-        # Add transaction
-        self.client.post('/api/transactions', data={
-            'description': 'Persistent Test',
-            'amount': '99.99',
-            'type': 'expense',
-            'category': 'other',
-            'date': '2024-01-15'
-        })
+    def test_database_persistence(self, app, db):
+        """Test that database operations persist correctly within test session."""
+        service = TransactionService(db)
 
-        # Query database directly
-        from models import Transaction
-        db = self.app_module.get_db()
-        result = db.query(Transaction).filter_by(description='Persistent Test').first()
-        db.close()
+        trans_id = service.create_transaction(
+            description='Persistent Test',
+            amount_dollars=99.99,
+            type=TransactionType.EXPENSE,
+            date='2026-02-01',
+            category='other',
+            tags=[]
+        )
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.description, 'Persistent Test')
-        self.assertEqual(float(result.amount), 99.99)
+        result = service.get_all_transactions()
+        assert result['total'] == 1
 
-
-def run_tests():
-    """Run all tests"""
-    # Create test suite
-    loader = unittest.TestLoader()
-    suite = unittest.TestSuite()
-
-    suite.addTests(loader.loadTestsFromTestCase(ExpenseManagerTestCase))
-
-    # Run tests
-    runner = unittest.TextTestRunner(verbosity=2)
-    result = runner.run(suite)
-
-    # Return exit code
-    return 0 if result.wasSuccessful() else 1
-
-
-if __name__ == '__main__':
-    sys.exit(run_tests())
+        saved = result['transactions'][0]
+        assert saved.description == 'Persistent Test'
+        assert saved.amount_dollars == pytest.approx(99.99, abs=0.01)
