@@ -3,8 +3,7 @@ Routes for category operations.
 """
 
 from typing import Tuple, Union
-from flask import Blueprint, request, jsonify, Response
-from JustAnotherExpenseManager.utils.database import get_db
+from flask import Blueprint, request, jsonify, Response, g
 from JustAnotherExpenseManager.utils.services import CategoryService
 
 categories_bp = Blueprint('categories', __name__)
@@ -18,13 +17,9 @@ def get_categories() -> Response:
     Returns:
         Response: JSON response with list of categories
     """
-    db = get_db()
-    try:
-        service = CategoryService(db)
-        categories = service.get_all_categories()
-        return jsonify(categories)
-    finally:
-        db.close()
+    service = CategoryService(g.db)
+    categories = service.get_all_categories()
+    return jsonify(categories)
 
 
 @categories_bp.route('/api/categories', methods=['POST'])
@@ -40,22 +35,19 @@ def add_category() -> Union[Response, Tuple[Response, int]]:
 
     category_name: str = request.json.get('name', '').strip().lower()
 
-    # Validate category name
     if not category_name:
         return jsonify({'error': 'Category name required'}), 400
 
     if len(category_name) > 50:
         return jsonify({'error': 'Category name too long (max 50 characters)'}), 400
 
-    # Check for invalid characters
     if not category_name.replace('_', '').replace('-', '').isalnum():
         return jsonify({
             'error': 'Category name can only contain letters, numbers, hyphens and underscores'
         }), 400
 
-    db = get_db()
     try:
-        service = CategoryService(db)
+        service = CategoryService(g.db)
         tag, error = service.create_category(category_name)
 
         if error:
@@ -63,10 +55,8 @@ def add_category() -> Union[Response, Tuple[Response, int]]:
 
         return jsonify({'success': True, 'category': category_name})
     except Exception as exc:  # pylint: disable=broad-except
-        db.rollback()
+        g.db.rollback()
         return jsonify({'error': f'Failed to create category: {str(exc)}'}), 500
-    finally:
-        db.close()
 
 
 @categories_bp.route('/api/categories/<category_name>', methods=['PUT'])
@@ -88,17 +78,13 @@ def update_category(category_name: str) -> Union[Response, Tuple[Response, int]]
     if not new_name:
         return jsonify({'error': 'Category name required'}), 400
 
-    db = get_db()
-    try:
-        service = CategoryService(db)
-        success, error = service.update_category(category_name, new_name)
+    service = CategoryService(g.db)
+    success, error = service.update_category(category_name, new_name)
 
-        if error:
-            return jsonify({'error': error}), 400
+    if error:
+        return jsonify({'error': error}), 400
 
-        return jsonify({'success': True, 'category': new_name})
-    finally:
-        db.close()
+    return jsonify({'success': True, 'category': new_name})
 
 
 @categories_bp.route('/api/categories/<category_name>', methods=['DELETE'])
@@ -112,17 +98,13 @@ def delete_category(category_name: str) -> Union[Response, Tuple[Response, int]]
     Returns:
         Union[Response, Tuple[Response, int]]: JSON response with success or error
     """
-    db = get_db()
-    try:
-        service = CategoryService(db)
-        success, error = service.delete_category(category_name)
+    service = CategoryService(g.db)
+    success, error = service.delete_category(category_name)
 
-        if error:
-            return jsonify({'error': error}), 400
+    if error:
+        return jsonify({'error': error}), 400
 
-        return jsonify({'success': True})
-    finally:
-        db.close()
+    return jsonify({'success': True})
 
 
 @categories_bp.route('/api/tags', methods=['GET'])
@@ -133,10 +115,6 @@ def get_tags() -> Response:
     Returns:
         Response: JSON response with list of tags
     """
-    db = get_db()
-    try:
-        service = CategoryService(db)
-        tags = service.get_all_tags()
-        return jsonify(tags)
-    finally:
-        db.close()
+    service = CategoryService(g.db)
+    tags = service.get_all_tags()
+    return jsonify(tags)
