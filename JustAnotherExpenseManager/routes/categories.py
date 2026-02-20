@@ -118,3 +118,51 @@ def get_tags() -> Response:
     service = CategoryService(g.db)
     tags = service.get_all_tags()
     return jsonify(tags)
+
+
+@categories_bp.route('/api/tags/<tag_name>', methods=['PUT'])
+def rename_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Rename a non-category tag.
+
+    Args:
+        tag_name: Current tag name
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    new_name: str = request.json.get('name', '').strip()
+
+    if not new_name:
+        return jsonify({'error': 'Tag name required'}), 400
+
+    service = CategoryService(g.db)
+    success, error = service.rename_tag(tag_name, new_name)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True, 'tag': new_name})
+
+
+@categories_bp.route('/api/tags/<tag_name>', methods=['DELETE'])
+def delete_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Delete a non-category tag.
+
+    Args:
+        tag_name: Name of tag to delete
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    service = CategoryService(g.db)
+    success, error = service.delete_tag(tag_name)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True})

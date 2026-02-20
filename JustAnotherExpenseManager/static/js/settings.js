@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', function() {
     if (document.getElementById('categories-list')) {
         loadCategories();
     }
+    if (document.getElementById('tags-list')) {
+        loadTags();
+    }
 });
 
 /**
@@ -17,17 +20,17 @@ async function loadCategories() {
     try {
         const response = await fetch('/api/categories');
         const categories = await response.json();
-        
+
         const list = document.getElementById('categories-list');
-        
+
         if (categories.length === 0) {
             list.innerHTML = '<p style="color: #666; text-align: center;">No categories yet. Add one above!</p>';
             return;
         }
-        
+
         list.innerHTML = '<div class="category-list"></div>';
         const categoryList = list.querySelector('.category-list');
-        
+
         categories.forEach(cat => {
             const item = document.createElement('div');
             item.className = 'category-item';
@@ -188,10 +191,122 @@ async function populateTestData() {
     }
 }
 
+/**
+ * Load and display all non-category tags
+ */
+async function loadTags() {
+    try {
+        const response = await fetch('/api/tags');
+        const tags = await response.json();
+
+        const list = document.getElementById('tags-list');
+
+        if (tags.length === 0) {
+            list.innerHTML = '<p style="color: #666; text-align: center;">No tags yet. Add tags to transactions to see them here.</p>';
+            return;
+        }
+
+        list.innerHTML = '<div class="category-list"></div>';
+        const tagList = list.querySelector('.category-list');
+
+        tags.forEach(tag => {
+            const item = document.createElement('div');
+            item.className = 'category-item';
+            item.innerHTML = `
+                <span class="category-name">${tag}</span>
+                <div class="category-actions">
+                    <button class="btn btn-edit btn-small" onclick="editTag('${tag}')">Edit</button>
+                    <button class="btn btn-delete btn-small" onclick="deleteTag('${tag}')">Delete</button>
+                </div>
+            `;
+            tagList.appendChild(item);
+        });
+    } catch (error) {
+        console.error('Error loading tags:', error);
+    }
+}
+
+/**
+ * Open edit modal for a tag
+ */
+function editTag(name) {
+    document.getElementById('edit-tag-old').value = name;
+    document.getElementById('edit-tag-name').value = name;
+    document.getElementById('editTagModal').style.display = 'block';
+}
+
+/**
+ * Close edit tag modal
+ */
+function closeEditTagModal() {
+    document.getElementById('editTagModal').style.display = 'none';
+}
+
+/**
+ * Save renamed tag
+ */
+async function saveEditTag() {
+    const oldName = document.getElementById('edit-tag-old').value;
+    const newName = document.getElementById('edit-tag-name').value.trim();
+
+    if (!newName) {
+        alert('Please enter a tag name');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/tags/${encodeURIComponent(oldName)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            closeEditTagModal();
+            loadTags();
+        } else {
+            alert('❌ ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+/**
+ * Delete a tag
+ */
+async function deleteTag(name) {
+    if (!confirm(`Are you sure you want to delete the tag "${name}"? This will remove it from all associated transactions.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/tags/${encodeURIComponent(name)}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            loadTags();
+        } else {
+            alert('❌ ' + result.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
 // Make functions globally available
 window.addCategory = addCategory;
 window.editCategory = editCategory;
 window.closeEditCategoryModal = closeEditCategoryModal;
 window.saveEditCategory = saveEditCategory;
 window.deleteCategory = deleteCategory;
+window.editTag = editTag;
+window.closeEditTagModal = closeEditTagModal;
+window.saveEditTag = saveEditTag;
+window.deleteTag = deleteTag;
 window.populateTestData = populateTestData;

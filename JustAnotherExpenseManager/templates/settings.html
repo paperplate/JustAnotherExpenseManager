@@ -38,6 +38,21 @@
         </div>
     </div>
     
+    <!-- Tag Management -->
+    <div class="settings-section">
+        <h3>Tag Management</h3>
+
+        <div class="setting-item">
+            <div class="setting-label">Existing Tags</div>
+            <div class="setting-description">
+                Manage tags that have been applied to transactions. Renaming a tag updates it on all associated transactions. Deleting a tag removes it from all transactions.
+            </div>
+            <div id="tags-list" style="margin-top: 15px;">
+                <div style="text-align: center; color: #666;">Loading tags...</div>
+            </div>
+        </div>
+    </div>
+
     <!-- Development Tools -->
     {% if debug_mode %}
     <div class="settings-section">
@@ -115,6 +130,27 @@
                 <strong>Features:</strong> Income & Expense Tracking, Custom Categories, Flexible Tagging,
                 Interactive Charts, CSV Import/Export, Multiple Database Backends, Transaction Editing
             </p>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Tag Modal -->
+<div id="editTagModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Rename Tag</h2>
+            <span class="close" onclick="closeEditTagModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-tag-old">
+            <div class="form-group">
+                <label for="edit-tag-name">Tag Name</label>
+                <input type="text" id="edit-tag-name" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditTagModal()">Cancel</button>
+            <button class="btn" onclick="saveEditTag()">Save Changes</button>
         </div>
     </div>
 </div>

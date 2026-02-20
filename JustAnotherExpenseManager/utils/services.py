@@ -8,7 +8,7 @@ This version requires proper types:
 
 import random
 from typing import Optional, List, Dict, Any, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from sqlalchemy import func, and_
 from datetime import datetime, timedelta
 
@@ -122,13 +122,15 @@ class TransactionService:
         if categories:
             category_list = [f'category:{c.strip()}' for c in categories.split(',') if c.strip()]
             if category_list:
-                query = query.join(Transaction.tags).filter(Tag.name.in_(category_list))
+                CategoryTag = aliased(Tag)
+                query = query.join(CategoryTag, Transaction.tags).filter(CategoryTag.name.in_(category_list))
 
         # Apply tag filter
         if tags:
             tag_list = [t.strip() for t in tags.split(',') if t.strip()]
             if tag_list:
-                query = query.join(Transaction.tags).filter(Tag.name.in_(tag_list))
+                FilterTag = aliased(Tag)
+                query = query.join(FilterTag, Transaction.tags).filter(FilterTag.name.in_(tag_list))
 
         # Get all filtered transactions
         all_transactions = query.order_by(Transaction.date.desc(), Transaction.id.desc()).all()
@@ -309,45 +311,55 @@ class StatsService:
         Returns:
             List of tuples: (category_name, expenses_dollars, income_dollars)
         """
-        # Get all category tags
+        # Resolve the full set of matching transaction IDs first.
+        # This avoids join collisions when _build_filtered_query has already
+        # joined transaction_tags for a tag filter and we then need to join
+        # it again to find each category.
+        base_ids = [
+            t.id for t in self._build_filtered_query(
+                categories, time_range, start_date, end_date, tags
+            ).all()
+        ]
+
+        if not base_ids:
+            return []
+
         category_tags = self.db.query(Tag).filter(Tag.name.like('category:%')).all()
 
         results = []
         for cat_tag in category_tags:
             category_name = cat_tag.category_name
 
-            # Build filtered query for this category
-            base_query = self._build_filtered_query(
-                categories, time_range, start_date, end_date, tags
+            CatAlias = aliased(Tag)
+            expense_cents = (
+                self.db.query(func.sum(Transaction.amount_cents))
+                .join(CatAlias, Transaction.tags)
+                .filter(
+                    Transaction.id.in_(base_ids),
+                    CatAlias.name == cat_tag.name,
+                    Transaction.type == TransactionType.EXPENSE
+                )
+                .scalar() or 0
             )
-            
-            # Add category filter
-            category_query = base_query.join(Transaction.tags).filter(
-                Tag.name == cat_tag.name
+
+            CatAlias2 = aliased(Tag)
+            income_cents = (
+                self.db.query(func.sum(Transaction.amount_cents))
+                .join(CatAlias2, Transaction.tags)
+                .filter(
+                    Transaction.id.in_(base_ids),
+                    CatAlias2.name == cat_tag.name,
+                    Transaction.type == TransactionType.INCOME
+                )
+                .scalar() or 0
             )
 
-            # Get expenses (in cents) - use query directly
-            expense_cents = category_query.filter(
-                Transaction.type == TransactionType.EXPENSE
-            ).with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
-
-            # Get income (in cents) - rebuild query to avoid reuse
-            category_query_income = self._build_filtered_query(
-                categories, time_range, start_date, end_date, tags
-            ).join(Transaction.tags).filter(Tag.name == cat_tag.name)
-            
-            income_cents = category_query_income.filter(
-                Transaction.type == TransactionType.INCOME
-            ).with_entities(func.sum(Transaction.amount_cents)).scalar() or 0
-
-            # Convert to dollars
             expenses = expense_cents / 100.0
             income = income_cents / 100.0
 
             if expenses > 0 or income > 0:
                 results.append((category_name, expenses, income))
 
-        # Sort by total amount descending
         results.sort(key=lambda x: x[1] + x[2], reverse=True)
         return results
 
@@ -439,17 +451,19 @@ class StatsService:
                 start = ranges[time_range]().strftime('%Y-%m-%d')
                 query = query.filter(Transaction.date >= start)
 
-        # Category filter
+        # Category filter — join once for categories
         if categories:
             category_list = [f'category:{c.strip()}' for c in categories.split(',') if c.strip()]
             if category_list:
-                query = query.join(Transaction.tags).filter(Tag.name.in_(category_list))
+                CategoryTag = aliased(Tag)
+                query = query.join(CategoryTag, Transaction.tags).filter(CategoryTag.name.in_(category_list))
 
-        # Tag filter
+        # Tag filter — use a separate alias so this join is independent of the category join
         if tags:
             tag_list = [t.strip() for t in tags.split(',') if t.strip()]
             if tag_list:
-                query = query.join(Transaction.tags).filter(Tag.name.in_(tag_list))
+                FilterTag = aliased(Tag)
+                query = query.join(FilterTag, Transaction.tags).filter(FilterTag.name.in_(tag_list))
 
         return query
 
@@ -475,6 +489,40 @@ class CategoryService:
         """Get all non-category tags."""
         tags = self.db.query(Tag).filter(~Tag.name.like('category:%')).all()
         return [tag.name for tag in tags]
+
+    def rename_tag(self, old_name: str, new_name: str) -> Tuple[bool, Optional[str]]:
+        """Rename a non-category tag across all transactions."""
+        if new_name.startswith('category:'):
+            return False, 'Tag name cannot start with "category:"'
+
+        existing = self.db.query(Tag).filter_by(name=new_name).first()
+        if existing:
+            return False, 'A tag with that name already exists'
+
+        tag = self.db.query(Tag).filter_by(name=old_name).first()
+        if not tag:
+            return False, 'Tag not found'
+
+        if tag.name.startswith('category:'):
+            return False, 'Use the category management section to rename categories'
+
+        tag.name = new_name
+        self.db.commit()
+        return True, None
+
+    def delete_tag(self, tag_name: str) -> Tuple[bool, Optional[str]]:
+        """Delete a non-category tag, removing it from all transactions."""
+        tag = self.db.query(Tag).filter_by(name=tag_name).first()
+
+        if not tag:
+            return False, 'Tag not found'
+
+        if tag.name.startswith('category:'):
+            return False, 'Use the category management section to delete categories'
+
+        self.db.delete(tag)
+        self.db.commit()
+        return True, None
 
     def create_category(self, category_name: str) -> Tuple[Optional[Tag], Optional[str]]:
         """Create a new category."""
