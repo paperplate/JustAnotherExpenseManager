@@ -18,4 +18,5 @@ RUN pip install -e .
 
 EXPOSE 5000
 
-CMD ["flask", "--app", "JustAnotherExpenseManager", "run", "--debug"]
+CMD ["flask", "--app", "JustAnotherExpenseManager", "init-db"]
+CMD ["flask", "--app", "JustAnotherExpenseManager", "run", "--host=0.0.0.0", "--debug"]

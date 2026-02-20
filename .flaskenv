@@ -21,5 +21,5 @@ DATABASE_TYPE=sqlite
 
 # Flask Configuration
 FLASK_ENV=development
-
+FLASK_SERVER_NAME="0.0.0.0"
 FLASK_APP=JustAnotherExpenseManager

@@ -264,7 +264,7 @@ def main():
     # Create and run app
     app = create_app()
     app.run(
-        host='0.0.0.0',
+        host=config.get('FLASK_SERVER_NAME', '0.0.0.0'),
         port=int(config.get('PORT', 5000)),
         debug=(config.get('FLASK_ENV') == 'development')
     )
