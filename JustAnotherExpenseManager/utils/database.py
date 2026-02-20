@@ -169,55 +169,19 @@ class DatabaseManager:
         return self.db_type
 
 
-# Global instance for backward compatibility
-_db_manager = DatabaseManager()
-
-# Export global variables for backward compatibility
-DATABASE_TYPE = _db_manager.db_type
-DATABASE_URL = _db_manager.database_url
-engine = _db_manager.engine
-SessionLocal = _db_manager.SessionLocal
-
-
-# Backward compatible functions
-def get_db() -> Session:
-    """
-    Get database session.
-
-    Returns:
-        Session: SQLAlchemy session object
-    """
-    return _db_manager.get_session()
-
-
-def init_db() -> None:
-    """Initialize database with tables and default data."""
-    _db_manager.init_database()
-
-
-def shutdown_session(exception: Optional[Exception] = None) -> None:
-    """
-    Remove database session at end of request.
-
-    Args:
-        exception: Exception that triggered shutdown (if any)
-    """
-    _db_manager.shutdown_session(exception)
-
-
 def get_database_manager() -> DatabaseManager:
     """
-    Get the global DatabaseManager instance.
+    Create a DatabaseManager instance from environment configuration.
 
     Returns:
-        DatabaseManager: Global database manager
+        DatabaseManager: Configured database manager
     """
-    return _db_manager
+    return DatabaseManager()
 
 
 def create_database_manager(**kwargs) -> DatabaseManager:
     """
-    Create a new DatabaseManager instance with custom configuration.
+    Create a DatabaseManager instance with explicit configuration.
 
     Args:
         **kwargs: Configuration parameters for DatabaseManager
