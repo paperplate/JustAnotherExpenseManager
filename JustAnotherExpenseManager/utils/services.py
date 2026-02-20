@@ -44,6 +44,11 @@ class TransactionService:
             date=date
         )
 
+        # Add to session first so the object is tracked before any flush()
+        # calls inside _get_or_create_tag — avoids the SAWarning about
+        # "Object of type <Transaction> not in session".
+        self.db.add(transaction)
+
         # Add category tag if provided
         if category:
             category_tag = self._get_or_create_tag(f'category:{category}')
@@ -60,7 +65,6 @@ class TransactionService:
                 tag = self._get_or_create_tag(tag_name)
                 transaction.add_tag(tag)
 
-        self.db.add(transaction)
         self.db.commit()
 
         return transaction.id
