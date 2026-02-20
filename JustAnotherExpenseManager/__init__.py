@@ -50,6 +50,7 @@ def create_app(test_config=None, db_manager: DatabaseManager = None):
     # Set up database manager
     if db_manager is None:
         db_manager = get_database_manager()
+        db_manager.init_database()
     app.db_manager = db_manager
 
     # Register blueprints
@@ -257,11 +258,7 @@ def main():
         print(f"Warning: Could not load .flaskenv file: {err}")
         config = {}
 
-    # Initialize database
-    db_manager = get_database_manager()
-    db_manager.init_database()
-
-    # Create and run app
+    # Create and run app (init_database is called inside create_app)
     app = create_app()
     app.run(
         host=config.get('FLASK_SERVER_NAME', '0.0.0.0'),
