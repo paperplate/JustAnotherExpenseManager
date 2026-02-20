@@ -154,7 +154,21 @@ def delete_transaction(transaction_id):
 
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
-    """Import transactions from CSV."""
+    """Import transactions from CSV.
+
+    Accepts flexible column layouts from different sources:
+
+    Column aliases
+    --------------
+    description : also accepted as ``name``
+
+    Type inference
+    --------------
+    If a ``type`` column is present and non-empty it is used directly
+    (``income`` / ``expense``).  When the column is absent or blank the
+    sign of ``amount`` determines the type: negative → expense,
+    positive → income.  The amount stored is always the absolute value.
+    """
     if 'csv_file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
 
@@ -167,7 +181,7 @@ def import_transactions():
         return jsonify({'error': 'File must be a CSV'}), 400
 
     try:
-        stream = StringIO(file.stream.read().decode("UTF8"), newline=None)
+        stream = StringIO(file.stream.read().decode('UTF8'), newline=None)
         csv_reader = csv.DictReader(stream)
 
         service = TransactionService(g.db)
@@ -176,32 +190,45 @@ def import_transactions():
 
         for row_num, row in enumerate(csv_reader, start=2):
             try:
-                description = row.get('description', '').strip()
+                # --- description: accept 'name' as an alias ---
+                description = (
+                    row.get('description') or row.get('name') or ''
+                ).strip()
+
                 amount_str = row.get('amount', '').strip()
-                type_str = row.get('type', 'expense').strip()
+                type_str = row.get('type', '').strip()
                 category = row.get('category', '').strip().lower()
                 date_str = row.get('date', '').strip()
                 tags_str = row.get('tags', '').strip()
 
                 if not all([description, amount_str, date_str]):
-                    errors.append(f"Row {row_num}: Missing required fields")
+                    errors.append(f"Row {row_num}: Missing required fields (description/name, amount, date)")
                     continue
 
                 try:
                     amount = float(amount_str)
-                    if amount <= 0:
-                        errors.append(f"Row {row_num}: Amount must be positive")
-                        continue
                 except ValueError:
                     errors.append(f"Row {row_num}: Invalid amount '{amount_str}'")
                     continue
 
-                # Convert string type to enum
-                try:
-                    trans_type = _parse_transaction_type(type_str)
-                except ValueError:
-                    errors.append(f"Row {row_num}: Type must be 'income' or 'expense'")
-                    continue
+                # --- type inference ---
+                if type_str:
+                    # Explicit type column present — use it, amount must be positive
+                    if amount <= 0:
+                        errors.append(f"Row {row_num}: Amount must be positive when 'type' is specified")
+                        continue
+                    try:
+                        trans_type = _parse_transaction_type(type_str)
+                    except ValueError:
+                        errors.append(f"Row {row_num}: Type must be 'income' or 'expense', got '{type_str}'")
+                        continue
+                else:
+                    # No type column — infer from sign; zero is rejected
+                    if amount == 0:
+                        errors.append(f"Row {row_num}: Amount cannot be zero")
+                        continue
+                    trans_type = TransactionType.INCOME if amount > 0 else TransactionType.EXPENSE
+                    amount = abs(amount)
 
                 try:
                     datetime.strptime(date_str, '%Y-%m-%d')
@@ -222,8 +249,8 @@ def import_transactions():
 
                 imported_count += 1
 
-            except Exception as e:
-                errors.append(f"Row {row_num}: {str(e)}")
+            except Exception as row_exc:
+                errors.append(f"Row {row_num}: {str(row_exc)}")
                 g.db.rollback()
 
         g.db.commit()
@@ -234,6 +261,6 @@ def import_transactions():
             'errors': errors
         })
 
-    except Exception as e:
+    except Exception as exc:
         g.db.rollback()
-        return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to process CSV: {str(exc)}'}), 500
