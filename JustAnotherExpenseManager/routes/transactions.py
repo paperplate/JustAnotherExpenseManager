@@ -4,6 +4,7 @@ Routes for transaction operations with month-based pagination.
 
 from flask import Blueprint, render_template, request, jsonify, g
 import csv
+import itertools
 from io import StringIO
 from datetime import datetime
 from typing import Optional
@@ -16,9 +17,9 @@ transaction_bp = Blueprint('transactions', __name__)
 def _parse_transaction_type(type_str: str) -> TransactionType:
     """Convert string to TransactionType enum."""
     type_str = type_str.lower().strip()
-    if type_str == 'income':
+    if type_str == 'income' or type_str == 'credit':
         return TransactionType.INCOME
-    elif type_str == 'expense':
+    elif type_str == 'expense' or type_str == 'debit':
         return TransactionType.EXPENSE
     else:
         raise ValueError(f"Invalid transaction type: {type_str}")
@@ -152,6 +153,12 @@ def delete_transaction(transaction_id):
                          pagination=result)
 
 
+# Source - https://stackoverflow.com/a/16939441
+# Posted by Janne Karila
+# Retrieved 2026-02-20, License - CC BY-SA 3.0
+def lower_first(iterator):
+    return itertools.chain([next(iterator).lower()], iterator)
+
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
     """Import transactions from CSV.
@@ -182,7 +189,7 @@ def import_transactions():
 
     try:
         stream = StringIO(file.stream.read().decode('UTF8'), newline=None)
-        csv_reader = csv.DictReader(stream)
+        csv_reader = csv.DictReader(lower_first(stream))
 
         service = TransactionService(g.db)
         imported_count = 0
@@ -192,13 +199,15 @@ def import_transactions():
             try:
                 # --- description: accept 'name' as an alias ---
                 description = (
-                    row.get('description') or row.get('name') or ''
+                    row.get('name') or row.get('description') or ''
                 ).strip()
 
                 amount_str = row.get('amount', '').strip()
-                type_str = row.get('type', '').strip()
+                type_str = (row.get('type', '').strip() or row.get('transaction', '').strip())
                 category = row.get('category', '').strip().lower()
-                date_str = row.get('date', '').strip()
+                date_str = (row.get('date', '').strip() or row.get('transaction date', '').strip())
+                if 'T' in date_str:
+                    date_str = date_str[:date_str.find('T')]
                 tags_str = row.get('tags', '').strip()
 
                 if not all([description, amount_str, date_str]):
