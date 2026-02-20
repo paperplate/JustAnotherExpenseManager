@@ -8,45 +8,54 @@ const { test, expect } = require('@playwright/test');
 test.describe('Navigation', () => {
   test('should load homepage and redirect to summary', async ({ page }) => {
     await page.goto('/');
-    
-    // Should redirect to summary page
+
     await expect(page).toHaveURL('/summary');
     await expect(page).toHaveTitle(/Summary - Expense Manager/);
-    
-    // Should show navigation
     await expect(page.locator('.nav-brand')).toContainText('Expense Manager');
   });
 
   test('should navigate between pages', async ({ page }) => {
     await page.goto('/');
-    
-    // Navigate to Transactions
+
     await page.click('text=Transactions');
     await expect(page).toHaveURL('/transactions');
     await expect(page).toHaveTitle(/Transactions - Expense Manager/);
-    
-    // Navigate to Settings
+
     await page.click('text=Settings');
     await expect(page).toHaveURL('/settings');
     await expect(page).toHaveTitle(/Settings - Expense Manager/);
-    
-    // Navigate back to Summary
+
     await page.click('text=Summary');
     await expect(page).toHaveURL('/summary');
   });
 
   test('should highlight active navigation item', async ({ page }) => {
     await page.goto('/summary');
-    
-    // Summary link should be active
+
     const summaryLink = page.locator('a[href="/summary"]');
     await expect(summaryLink).toHaveClass(/active/);
-    
-    // Navigate to Transactions
+
     await page.click('text=Transactions');
-    
-    // Transactions link should now be active
+
     const transactionsLink = page.locator('a[href="/transactions"]');
     await expect(transactionsLink).toHaveClass(/active/);
+  });
+
+  test('should load stats container on summary page', async ({ page }) => {
+    await page.goto('/summary');
+
+    // Stats are loaded via fetch — wait for summary cards to appear
+    await expect(page.locator('.summary-card.income')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.summary-card.expense')).toBeVisible();
+  });
+
+  test('should load transactions list on transactions page', async ({ page }) => {
+    await page.goto('/transactions');
+
+    // Transactions list is loaded via fetch on DOMContentLoaded
+    const list = page.locator('#transactions-list');
+    await expect(list).toBeVisible();
+    // Either shows transactions or the empty state
+    await expect(list).not.toBeEmpty();
   });
 });

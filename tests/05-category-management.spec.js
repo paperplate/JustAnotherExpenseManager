@@ -2,12 +2,18 @@ const { test, expect } = require('@playwright/test');
 
 /**
  * Category Management Tests
- * Tests category CRUD operations in Settings page
+ * Tests category CRUD operations on the Settings page.
+ *
+ * Key facts (post-refactor):
+ *  - Categories are displayed using cat.category_name (no "category:" prefix)
+ *  - Edit/delete send bare names to /api/categories/<name>
+ *  - settings.js has its own loadCategories() (for the settings list)
  */
 
 test.describe('Category Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/settings');
+    await page.waitForLoadState('networkidle');
   });
 
   test('should display settings page', async ({ page }) => {
@@ -15,159 +21,135 @@ test.describe('Category Management', () => {
     await expect(page.locator('h1')).toContainText('Settings');
   });
 
-  test('should load existing categories', async ({ page }) => {
-    // Wait for categories to load
-    await page.waitForTimeout(1000);
-    
-    // Categories list should be visible
+  test('should load existing categories without category: prefix', async ({ page }) => {
     await expect(page.locator('#categories-list')).toBeVisible();
-    
-    // Should show at least some default categories
-    const categoriesList = page.locator('#categories-list');
-    const hasCategories = await categoriesList.locator('.category-item').count();
-    
-    expect(hasCategories).toBeGreaterThan(0);
+    const items = page.locator('#categories-list .category-item');
+    await expect(items.first()).toBeVisible({ timeout: 5000 });
+
+    const texts = await items.allTextContents();
+    const hasPrefix = texts.some(t => t.includes('category:'));
+    expect(hasPrefix).toBe(false);
   });
 
   test('should add a new category', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Fill in category name
     const uniqueName = `testcat${Date.now()}`;
     await page.fill('#new-category', uniqueName);
-    
-    // Click add button
     await page.click('button:has-text("Add Category")');
-    
-    // Wait for category to be added
-    await page.waitForTimeout(1000);
-    
-    // Success message should appear
+    await page.waitForLoadState('networkidle');
+
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    
-    // Category should appear in list
-    await expect(page.locator(`text=${uniqueName}`)).toBeVisible();
+    await expect(page.locator(`#categories-list .category-item`, { hasText: uniqueName })).toBeVisible();
+  });
+
+  test('should display added category without category: prefix', async ({ page }) => {
+    const uniqueName = `prefixtest${Date.now()}`;
+    await page.fill('#new-category', uniqueName);
+    await page.click('button:has-text("Add Category")');
+    await page.waitForLoadState('networkidle');
+
+    const item = page.locator('#categories-list .category-item', { hasText: uniqueName });
+    await expect(item).toBeVisible();
+
+    const text = await item.textContent();
+    expect(text).not.toContain('category:');
   });
 
   test('should reject empty category name', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Try to add empty category
     await page.fill('#new-category', '   ');
     await page.click('button:has-text("Add Category")');
-    
-    await page.waitForTimeout(500);
-    
-    // Error message should appear
+
     await expect(page.locator('#add-category-result')).toContainText('enter a category name');
   });
 
   test('should reject duplicate category', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Add a category
     const categoryName = `duptest${Date.now()}`;
+
     await page.fill('#new-category', categoryName);
     await page.click('button:has-text("Add Category")');
-    await page.waitForTimeout(1000);
-    
-    // Try to add the same category again
+    await page.waitForLoadState('networkidle');
+
     await page.fill('#new-category', categoryName);
     await page.click('button:has-text("Add Category")');
     await page.waitForTimeout(500);
-    
-    // Should show error
+
     await expect(page.locator('#add-category-result')).toContainText('already exists');
   });
 
   test('should edit a category', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Add a category first
     const originalName = `edit${Date.now()}`;
     await page.fill('#new-category', originalName);
     await page.click('button:has-text("Add Category")');
-    await page.waitForTimeout(1000);
-    
-    // Click edit button for the category
+    await page.waitForLoadState('networkidle');
+
     const editButton = page.locator('.category-item', { hasText: originalName })
                            .locator('button:has-text("Edit")');
     await editButton.click();
-    
-    // Modal should open
+
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    
-    // Change the name
+
+    // Modal should pre-fill with bare name, not "category:..."
+    const prefilled = await page.locator('#edit-category-name').inputValue();
+    expect(prefilled).toBe(originalName);
+    expect(prefilled).not.toContain('category:');
+
     const newName = `edited${Date.now()}`;
     await page.fill('#edit-category-name', newName);
-    
-    // Save
     await page.click('button:has-text("Save Changes")');
-    
-    // Wait for modal to close
-    await page.waitForTimeout(1000);
-    
-    // Modal should be closed
+    await page.waitForLoadState('networkidle');
+
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    
-    // New name should appear
     await expect(page.locator(`text=${newName}`)).toBeVisible();
-    
-    // Old name should not appear
     await expect(page.locator(`text=${originalName}`)).not.toBeVisible();
   });
 
   test('should delete a category', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Add a category to delete
     const categoryName = `delete${Date.now()}`;
     await page.fill('#new-category', categoryName);
     await page.click('button:has-text("Add Category")');
-    await page.waitForTimeout(1000);
-    
-    // Listen for confirmation dialog
+    await page.waitForLoadState('networkidle');
+
     page.on('dialog', dialog => {
       expect(dialog.message()).toContain('Are you sure');
       dialog.accept();
     });
-    
-    // Click delete button
+
     const deleteButton = page.locator('.category-item', { hasText: categoryName })
                              .locator('button:has-text("Delete")');
     await deleteButton.click();
-    
-    // Wait for deletion
-    await page.waitForTimeout(1000);
-    
-    // Category should be gone
+    await page.waitForLoadState('networkidle');
+
     await expect(page.locator(`text=${categoryName}`)).not.toBeVisible();
   });
 
   test('should reject invalid category characters', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Try to add category with special characters
     await page.fill('#new-category', 'test@#$%');
     await page.click('button:has-text("Add Category")');
-    
-    await page.waitForTimeout(500);
-    
-    // Should show error
+
     await expect(page.locator('#add-category-result')).toContainText('can only contain');
   });
 
   test('should reject very long category name', async ({ page }) => {
-    await page.waitForTimeout(1000);
-    
-    // Try to add very long category name
-    const longName = 'a'.repeat(60);
-    await page.fill('#new-category', longName);
+    await page.fill('#new-category', 'a'.repeat(60));
     await page.click('button:has-text("Add Category")');
-    
-    await page.waitForTimeout(500);
-    
-    // Should show error
+
     await expect(page.locator('#add-category-result')).toContainText('too long');
+  });
+
+  test('edited category should appear in transactions category dropdown', async ({ page }) => {
+    const catName = `dropdtest${Date.now()}`;
+    await page.fill('#new-category', catName);
+    await page.click('button:has-text("Add Category")');
+    await page.waitForLoadState('networkidle');
+
+    await page.goto('/transactions');
+    await page.waitForLoadState('networkidle');
+
+    // The add-transaction category select should contain the new category
+    const option = page.locator(`#category option[value="${catName}"]`);
+    await expect(option).toBeAttached();
+
+    // And it should NOT contain "category:" prefix
+    const optionText = await option.textContent();
+    expect(optionText).not.toContain('category:');
   });
 });
