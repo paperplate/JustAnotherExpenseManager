@@ -510,6 +510,31 @@ class CategoryService:
         self.db.commit()
         return True, None
 
+    def merge_tags(self, source_name: str, target_name: str) -> Tuple[bool, Optional[str]]:
+        """Merge source tag into target tag.
+
+        All transactions that have the source tag will gain the target tag
+        (if they don't already have it), then the source tag is deleted.
+        """
+        source = self.db.query(Tag).filter_by(name=source_name).first()
+        if not source:
+            return False, 'Source tag not found'
+
+        target = self.db.query(Tag).filter_by(name=target_name).first()
+        if not target:
+            return False, 'Target tag not found'
+
+        if source.name.startswith('category:') or target.name.startswith('category:'):
+            return False, 'Use the category management section to merge categories'
+
+        for transaction in list(source.transactions):
+            if target not in transaction.tags:
+                transaction.tags.append(target)
+
+        self.db.delete(source)
+        self.db.commit()
+        return True, None
+
     def delete_tag(self, tag_name: str) -> Tuple[bool, Optional[str]]:
         """Delete a non-category tag, removing it from all transactions."""
         tag = self.db.query(Tag).filter_by(name=tag_name).first()
@@ -556,6 +581,31 @@ class CategoryService:
         tag.name = new_tag_name
         self.db.commit()
 
+        return True, None
+
+    def merge_categories(self, source_name: str, target_name: str) -> Tuple[bool, Optional[str]]:
+        """Merge source category into target category.
+
+        All transactions that have the source category tag will gain the target
+        category tag (if they don't already have it), then the source tag is deleted.
+        """
+        source_tag_name = f'category:{source_name}'
+        target_tag_name = f'category:{target_name}'
+
+        source = self.db.query(Tag).filter_by(name=source_tag_name).first()
+        if not source:
+            return False, 'Source category not found'
+
+        target = self.db.query(Tag).filter_by(name=target_tag_name).first()
+        if not target:
+            return False, 'Target category not found'
+
+        for transaction in list(source.transactions):
+            if target not in transaction.tags:
+                transaction.tags.append(target)
+
+        self.db.delete(source)
+        self.db.commit()
         return True, None
 
     def delete_category(self, category_name: str) -> Tuple[bool, Optional[str]]:

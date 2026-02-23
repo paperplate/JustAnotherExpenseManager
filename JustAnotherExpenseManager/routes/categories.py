@@ -64,6 +64,9 @@ def update_category(category_name: str) -> Union[Response, Tuple[Response, int]]
     """
     Update a category name.
 
+    Returns 409 with conflict=true when the new name already exists,
+    allowing the client to offer a merge.
+
     Args:
         category_name: Current category name
 
@@ -82,9 +85,39 @@ def update_category(category_name: str) -> Union[Response, Tuple[Response, int]]
     success, error = service.update_category(category_name, new_name)
 
     if error:
+        if 'already exists' in error:
+            return jsonify({'error': error, 'conflict': True, 'target': new_name}), 409
         return jsonify({'error': error}), 400
 
     return jsonify({'success': True, 'category': new_name})
+
+
+@categories_bp.route('/api/categories/<category_name>/merge', methods=['POST'])
+def merge_category(category_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Merge category_name into another existing category.
+
+    Args:
+        category_name: Source category name (will be deleted after merge)
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    target_name: str = request.json.get('target', '').strip().lower()
+
+    if not target_name:
+        return jsonify({'error': 'Target category name required'}), 400
+
+    service = CategoryService(g.db)
+    success, error = service.merge_categories(category_name, target_name)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True, 'category': target_name})
 
 
 @categories_bp.route('/api/categories/<category_name>', methods=['DELETE'])
@@ -125,6 +158,9 @@ def rename_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
     """
     Rename a non-category tag.
 
+    Returns 409 with conflict=true when the new name already exists,
+    allowing the client to offer a merge.
+
     Args:
         tag_name: Current tag name
 
@@ -143,9 +179,39 @@ def rename_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
     success, error = service.rename_tag(tag_name, new_name)
 
     if error:
+        if 'already exists' in error:
+            return jsonify({'error': error, 'conflict': True, 'target': new_name}), 409
         return jsonify({'error': error}), 400
 
     return jsonify({'success': True, 'tag': new_name})
+
+
+@categories_bp.route('/api/tags/<tag_name>/merge', methods=['POST'])
+def merge_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
+    """
+    Merge tag_name into another existing tag.
+
+    Args:
+        tag_name: Source tag name (will be deleted after merge)
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    target_name: str = request.json.get('target', '').strip()
+
+    if not target_name:
+        return jsonify({'error': 'Target tag name required'}), 400
+
+    service = CategoryService(g.db)
+    success, error = service.merge_tags(tag_name, target_name)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True, 'tag': target_name})
 
 
 @categories_bp.route('/api/tags/<tag_name>', methods=['DELETE'])

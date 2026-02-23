@@ -107,12 +107,12 @@ function closeEditCategoryModal() {
 async function saveEditCategory() {
     const oldName = document.getElementById('edit-category-old').value;
     const newName = document.getElementById('edit-category-name').value.trim().toLowerCase();
-    
+
     if (!newName) {
         alert('Please enter a category name');
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/categories/${oldName}`, {
             method: 'PUT',
@@ -121,12 +121,34 @@ async function saveEditCategory() {
             },
             body: JSON.stringify({ name: newName })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             closeEditCategoryModal();
             loadCategories();
+        } else if (response.status === 409 && result.conflict) {
+            // Target category already exists — offer to merge
+            const confirmed = confirm(
+                `The category "${newName}" already exists.\n\n` +
+                `Would you like to merge "${oldName}" into "${newName}"?\n\n` +
+                `All transactions currently in "${oldName}" will be moved to "${newName}" and "${oldName}" will be deleted.`
+            );
+            if (!confirmed) return;
+
+            const mergeResponse = await fetch(`/api/categories/${oldName}/merge`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: newName })
+            });
+            const mergeResult = await mergeResponse.json();
+
+            if (mergeResult.success) {
+                closeEditCategoryModal();
+                loadCategories();
+            } else {
+                alert('❌ Merge failed: ' + mergeResult.error);
+            }
         } else {
             alert('❌ ' + result.error);
         }
@@ -266,6 +288,28 @@ async function saveEditTag() {
         if (result.success) {
             closeEditTagModal();
             loadTags();
+        } else if (response.status === 409 && result.conflict) {
+            // Target tag already exists — offer to merge
+            const confirmed = confirm(
+                `The tag "${newName}" already exists.\n\n` +
+                `Would you like to merge "${oldName}" into "${newName}"?\n\n` +
+                `All transactions currently tagged "${oldName}" will also be tagged "${newName}" and "${oldName}" will be deleted.`
+            );
+            if (!confirmed) return;
+
+            const mergeResponse = await fetch(`/api/tags/${encodeURIComponent(oldName)}/merge`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ target: newName })
+            });
+            const mergeResult = await mergeResponse.json();
+
+            if (mergeResult.success) {
+                closeEditTagModal();
+                loadTags();
+            } else {
+                alert('❌ Merge failed: ' + mergeResult.error);
+            }
         } else {
             alert('❌ ' + result.error);
         }
