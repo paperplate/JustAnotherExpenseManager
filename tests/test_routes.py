@@ -381,3 +381,312 @@ class TestSettingsAPI:
         """Test that settings page is accessible."""
         response = client.get('/settings')
         assert response.status_code == 200
+
+
+class TestCategoryMerge:
+    """Test category rename-with-merge and merge endpoint behaviour."""
+
+    def _create_category_transactions(self, client):
+        """Helper: create two transactions in distinct categories and return their IDs."""
+        r1 = client.post('/api/transactions', data={
+            'description': 'Food transaction',
+            'amount': '50.00',
+            'type': 'expense',
+            'date': '2026-03-01',
+            'category': 'food',
+        })
+        assert r1.status_code == 200
+
+        r2 = client.post('/api/transactions', data={
+            'description': 'Groceries transaction',
+            'amount': '30.00',
+            'type': 'expense',
+            'date': '2026-03-02',
+            'category': 'groceries',
+        })
+        assert r2.status_code == 200
+
+    def test_rename_category_conflict_returns_409(self, client):
+        """Renaming a category to an existing name returns HTTP 409 with conflict=True."""
+        self._create_category_transactions(client)
+
+        response = client.put(
+            '/api/categories/groceries',
+            json={'name': 'food'},
+        )
+        assert response.status_code == 409
+        data = response.get_json()
+        assert data['conflict'] is True
+        assert 'already exists' in data['error']
+        assert data['target'] == 'food'
+
+    def test_rename_category_success_no_conflict(self, client):
+        """Renaming a category to a new unique name returns 200."""
+        self._create_category_transactions(client)
+
+        response = client.put(
+            '/api/categories/groceries',
+            json={'name': 'supermarket'},
+        )
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['category'] == 'supermarket'
+
+    def test_merge_categories_transactions_reassigned(self, client):
+        """After merge, transactions from the source appear under the target category."""
+        self._create_category_transactions(client)
+
+        # Merge groceries → food
+        response = client.post(
+            '/api/categories/groceries/merge',
+            json={'target': 'food'},
+        )
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
+
+        # Filtering by food should now return both transactions
+        stats = client.get('/api/stats?categories=food')
+        assert stats.status_code == 200
+
+    def test_merge_categories_source_deleted(self, client):
+        """After merge the source category no longer appears in /api/categories."""
+        self._create_category_transactions(client)
+
+        client.post('/api/categories/groceries/merge', json={'target': 'food'})
+
+        categories = client.get('/api/categories').get_json()
+        names = [c['category_name'] for c in categories]
+        assert 'groceries' not in names
+        assert 'food' in names
+
+    def test_merge_categories_target_not_duplicated_on_transactions(self, client):
+        """A transaction already in the target category is not tagged twice after merge."""
+        # Create a transaction with BOTH food and groceries
+        client.post('/api/transactions', data={
+            'description': 'Mixed',
+            'amount': '10.00',
+            'type': 'expense',
+            'date': '2026-03-01',
+            'category': 'food',
+        })
+        client.post('/api/transactions', data={
+            'description': 'Also mixed',
+            'amount': '10.00',
+            'type': 'expense',
+            'date': '2026-03-01',
+            'category': 'groceries',
+        })
+
+        response = client.post('/api/categories/groceries/merge', json={'target': 'food'})
+        assert response.status_code == 200
+
+        # Verify groceries is gone and no duplicate food tags exist
+        categories = client.get('/api/categories').get_json()
+        names = [c['category_name'] for c in categories]
+        assert 'groceries' not in names
+
+    def test_merge_categories_nonexistent_source_returns_400(self, client):
+        """Merging a non-existent source category returns 400."""
+        response = client.post(
+            '/api/categories/doesnotexist/merge',
+            json={'target': 'food'},
+        )
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
+    def test_merge_categories_nonexistent_target_returns_400(self, client):
+        """Merging into a non-existent target category returns 400."""
+        self._create_category_transactions(client)
+
+        response = client.post(
+            '/api/categories/groceries/merge',
+            json={'target': 'doesnotexist'},
+        )
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
+    def test_merge_categories_missing_target_returns_400(self, client):
+        """Merge request without a target body returns 400."""
+        self._create_category_transactions(client)
+
+        response = client.post(
+            '/api/categories/groceries/merge',
+            json={},
+        )
+        assert response.status_code == 400
+
+    def test_rename_category_to_self_is_noop(self, client):
+        """Renaming a category to its own name returns 200 and leaves the category intact."""
+        self._create_category_transactions(client)
+
+        response = client.put('/api/categories/food', json={'name': 'food'})
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
+
+        # food category must still exist with its transactions intact
+        categories = client.get('/api/categories').get_json()
+        names = [c['category_name'] for c in categories]
+        assert 'food' in names
+
+
+class TestTagMerge:
+    """Test tag rename-with-merge and merge endpoint behaviour."""
+
+    def _create_tagged_transactions(self, client):
+        """Helper: create transactions with 'urgent' and 'important' tags."""
+        client.post('/api/transactions', data={
+            'description': 'Urgent task',
+            'amount': '100.00',
+            'type': 'expense',
+            'date': '2026-03-01',
+            'category': 'other',
+            'tags': 'urgent',
+        })
+        client.post('/api/transactions', data={
+            'description': 'Important task',
+            'amount': '200.00',
+            'type': 'expense',
+            'date': '2026-03-02',
+            'category': 'other',
+            'tags': 'important',
+        })
+
+    def test_rename_tag_conflict_returns_409(self, client):
+        """Renaming a tag to an existing name returns HTTP 409 with conflict=True."""
+        self._create_tagged_transactions(client)
+
+        response = client.put(
+            '/api/tags/important',
+            json={'name': 'urgent'},
+        )
+        assert response.status_code == 409
+        data = response.get_json()
+        assert data['conflict'] is True
+        assert 'already exists' in data['error']
+        assert data['target'] == 'urgent'
+
+    def test_rename_tag_success_no_conflict(self, client):
+        """Renaming a tag to a new unique name returns 200."""
+        self._create_tagged_transactions(client)
+
+        response = client.put('/api/tags/important', json={'name': 'priority'})
+        assert response.status_code == 200
+        data = response.get_json()
+        assert data['success'] is True
+        assert data['tag'] == 'priority'
+
+    def test_rename_tag_new_name_appears_in_api(self, client):
+        """After a successful rename the new name appears in /api/tags."""
+        self._create_tagged_transactions(client)
+
+        client.put('/api/tags/important', json={'name': 'priority'})
+
+        tags = client.get('/api/tags').get_json()
+        assert 'priority' in tags
+        assert 'important' not in tags
+
+    def test_merge_tags_source_deleted(self, client):
+        """After merge the source tag no longer appears in /api/tags."""
+        self._create_tagged_transactions(client)
+
+        response = client.post(
+            '/api/tags/important/merge',
+            json={'target': 'urgent'},
+        )
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
+
+        tags = client.get('/api/tags').get_json()
+        assert 'important' not in tags
+        assert 'urgent' in tags
+
+    def test_merge_tags_transactions_keep_target_tag(self, client):
+        """After merge, transactions that had the source tag gain the target tag."""
+        self._create_tagged_transactions(client)
+
+        client.post('/api/tags/important/merge', json={'target': 'urgent'})
+
+        # Filter by 'urgent' — should now include both transactions
+        stats = client.get('/api/stats?tags=urgent')
+        assert stats.status_code == 200
+
+    def test_merge_tags_no_duplicate_on_shared_transactions(self, client):
+        """A transaction already having both tags is not double-tagged after merge."""
+        # Create a transaction tagged with both 'urgent' and 'important'
+        client.post('/api/transactions', data={
+            'description': 'Both tags',
+            'amount': '50.00',
+            'type': 'expense',
+            'date': '2026-03-01',
+            'category': 'other',
+            'tags': 'urgent,important',
+        })
+
+        response = client.post('/api/tags/important/merge', json={'target': 'urgent'})
+        assert response.status_code == 200
+
+        # 'important' must be gone
+        tags = client.get('/api/tags').get_json()
+        assert 'important' not in tags
+        assert 'urgent' in tags
+
+    def test_merge_tags_nonexistent_source_returns_400(self, client):
+        """Merging a non-existent source tag returns 400."""
+        self._create_tagged_transactions(client)
+
+        response = client.post(
+            '/api/tags/doesnotexist/merge',
+            json={'target': 'urgent'},
+        )
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
+    def test_merge_tags_nonexistent_target_returns_400(self, client):
+        """Merging into a non-existent target tag returns 400."""
+        self._create_tagged_transactions(client)
+
+        response = client.post(
+            '/api/tags/important/merge',
+            json={'target': 'doesnotexist'},
+        )
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
+    def test_merge_tags_missing_target_returns_400(self, client):
+        """Merge request without a target body returns 400."""
+        self._create_tagged_transactions(client)
+
+        response = client.post('/api/tags/important/merge', json={})
+        assert response.status_code == 400
+
+    def test_merge_tags_category_tag_rejected(self, client):
+        """Attempting to merge a category: tag via the tag endpoint is rejected."""
+        self._create_tagged_transactions(client)
+
+        # Try to use the tag merge endpoint against a category tag — must be blocked
+        response = client.post(
+            '/api/tags/category:other/merge',
+            json={'target': 'urgent'},
+        )
+        assert response.status_code == 400
+        data = response.get_json()
+        assert 'category' in data['error'].lower()
+
+    def test_rename_tag_to_category_prefix_rejected(self, client):
+        """Renaming a tag to a name starting with 'category:' is rejected."""
+        self._create_tagged_transactions(client)
+
+        response = client.put('/api/tags/urgent', json={'name': 'category:food'})
+        assert response.status_code == 400
+
+    def test_rename_tag_to_self_is_noop(self, client):
+        """Renaming a tag to its own name returns 200 and leaves the tag intact."""
+        self._create_tagged_transactions(client)
+
+        response = client.put('/api/tags/urgent', json={'name': 'urgent'})
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
+
+        tags = client.get('/api/tags').get_json()
+        assert 'urgent' in tags

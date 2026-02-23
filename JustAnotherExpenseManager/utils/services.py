@@ -495,6 +495,10 @@ class CategoryService:
         if new_name.startswith('category:'):
             return False, 'Tag name cannot start with "category:"'
 
+        # No-op: renaming to the same name is always safe and successful
+        if old_name == new_name:
+            return True, None
+
         existing = self.db.query(Tag).filter_by(name=new_name).first()
         if existing:
             return False, 'A tag with that name already exists'
@@ -567,6 +571,10 @@ class CategoryService:
         """Update a category name."""
         old_tag_name = f'category:{old_name}'
         new_tag_name = f'category:{new_name}'
+
+        # No-op: renaming to the same name is always safe and successful
+        if old_name == new_name:
+            return True, None
 
         # Check if new name already exists
         existing = self.db.query(Tag).filter_by(name=new_tag_name).first()
