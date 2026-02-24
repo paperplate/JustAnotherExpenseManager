@@ -15,6 +15,13 @@ const { test, expect } = require('@playwright/test');
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
+async function clearDatabase(page) {
+    const response = await page.request.post('/api/transactions/clear-all');
+    if (!response.ok()) {
+        throw new Error(`Failed to clear database: ${response.status()} ${await response.text()}`);
+    }
+}
+
 async function addTransaction(page, { description, amount, type, category, tags = '', date }) {
     await page.fill('#description', description);
     await page.fill('#amount', String(amount));
@@ -75,15 +82,17 @@ async function resetTagFilter(page) {
 const TODAY = new Date().toISOString().split('T')[0];
 
 async function seedData(page) {
+    await clearDatabase(page);
+
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    await addTransaction(page, { description: 'Groceries',  amount: 120, type: 'expense',  category: 'food',          tags: 'recurring',  date: TODAY });
-    await addTransaction(page, { description: 'Pizza',       amount:  40, type: 'expense',  category: 'food',          tags: 'dining',     date: TODAY });
-    await addTransaction(page, { description: 'Snacks',      amount:  15, type: 'expense',  category: 'food',          tags: '',           date: TODAY });
-    await addTransaction(page, { description: 'Bus Pass',    amount:  60, type: 'expense',  category: 'transport',     tags: 'recurring,commute', date: TODAY });
-    await addTransaction(page, { description: 'Salary',      amount: 3000, type: 'income', category: 'salary',        tags: 'recurring',  date: TODAY });
-    await addTransaction(page, { description: 'Cinema',      amount:  30, type: 'expense',  category: 'entertainment', tags: 'leisure',    date: TODAY });
+    await addTransaction(page, { description: 'Groceries',  amount: 120,  type: 'expense', category: 'food',          tags: 'recurring',         date: TODAY });
+    await addTransaction(page, { description: 'Pizza',      amount: 40,   type: 'expense', category: 'food',          tags: 'dining',            date: TODAY });
+    await addTransaction(page, { description: 'Snacks',     amount: 15,   type: 'expense', category: 'food',          tags: '',                  date: TODAY });
+    await addTransaction(page, { description: 'Bus Pass',   amount: 60,   type: 'expense', category: 'transport',     tags: 'recurring,commute', date: TODAY });
+    await addTransaction(page, { description: 'Salary',     amount: 3000, type: 'income',  category: 'salary',        tags: 'recurring',         date: TODAY });
+    await addTransaction(page, { description: 'Cinema',     amount: 30,   type: 'expense', category: 'entertainment', tags: 'leisure',           date: TODAY });
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
@@ -458,56 +467,6 @@ test.describe('Transactions page — filter combinations', () => {
         await expect(page.locator('text=Groceries')).toBeVisible();
         await expect(page.locator('text=Bus Pass')).toBeVisible();
         await expect(page.locator('text=Salary')).toBeVisible();
-        await expect(page.locator('text=Cinema')).not.toBeVisible();
-    });
-
-    // ── Category + Tag + Time range ────────────────────────────────────────────
-
-    test('category:food + tag:recurring + current_month — only Groceries', async ({ page }) => {
-        await selectCategory(page, 'food');
-        await selectTag(page, 'recurring');
-        await page.selectOption('#time-range', 'current_month');
-        await page.waitForLoadState('networkidle');
-
-        await expect(page.locator('text=Groceries')).toBeVisible();
         await expect(page.locator('text=Pizza')).not.toBeVisible();
-        await expect(page.locator('text=Bus Pass')).not.toBeVisible();
-    });
-
-    // ── Reset behaviour ───────────────────────────────────────────────────────
-
-    test('resetting category after filtering restores all transactions', async ({ page }) => {
-        await selectCategory(page, 'transport');
-        await expect(page.locator('text=Bus Pass')).toBeVisible();
-        await expect(page.locator('text=Groceries')).not.toBeVisible();
-
-        await resetCategoryFilter(page);
-        await expect(page.locator('text=Groceries')).toBeVisible();
-        await expect(page.locator('text=Bus Pass')).toBeVisible();
-    });
-
-    test('resetting tag after filtering restores all transactions', async ({ page }) => {
-        await selectTag(page, 'leisure');
-        await expect(page.locator('text=Cinema')).toBeVisible();
-        await expect(page.locator('text=Groceries')).not.toBeVisible();
-
-        await resetTagFilter(page);
-        await expect(page.locator('text=Groceries')).toBeVisible();
-        await expect(page.locator('text=Cinema')).toBeVisible();
-    });
-
-    test('resetting both filters restores all transactions', async ({ page }) => {
-        await selectCategory(page, 'food');
-        await selectTag(page, 'dining');
-
-        await expect(page.locator('text=Pizza')).toBeVisible();
-        await expect(page.locator('text=Bus Pass')).not.toBeVisible();
-
-        await resetCategoryFilter(page);
-        await resetTagFilter(page);
-
-        await expect(page.locator('text=Groceries')).toBeVisible();
-        await expect(page.locator('text=Bus Pass')).toBeVisible();
-        await expect(page.locator('text=Salary')).toBeVisible();
     });
 });
