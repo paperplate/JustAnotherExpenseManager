@@ -5,16 +5,16 @@
 {% block content %}
 <div class="card">
     <h1 style="color: #333; margin-bottom: 30px;">Settings</h1>
-    
+
     <div class="info-box">
         <p><strong>Application Mode:</strong> {% if debug_mode %}Debug/Development{% else %}Production{% endif %}</p>
         <p><strong>Database:</strong> {{ config.DATABASE_TYPE|default('SQLite') }}</p>
     </div>
-    
+
     <!-- Category Management -->
     <div class="settings-section">
         <h3>Category Management</h3>
-        
+
         <div class="setting-item">
             <div class="setting-label">Add New Category</div>
             <div class="setting-description">
@@ -26,18 +26,36 @@
             </div>
             <div id="add-category-result" style="margin-top: 10px;"></div>
         </div>
-        
+
         <div class="setting-item">
             <div class="setting-label">Existing Categories</div>
             <div class="setting-description">
                 Manage your existing categories. Click edit to rename or delete to remove.
             </div>
             <div id="categories-list" style="margin-top: 15px;">
-                <div style="text-align: center; color: #666;">Loading categories...</div>
+                {% if categories %}
+                    <div class="category-list">
+                        {% for cat in categories %}
+                        <div class="category-item">
+                            <span class="category-name">{{ cat.category_name }}</span>
+                            <div class="category-actions">
+                                <button class="btn btn-edit btn-small"
+                                        data-name="{{ cat.category_name }}"
+                                        onclick="editCategory(this.dataset.name)">Edit</button>
+                                <button class="btn btn-delete btn-small"
+                                        data-name="{{ cat.category_name }}"
+                                        onclick="deleteCategory(this.dataset.name)">Delete</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color: #666; text-align: center;">No categories yet. Add one above!</p>
+                {% endif %}
             </div>
         </div>
     </div>
-    
+
     <!-- Tag Management -->
     <div class="settings-section">
         <h3>Tag Management</h3>
@@ -45,10 +63,29 @@
         <div class="setting-item">
             <div class="setting-label">Existing Tags</div>
             <div class="setting-description">
-                Manage tags that have been applied to transactions. Renaming a tag updates it on all associated transactions. Deleting a tag removes it from all transactions.
+                Manage tags that have been applied to transactions. Renaming a tag updates it
+                on all associated transactions. Deleting a tag removes it from all transactions.
             </div>
             <div id="tags-list" style="margin-top: 15px;">
-                <div style="text-align: center; color: #666;">Loading tags...</div>
+                {% if tags %}
+                    <div class="category-list">
+                        {% for tag in tags %}
+                        <div class="category-item">
+                            <span class="category-name">{{ tag }}</span>
+                            <div class="category-actions">
+                                <button class="btn btn-edit btn-small"
+                                        data-name="{{ tag }}"
+                                        onclick="editTag(this.dataset.name)">Edit</button>
+                                <button class="btn btn-delete btn-small"
+                                        data-name="{{ tag }}"
+                                        onclick="deleteTag(this.dataset.name)">Delete</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p style="color: #666; text-align: center;">No tags yet. Add tags to transactions to see them here.</p>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -57,7 +94,7 @@
     {% if debug_mode %}
     <div class="settings-section">
         <h3>Development Tools <span class="warning-badge">DEBUG MODE ONLY</span></h3>
-        
+
         <div class="setting-item">
             <div class="setting-label">Test Data Generator</div>
             <div class="setting-description">
@@ -81,11 +118,11 @@
         </div>
     </div>
     {% endif %}
-    
+
     <!-- Database Settings -->
     <div class="settings-section">
         <h3>Database Information</h3>
-        
+
         <div class="setting-item">
             <div class="setting-label">Database Type</div>
             <div class="setting-description">
@@ -97,18 +134,18 @@
             </p>
         </div>
     </div>
-    
+
     <!-- Application Settings -->
     <div class="settings-section">
         <h3>Application Settings</h3>
-        
+
         <div class="setting-item">
             <div class="setting-label">Pagination</div>
             <div class="setting-description">
-                Transactions are displayed 50 per page. Monthly charts show 6 months per view.
+                Transactions are grouped and paginated by month.
             </div>
         </div>
-        
+
         <div class="setting-item">
             <div class="setting-label">Tags</div>
             <div class="setting-description">
@@ -116,41 +153,20 @@
             </div>
         </div>
     </div>
-    
+
     <!-- About -->
     <div class="settings-section">
         <h3>About</h3>
-        
+
         <div class="setting-item">
             <div class="setting-label">Expense Manager</div>
             <div class="setting-description">
-                A modern expense tracking application built with Flask, HTMX, and Chart.js.
+                A modern expense tracking application built with Flask, SQLAlchemy, and Chart.js.
             </div>
             <p style="color: #666; font-size: 14px; margin-top: 10px;">
-                <strong>Features:</strong> Income & Expense Tracking, Custom Categories, Flexible Tagging,
-                Interactive Charts, CSV Import/Export, Multiple Database Backends, Transaction Editing
+                <strong>Features:</strong> Income &amp; Expense Tracking, Custom Categories, Flexible Tagging,
+                Interactive Charts, CSV Import, Multiple Database Backends, Transaction Editing
             </p>
-        </div>
-    </div>
-</div>
-
-<!-- Edit Tag Modal -->
-<div id="editTagModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Rename Tag</h2>
-            <span class="close" onclick="closeEditTagModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <input type="hidden" id="edit-tag-old">
-            <div class="form-group">
-                <label for="edit-tag-name">Tag Name</label>
-                <input type="text" id="edit-tag-name" required>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn btn-cancel" onclick="closeEditTagModal()">Cancel</button>
-            <button class="btn" onclick="saveEditTag()">Save Changes</button>
         </div>
     </div>
 </div>
@@ -172,6 +188,27 @@
         <div class="modal-footer">
             <button class="btn btn-cancel" onclick="closeEditCategoryModal()">Cancel</button>
             <button class="btn" onclick="saveEditCategory()">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Tag Modal -->
+<div id="editTagModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Rename Tag</h2>
+            <span class="close" onclick="closeEditTagModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="hidden" id="edit-tag-old">
+            <div class="form-group">
+                <label for="edit-tag-name">Tag Name</label>
+                <input type="text" id="edit-tag-name" required>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-cancel" onclick="closeEditTagModal()">Cancel</button>
+            <button class="btn" onclick="saveEditTag()">Save Changes</button>
         </div>
     </div>
 </div>

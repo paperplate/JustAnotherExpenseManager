@@ -3,15 +3,9 @@
  * Handles category management and test data generation
  */
 
-// Load categories when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.getElementById('categories-list')) {
-        loadCategories();
-    }
-    if (document.getElementById('tags-list')) {
-        loadTags();
-    }
-});
+// Initial category and tag lists are rendered server-side by Jinja.
+// loadCategories() and loadTags() are called after mutations (add/edit/delete)
+// to refresh the lists without a full page reload.
 
 /**
  * Load and display all categories
@@ -34,13 +28,30 @@ async function loadCategories() {
         categories.forEach(cat => {
             const item = document.createElement('div');
             item.className = 'category-item';
-            item.innerHTML = `
-                <span class="category-name">${cat.category_name}</span>
-                <div class="category-actions">
-                    <button class="btn btn-edit btn-small" onclick="editCategory('${cat.category_name}')">Edit</button>
-                    <button class="btn btn-delete btn-small" onclick="deleteCategory('${cat.category_name}')">Delete</button>
-                </div>
-            `;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'category-name';
+            nameSpan.textContent = cat.category_name;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'category-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-edit btn-small';
+            editBtn.textContent = 'Edit';
+            editBtn.dataset.name = cat.category_name;
+            editBtn.addEventListener('click', () => editCategory(cat.category_name));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-delete btn-small';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.dataset.name = cat.category_name;
+            deleteBtn.addEventListener('click', () => deleteCategory(cat.category_name));
+
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            item.appendChild(nameSpan);
+            item.appendChild(actionsDiv);
             categoryList.appendChild(item);
         });
     } catch (error) {
@@ -55,12 +66,12 @@ async function addCategory() {
     const input = document.getElementById('new-category');
     const categoryName = input.value.trim().toLowerCase();
     const resultDiv = document.getElementById('add-category-result');
-    
+
     if (!categoryName) {
         resultDiv.innerHTML = '<p style="color: #d63031;">Please enter a category name</p>';
         return;
     }
-    
+
     try {
         const response = await fetch('/api/categories', {
             method: 'POST',
@@ -69,9 +80,9 @@ async function addCategory() {
             },
             body: JSON.stringify({ name: categoryName })
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ Category "${categoryName}" added successfully!</p>`;
             input.value = '';
@@ -114,7 +125,7 @@ async function saveEditCategory() {
     }
 
     try {
-        const response = await fetch(`/api/categories/${oldName}`, {
+        const response = await fetch(`/api/categories/${encodeURIComponent(oldName)}`, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json'
@@ -136,7 +147,7 @@ async function saveEditCategory() {
             );
             if (!confirmed) return;
 
-            const mergeResponse = await fetch(`/api/categories/${oldName}/merge`, {
+            const mergeResponse = await fetch(`/api/categories/${encodeURIComponent(oldName)}/merge`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ target: newName })
@@ -164,14 +175,14 @@ async function deleteCategory(name) {
     if (!confirm(`Are you sure you want to delete the category "${name}"? This will remove the category tag from all associated transactions.`)) {
         return;
     }
-    
+
     try {
-        const response = await fetch(`/api/categories/${name}`, {
+        const response = await fetch(`/api/categories/${encodeURIComponent(name)}`, {
             method: 'DELETE'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             loadCategories();
         } else {
@@ -189,17 +200,17 @@ async function populateTestData() {
     if (!confirm('This will add approximately 80 sample transactions to your database. Continue?')) {
         return;
     }
-    
+
     const resultDiv = document.getElementById('test-data-result');
     resultDiv.innerHTML = '<p style="color: #666;">⏳ Generating test data...</p>';
-    
+
     try {
         const response = await fetch('/api/populate-test-data', {
             method: 'POST'
         });
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
             setTimeout(() => {
@@ -234,13 +245,28 @@ async function loadTags() {
         tags.forEach(tag => {
             const item = document.createElement('div');
             item.className = 'category-item';
-            item.innerHTML = `
-                <span class="category-name">${tag}</span>
-                <div class="category-actions">
-                    <button class="btn btn-edit btn-small" onclick="editTag('${tag}')">Edit</button>
-                    <button class="btn btn-delete btn-small" onclick="deleteTag('${tag}')">Delete</button>
-                </div>
-            `;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'category-name';
+            nameSpan.textContent = tag;
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'category-actions';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-edit btn-small';
+            editBtn.textContent = 'Edit';
+            editBtn.addEventListener('click', () => editTag(tag));
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-delete btn-small';
+            deleteBtn.textContent = 'Delete';
+            deleteBtn.addEventListener('click', () => deleteTag(tag));
+
+            actionsDiv.appendChild(editBtn);
+            actionsDiv.appendChild(deleteBtn);
+            item.appendChild(nameSpan);
+            item.appendChild(actionsDiv);
             tagList.appendChild(item);
         });
     } catch (error) {
