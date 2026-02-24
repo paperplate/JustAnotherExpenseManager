@@ -1,383 +1,304 @@
 # 💰 Expense Manager
 
-A modern, dockerized expense tracking application built with Flask, HTMX, and Chart.js.
+A modern, dockerized expense tracking application built with Flask, SQLAlchemy, and Chart.js.
 
 ## Features
 
-- ✨ **Real-time Updates**: Add and delete transactions without page refreshes using HTMX
-- 📊 **Visual Analytics**: Interactive charts with income/expense tracking and category filtering
+- ✨ **Real-time Updates**: Add, edit, and delete transactions without page refreshes
+- 📊 **Visual Analytics**: Interactive charts with income/expense tracking and category/tag filtering
 - 💰 **Income & Expense Tracking**: Track both income and expenses with net balance calculation
-- 🏷️ **Flexible Tagging System**: Add custom categories and tags to transactions
-- 📄 **Pagination**: Navigate through large transaction lists and monthly data efficiently
-- ⚙️ **Settings Page**: Manage application settings and development tools
-- 🎨 **Modern UI**: Clean, responsive design with Summary, Transactions, and Settings pages
+- 🏷️ **Flexible Tagging System**: Add custom tags to transactions for fine-grained organization
+- 📂 **Category Management**: Create, rename, merge, and delete categories from the Settings page
+- 🔖 **Tag Management**: Rename, merge, and delete tags across all transactions from the Settings page
+- 🔍 **Multi-select Filtering**: Filter by multiple categories and/or tags simultaneously
+- 📅 **Time-range Filtering**: Filter by current month, custom date range, or all time
+- 📄 **Month-based Pagination**: Transactions are grouped and paginated by month
 - 🐳 **Dockerized**: Easy deployment with Docker and Docker Compose
-- 💾 **Multiple Database Backends**: Choose between SQLite, PostgreSQL, or MySQL
-- 📤 **CSV Import/Export**: Bulk import transactions from CSV files
+- 💾 **Multiple Database Backends**: SQLite, PostgreSQL, or MySQL
+- 📤 **CSV Import**: Bulk import transactions from a CSV file
 - 🧪 **Test Data Generator**: Populate with sample data (debug mode only)
-- 🏗️ **SOLID Architecture**: Clean code with separation of concerns
-- 📱 **Mobile Responsive**: Works seamlessly on all device sizes
+- 🏗️ **SOLID Architecture**: Clean separation of concerns across models, services, and routes
+- 📱 **Mobile Responsive**: Works on all device sizes
 
 ## Tech Stack
 
-- **Backend**: Flask (Python) with SQLAlchemy ORM
-- **Frontend**: HTMX for dynamic interactions
-- **Charts**: Chart.js for data visualization
+- **Backend**: Flask (Python 3.11+) with SQLAlchemy ORM
+- **Frontend**: Vanilla JS with fetch-based dynamic updates
+- **Charts**: Chart.js
 - **Database**: SQLite (default), PostgreSQL, or MySQL
+- **Build**: flit / pyproject.toml
 - **Containerization**: Docker & Docker Compose
 
 ## Quick Start
 
-The application supports three database backends:
-- **SQLite** (default) - No additional setup required
-- **PostgreSQL** - Production-ready relational database
-- **MySQL** - Popular open-source database
+### Using Docker (Recommended)
 
-### Using SQLite (Default - Recommended for Development)
+The application supports three database backends. SQLite requires no extra services and is the default.
 
-1. Make sure you have Docker and Docker Compose installed
-
-2. Navigate to the project directory:
-```bash
-cd expense-manager
-```
-
-3. Build and run the container:
+**SQLite (default):**
 ```bash
 docker-compose up --build
 ```
 
-4. Open your browser and visit:
-```
-http://localhost:5000
-```
-
-### Using PostgreSQL
-
-1. Navigate to the project directory:
-```bash
-cd expense-manager
-```
-
-2. Build and run with PostgreSQL:
+**PostgreSQL:**
 ```bash
 docker-compose -f docker-compose.postgres.yml up --build
 ```
 
-3. The app will be available at `http://localhost:5000`
-4. PostgreSQL will be available at `localhost:5432`
-
-### Using MySQL
-
-1. Navigate to the project directory:
-```bash
-cd expense-manager
-```
-
-2. Build and run with MySQL:
+**MySQL:**
 ```bash
 docker-compose -f docker-compose.mysql.yml up --build
 ```
 
-3. The app will be available at `http://localhost:5000`
-4. MySQL will be available at `localhost:3306`
-
-### Using Docker
-
-```bash
-# Build the image
-docker build -t expense-manager .
-
-# Run the container
-docker run -p 5000:5000 -v $(pwd)/expenses.db:/app/expenses.db expense-manager
-```
+Then open http://localhost:5000 in your browser.
 
 ### Local Development (Without Docker)
 
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Install the package in editable mode (includes all dependencies)
+pip install -e .
 
-# Run the application
-python app.py
+# Initialise the database
+flask --app JustAnotherExpenseManager init-db
+
+# Run the development server
+flask --app JustAnotherExpenseManager run
 ```
 
-Then visit http://localhost:5000
+Or use the installed entry point directly:
+```bash
+JustAnotherExpenseManager
+```
+
+Then open http://localhost:5000.
+
+## Configuration
+
+All configuration is done through environment variables. Copy `.env.example` to `.flaskenv` for local development and edit as needed.
+
+### Network Binding
+
+```bash
+# Bind to localhost only (default for local dev — more secure)
+FLASK_RUN_HOST=127.0.0.1
+
+# Bind to all interfaces (required for Docker)
+FLASK_RUN_HOST=0.0.0.0
+
+FLASK_RUN_PORT=5000
+```
+
+The Docker images set `FLASK_RUN_HOST=0.0.0.0` automatically via `ENV` in the Dockerfile. You can override it in your `docker-compose.yml` if needed.
+
+### Database
+
+```bash
+# SQLite (default)
+DATABASE_TYPE=sqlite
+SQLITE_PATH=./data/expenses.db
+
+# PostgreSQL
+DATABASE_TYPE=postgresql
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=expenses
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+
+# MySQL
+DATABASE_TYPE=mysql
+DATABASE_HOST=localhost
+DATABASE_PORT=3306
+DATABASE_NAME=expenses
+DATABASE_USER=expenses_user
+DATABASE_PASSWORD=expenses_pass
+```
+
+See `DATABASE_GUIDE.md` for full configuration details and migration guides.
 
 ## Usage
 
 ### Navigation
 
-The application has two main pages:
-- **Summary**: View financial overview, charts, and filter by category
-- **Transactions**: Add, view, and manage individual transactions
+The application has three pages:
+
+- **Summary**: Financial overview, charts, and multi-select category/tag/time filtering
+- **Transactions**: Add, edit, delete, and filter individual transactions; CSV import
+- **Settings**: Manage categories and tags; test data generator (debug mode only)
 
 ### Adding Transactions
 
 1. Navigate to the **Transactions** page
-2. Fill in the transaction details:
+2. Fill in the form:
    - **Description**: What the transaction was for
-   - **Amount**: How much (always positive)
+   - **Amount**: Positive number
    - **Type**: Income or Expense
    - **Date**: When it occurred
-   - **Category**: Choose from predefined or custom categories
-   - **Tags**: Optional comma-separated tags (e.g., "recurring, urgent")
+   - **Category**: Choose from existing or add new ones in Settings
+   - **Tags**: Optional comma-separated tags (e.g. `recurring, business`)
+3. Click **Add Transaction** — it appears immediately in the list
 
-3. Click "Add Transaction" - it will appear immediately in the list below
+### Filtering
 
-### Custom Categories
+Both the Summary and Transactions pages support combined filtering:
 
-Categories are a special type of tag with the `category:` prefix. You can:
-1. Use default categories (food, transport, entertainment, etc.)
-2. Add custom categories using the "Add Custom Category" section
-3. Categories appear in the dropdown and can be filtered in the Summary page
+- **Category filter**: Multi-select — choose one or more categories (or All)
+- **Tag filter**: Multi-select — choose one or more tags (or All Tags)
+- **Time range**: Current month, custom date range, or all time
 
-### Tags
+Filters are reflected in the URL as query parameters (`categories=`, `tags=`, `range=`/`start_date=`/`end_date=`), so filtered views can be bookmarked or shared.
 
-Tags provide flexible organization beyond categories:
-- Add any tags you want (comma-separated)
-- Examples: `recurring`, `business`, `urgent`, `subscription`
-- Tags appear as badges on each transaction
+### Editing Transactions
 
-### Viewing Statistics
+Click the **Edit** button on any transaction row to open an inline edit form. Changes are saved immediately without a page reload.
 
-Navigate to the **Summary** page to see:
-- **Total Income**: Sum of all income transactions
-- **Total Expenses**: Sum of all expense transactions  
-- **Net Balance**: Income minus expenses
-- **Category Breakdown**: Table showing income/expenses by category
-- **Category Filter**: Dropdown to filter charts by specific category
-- **Charts**: Doughnut chart for category distribution, line chart for monthly trends
+### Category Management
 
-### Test Data
+Go to **Settings → Category Management** to:
 
-Navigate to the **Settings** page to access development tools:
-1. Click on "Settings" in the navigation bar
-2. The "Test Data Generator" section is only visible when running in debug mode
-3. Click "Generate Test Data" to add ~80 sample transactions
-4. This is useful for new users to explore features with realistic data
+- Add new categories
+- Rename a category (updates all transactions that use it)
+- Merge one category into another (all transactions from the source are re-assigned to the target)
+- Delete a category (removes it from all transactions)
 
-**Note**: Test data generation is only available when `FLASK_ENV=development` or `debug=True`.
+### Tag Management
 
-### Pagination
+Go to **Settings → Tag Management** to:
 
-The application uses pagination for better performance:
-- **Transactions List**: Shows 50 transactions per page with Previous/Next navigation
-- **Monthly Charts**: Displays data in manageable chunks
-- Navigate through pages using the pagination controls
+- Rename a tag across all transactions
+- Merge one tag into another
+- Delete a tag from all transactions
 
-### Settings Page
+### CSV Import
 
-Access application settings and information:
-- **Development Tools**: Test data generation (debug mode only)
-- **Database Information**: View current database backend
-- **Application Settings**: Pagination and category information
-- **About**: Application information and features
+1. Prepare a CSV file with these columns:
 
-### Importing from CSV
+| Column | Description |
+|---|---|
+| `description` | What the transaction was for |
+| `amount` | Positive dollar amount |
+| `type` | `income` or `expense` |
+| `category` | Category name (no `category:` prefix) |
+| `date` | `YYYY-MM-DD` format |
+| `tags` | Optional, comma-separated |
 
-You can bulk import transactions from a CSV file:
+2. Go to the **Transactions** page and use the **Import from CSV** section
+3. Invalid rows are reported individually; valid rows are still imported
 
-1. Prepare a CSV file with columns:
-   - `description` - What the transaction was for
-   - `amount` - Amount in dollars (positive number)
-   - `type` - "income" or "expense"
-   - `category` - Category name (without category: prefix)
-   - `date` - Date in YYYY-MM-DD format
-   - `tags` - Optional comma-separated tags
-
-2. Navigate to Transactions page
-3. Click "Choose File" in the Import from CSV section
-4. Select your CSV file
-5. Click "Import CSV"
-
-The system will validate each row and report any errors while still importing valid transactions.
-
-**Example CSV format:**
+**Example:**
 ```csv
 description,amount,type,category,date,tags
 Monthly Salary,5000.00,income,salary,2024-01-15,recurring
 Grocery Store,125.50,expense,food,2024-01-16,
-Freelance Project,1500.00,income,freelance,2024-01-20,one-time,business
+Freelance Project,1500.00,income,freelance,2024-01-20,one-time
 ```
 
 ## Project Structure
 
-The application follows SOLID principles with clear separation of concerns:
-
 ```
-expense-manager/
-├── app.py                          # Main Flask application entry point
+JustAnotherExpenseManager/         # Main Python package
+├── __init__.py                    # App factory (create_app) and CLI commands
 ├── models/
-│   └── __init__.py                 # Database models (Transaction, Tag)
+│   └── __init__.py                # SQLAlchemy models: Transaction, Tag
 ├── routes/
-│   ├── __init__.py
-│   ├── transactions.py             # Transaction endpoints
-│   ├── stats.py                    # Statistics and summary endpoints
-│   ├── categories.py               # Category management endpoints
-│   └── settings.py                 # Settings page and test data
+│   ├── transactions.py            # Transaction CRUD and CSV import endpoints
+│   ├── stats.py                   # Summary page and /api/stats, /api/chart-data
+│   ├── categories.py              # Category and tag management endpoints
+│   └── settings.py                # Settings page and test data endpoints
 ├── utils/
-│   ├── __init__.py
-│   ├── database.py                 # Database configuration and initialization
-│   └── services.py                 # Business logic layer
+│   ├── database.py                # DatabaseManager — connections and init
+│   └── services.py                # Business logic: TransactionService, StatsService, etc.
 ├── templates/
-│   ├── base.html                   # Base template with navigation
-│   ├── summary.html                # Summary page with charts
-│   ├── transactions.html           # Transactions page
-│   ├── settings.html               # Settings page
-│   ├── stats.html                  # Statistics partial
-│   └── transactions_list.html      # Transactions list partial with pagination
-├── generate_test_data.py           # Transaction data generator
-├── sample_transactions.csv         # Sample data file
-├── requirements.txt                # Python dependencies
-├── Dockerfile                      # Docker configuration
-├── docker-compose.yml              # Default (SQLite) configuration
-├── docker-compose.postgres.yml     # PostgreSQL configuration
-├── docker-compose.mysql.yml        # MySQL configuration
-├── docker-compose.sqlite.yml       # SQLite configuration (explicit)
-├── .env.example                    # Environment variables template
-├── .dockerignore                   # Docker ignore file
-└── DATABASE_GUIDE.md               # Database configuration guide
+│   ├── base.html                  # Base layout with navigation
+│   ├── summary.html               # Summary page
+│   ├── transactions.html          # Transactions page
+│   ├── settings.html              # Settings page
+│   ├── stats.html                 # Stats partial (rendered by /api/stats)
+│   └── transactions_list.html     # Transactions list partial with pagination
+└── static/
+    ├── css/styles.css
+    └── js/
+        ├── filter_component.js    # Multi-select category/tag filter UI
+        ├── stats.js               # Chart initialisation and stats refresh
+        ├── transactions.js        # Transaction form, edit modal, delete
+        └── settings.js            # Category/tag management UI
+
+pyproject.toml                     # Package metadata and dependencies (flit)
+.flaskenv                          # Local dev environment variables
+.env.example                       # Environment variable reference
+Dockerfile                         # Container image definition
+docker-compose.yml                 # SQLite deployment
+docker-compose.postgres.yml        # PostgreSQL deployment
+docker-compose.mysql.yml           # MySQL deployment
+DATABASE_GUIDE.md                  # Detailed database configuration guide
 ```
 
 ### Architecture
 
-**Models Layer** (`models/`)
-- Database table definitions
-- ORM relationships
-- Data validation
+**Models** (`models/`) — SQLAlchemy table definitions and ORM relationships.
 
-**Service Layer** (`utils/services.py`)
-- Business logic
-- Transaction operations
-- Statistics calculations
-- Test data generation
+**Services** (`utils/services.py`) — All business logic: transaction CRUD, statistics calculations, category/tag operations, test data generation. Routes call services; services never touch HTTP.
 
-**Routes Layer** (`routes/`)
-- HTTP request handling
-- Input validation
-- Response formatting
-- Blueprint organization
+**Routes** (`routes/`) — Flask blueprints that handle HTTP requests, validate input, call services, and return responses. No business logic lives here.
 
-**Database Layer** (`utils/database.py`)
-- Connection management
-- Session handling
-- Database initialization
+**Database** (`utils/database.py`) — `DatabaseManager` wraps engine creation, session factory, and `init_database` / `reset_database` lifecycle methods.
 
 ## Testing
 
-### Running Unit Tests
-
-The tests use SQLite by default for simplicity and speed.
+### Unit and Integration Tests (pytest)
 
 ```bash
-# Install dependencies first (in container or locally)
-pip install -r requirements.txt
+# Install with test dependencies
+pip install -e ".[test]"
 
 # Run all tests
-python test_app.py
+pytest
 
-# Or with more verbose output
-python -m unittest test_app -v
+# With coverage report
+pytest --cov=JustAnotherExpenseManager --cov-report=term-missing
 ```
 
-**In Docker:**
+### End-to-End Tests (Playwright)
+
 ```bash
-# Run tests inside running container
-docker exec <container-name> python test_app.py
+# Install Node dependencies and browsers
+npm ci
+npx playwright install --with-deps chromium
+
+# Run all E2E tests (starts the dev server automatically)
+npx playwright test
+
+# Run a specific browser only
+npx playwright test --project=chromium
+
+# Open the interactive UI runner
+npx playwright test --ui
+
+# View the last HTML report
+npx playwright show-report
 ```
 
-The test suite includes:
-- Endpoint tests (index, add, delete, stats)
-- CSV import validation tests
-- Database operations tests
-- Error handling tests
-- All tests use SQLite for speed and isolation
+E2E tests require the application to be runnable via `JustAnotherExpenseManager` (the installed entry point). Playwright's `webServer` config in `playwright.config.js` handles starting and stopping it automatically.
 
-### Generating Test Data
-
-Generate sample expenses for development and testing:
+### Database CLI Commands
 
 ```bash
-# Generate 50 expenses over the last 60 days
-python generate_test_data.py 50 60
+# Initialise tables (run once after install)
+flask --app JustAnotherExpenseManager init-db
 
-# Generate 100 expenses over the last 90 days (default)
-python generate_test_data.py
+# Drop and recreate all tables
+flask --app JustAnotherExpenseManager init-db --drop
 
-# This creates sample_expenses.csv which you can import via the UI
-```
+# Load sample data after init
+flask --app JustAnotherExpenseManager init-db --sample-data
 
-## Categories
+# Check database connectivity
+flask --app JustAnotherExpenseManager db-health
 
-The application supports the following expense categories:
-- 🍔 Food
-- 🚗 Transport
-- 🎮 Entertainment
-- 💡 Utilities
-- 🛍️ Shopping
-- 🏥 Healthcare
-- 📦 Other
-
-## Data Persistence
-
-The application automatically creates a new database on first run if one doesn't exist. All expense data is stored in the configured database.
-
-### Database Backends
-
-**SQLite (Default)**
-- File-based database stored in Docker volume
-- No additional setup required
-- Perfect for development and single-user deployments
-
-**PostgreSQL**
-- Production-ready relational database
-- Runs in separate container
-- Data persists in `postgres-data` volume
-- Access: `localhost:5432`
-
-**MySQL**
-- Popular open-source database
-- Runs in separate container  
-- Data persists in `mysql-data` volume
-- Access: `localhost:3306`
-
-On startup, you'll see messages indicating the database status:
-- "📝 Creating new database at: [url]" (first run)
-- "✓ Using database: [type]" (subsequent runs)
-
-### Environment Variables
-
-You can customize database settings using environment variables. See [DATABASE_GUIDE.md](DATABASE_GUIDE.md) for detailed configuration options and migration guides.
-
-```bash
-DATABASE_TYPE=postgresql  # sqlite, postgresql, or mysql
-DATABASE_HOST=postgres    # database host
-DATABASE_PORT=5432        # database port
-DATABASE_NAME=expenses    # database name
-DATABASE_USER=postgres    # database user
-DATABASE_PASSWORD=postgres # database password
-```
-
-For SQLite:
-```bash
-DATABASE_TYPE=sqlite
-SQLITE_PATH=/app/data/expenses.db
-```
-
-For complete database setup instructions, troubleshooting, and migration guides, see **[DATABASE_GUIDE.md](DATABASE_GUIDE.md)**.
-
-## Stopping the Application
-
-Press Ctrl+C in the terminal, or run:
-```bash
-docker-compose down
+# Show database info
+flask --app JustAnotherExpenseManager db-info
 ```
 
 ## License
 
-MIT License - feel free to use this project for personal or commercial purposes.
-
----
-
-Built with Flask, HTMX, and Chart.js
+MIT — see `LICENSE` for details.
