@@ -4,7 +4,8 @@ Routes for settings page and test data.
 
 from typing import Tuple, Union
 from flask import Blueprint, render_template, jsonify, current_app, Response, g
-from JustAnotherExpenseManager.utils.services import CategoryService, TestDataService
+from JustAnotherExpenseManager.utils.services import CategoryService
+from JustAnotherExpenseManager.utils.test_data import TestDataService
 
 settings_bp = Blueprint('settings', __name__)
 

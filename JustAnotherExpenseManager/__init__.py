@@ -111,6 +111,7 @@ def register_cli_commands(app: Flask):
             click.echo('Database initialized successfully.')
 
         if sample_data:
+            from JustAnotherExpenseManager.utils.sample_data import load_sample_data
             click.echo('Loading sample data...')
             load_sample_data(app.db_manager)
             click.echo('Sample data loaded.')
@@ -174,91 +175,14 @@ def register_cli_commands(app: Flask):
             db.close()
 
 
-def load_sample_data(db_manager: DatabaseManager):
-    """
-    Load sample data into the database.
-
-    Args:
-        db_manager: DatabaseManager instance
-    """
-    from JustAnotherExpenseManager.models import Transaction, Tag
-    from datetime import datetime, timedelta
-
-    db = db_manager.get_session()
-    try:
-        # Sample transactions
-        sample_transactions = [
-            {
-                'description': 'Monthly Salary',
-                'amount': 5000.00,
-                'type': 'income',
-                'date': (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d'),
-            },
-            {
-                'description': 'Grocery Shopping',
-                'amount': 125.50,
-                'type': 'expense',
-                'date': (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d'),
-            },
-            {
-                'description': 'Gas Station',
-                'amount': 45.00,
-                'type': 'expense',
-                'date': (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d'),
-            },
-            {
-                'description': 'Restaurant Dinner',
-                'amount': 85.30,
-                'type': 'expense',
-                'date': (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d'),
-            },
-            {
-                'description': 'Freelance Project',
-                'amount': 1500.00,
-                'type': 'income',
-                'date': (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
-            },
-        ]
-
-        # Get food category
-        food_category = db.query(Tag).filter_by(name='category:food').first()
-        transport_category = db.query(Tag).filter_by(name='category:transport').first()
-        salary_category = db.query(Tag).filter_by(name='category:salary').first()
-
-        # Create transactions
-        for i, trans_data in enumerate(sample_transactions):
-            transaction = Transaction(**trans_data)
-
-            # Add categories
-            if i == 1:  # Grocery
-                transaction.tags.append(food_category)
-            elif i == 2:  # Gas
-                transaction.tags.append(transport_category)
-            elif i == 3:  # Restaurant
-                transaction.tags.append(food_category)
-            elif i == 0 or i == 4:  # Salary/Freelance
-                transaction.tags.append(salary_category)
-
-            db.add(transaction)
-
-        db.commit()
-    except Exception as e:
-        db.rollback()
-        raise e
-    finally:
-        db.close()
-
-
 def main():
     """Main entry point for the application."""
-    # Load configuration
     try:
         config = dotenv_values('.flaskenv')
     except Exception as err:
         print(f"Warning: Could not load .flaskenv file: {err}")
         config = {}
 
-    # Create and run app (init_database is called inside create_app)
     app = create_app()
     app.run(
         host=config.get('FLASK_RUN_HOST', '127.0.0.1'),

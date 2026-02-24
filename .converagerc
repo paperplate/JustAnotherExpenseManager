@@ -1,0 +1,19 @@
+[run]
+source = JustAnotherExpenseManager
+omit =
+    # Test and sample-data helpers — not production logic
+    JustAnotherExpenseManager/utils/test_data.py
+    JustAnotherExpenseManager/utils/sample_data.py
+    # Standard exclusions
+    */tests/*
+    */conftest.py
+    setup.py
+
+[report]
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+    # Abstract method stubs
+    raise NotImplementedError
+    # Defensive unreachable branches
+    if __name__ == .__main__.:
