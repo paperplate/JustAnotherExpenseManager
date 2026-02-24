@@ -261,8 +261,8 @@ def main():
     # Create and run app (init_database is called inside create_app)
     app = create_app()
     app.run(
-        host=config.get('FLASK_SERVER_NAME', '0.0.0.0'),
-        port=int(config.get('PORT', 5000)),
+        host=config.get('FLASK_RUN_HOST', '127.0.0.1'),
+        port=int(config.get('FLASK_RUN_PORT', 5000)),
         debug=(config.get('FLASK_ENV') == 'development')
     )
 
