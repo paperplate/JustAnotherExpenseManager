@@ -7,7 +7,7 @@ import csv
 import itertools
 from io import StringIO
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict, Any, List
 from JustAnotherExpenseManager.models import TransactionType
 from JustAnotherExpenseManager.utils.services import TransactionService
 
@@ -25,6 +25,36 @@ def _parse_transaction_type(type_str: str) -> TransactionType:
         raise ValueError(f"Invalid transaction type: {type_str}")
 
 
+def _compute_month_totals(transactions: List) -> Dict[str, float]:
+    """
+    Compute income and expense totals for a list of transactions.
+
+    Jinja2 variables mutated inside a {% for %} loop are scoped to that loop
+    and never propagate back to the outer template scope, so accumulating totals
+    in the template always produces 0.  We compute them here in Python instead
+    and pass the results as explicit template variables.
+
+    Returns:
+        dict with keys 'month_income' and 'month_expense' (both floats)
+    """
+    month_income = sum(t.amount_dollars for t in transactions if t.is_income)
+    month_expense = sum(t.amount_dollars for t in transactions if not t.is_income)
+    return {'month_income': month_income, 'month_expense': month_expense}
+
+
+def _render_transactions_list(result: Dict[str, Any]) -> str:
+    """Render transactions_list.html from a service result dict."""
+    totals = _compute_month_totals(result['transactions'])
+    return render_template(
+        'transactions_list.html',
+        transactions=result['transactions'],
+        current_month=result['current_month'],
+        pagination=result,
+        month_income=totals['month_income'],
+        month_expense=totals['month_expense'],
+    )
+
+
 @transaction_bp.route('/transactions')
 def transactions_page():
     """Display transactions page."""
@@ -37,7 +67,6 @@ def get_transactions():
     """Get paginated list of transactions (one month per page)."""
     page = request.args.get('page', 1, type=int)
 
-    # Get filter parameters
     categories_param: Optional[str] = request.args.get('categories', None)
     tags_param: Optional[str] = request.args.get('tags', None)
     time_range: Optional[str] = request.args.get('range', None)
@@ -54,10 +83,7 @@ def get_transactions():
         end_date=end_date
     )
 
-    return render_template('transactions_list.html',
-                         transactions=result['transactions'],
-                         current_month=result['current_month'],
-                         pagination=result)
+    return _render_transactions_list(result)
 
 
 @transaction_bp.route('/api/transactions', methods=['POST'])
@@ -70,7 +96,6 @@ def add_transaction():
     category = request.form.get('category', '').lower().strip()
     tags_str = request.form.get('tags', '').strip()
 
-    # Convert string type to enum at API boundary
     try:
         trans_type = _parse_transaction_type(type_str)
     except ValueError as e:
@@ -80,7 +105,7 @@ def add_transaction():
 
     service = TransactionService(g.db)
     try:
-        transaction_id = service.create_transaction(
+        service.create_transaction(
             description=description,
             amount_dollars=amount,
             type=trans_type,
@@ -89,12 +114,8 @@ def add_transaction():
             tags=tags
         )
 
-        # Return first page of transactions
         result = service.get_all_transactions(page=1)
-        return render_template('transactions_list.html',
-                             transactions=result['transactions'],
-                             current_month=result['current_month'],
-                             pagination=result)
+        return _render_transactions_list(result)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
@@ -109,7 +130,6 @@ def update_transaction(transaction_id):
     category = request.form.get('category', '').lower().strip()
     tags_str = request.form.get('tags', '').strip()
 
-    # Convert string type to enum at API boundary
     try:
         trans_type = _parse_transaction_type(type_str)
     except ValueError as e:
@@ -129,12 +149,8 @@ def update_transaction(transaction_id):
             tags=tags
         )
 
-        # Return updated transactions list
         result = service.get_all_transactions(page=1)
-        return render_template('transactions_list.html',
-                             transactions=result['transactions'],
-                             current_month=result['current_month'],
-                             pagination=result)
+        return _render_transactions_list(result)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
@@ -145,12 +161,8 @@ def delete_transaction(transaction_id):
     service = TransactionService(g.db)
     service.delete_transaction(transaction_id)
 
-    # Return first page of transactions
     result = service.get_all_transactions(page=1)
-    return render_template('transactions_list.html',
-                         transactions=result['transactions'],
-                         current_month=result['current_month'],
-                         pagination=result)
+    return _render_transactions_list(result)
 
 
 # Source - https://stackoverflow.com/a/16939441
@@ -158,6 +170,7 @@ def delete_transaction(transaction_id):
 # Retrieved 2026-02-20, License - CC BY-SA 3.0
 def lower_first(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
+
 
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
@@ -210,39 +223,41 @@ def import_transactions():
                     date_str = date_str[:date_str.find('T')]
                 tags_str = row.get('tags', '').strip()
 
-                if not all([description, amount_str, date_str]):
-                    errors.append(f"Row {row_num}: Missing required fields (description/name, amount, date)")
+                if not description:
+                    errors.append(f'Row {row_num}: Missing description')
+                    continue
+
+                if not amount_str:
+                    errors.append(f'Row {row_num}: Missing amount')
                     continue
 
                 try:
                     amount = float(amount_str)
                 except ValueError:
-                    errors.append(f"Row {row_num}: Invalid amount '{amount_str}'")
+                    errors.append(f'Row {row_num}: Invalid amount "{amount_str}"')
                     continue
 
-                # --- type inference ---
                 if type_str:
-                    # Explicit type column present — use it, amount must be positive
-                    if amount <= 0:
-                        errors.append(f"Row {row_num}: Amount must be positive when 'type' is specified")
-                        continue
                     try:
                         trans_type = _parse_transaction_type(type_str)
                     except ValueError:
-                        errors.append(f"Row {row_num}: Type must be 'income' or 'expense', got '{type_str}'")
+                        errors.append(f'Row {row_num}: Invalid type "{type_str}"')
                         continue
                 else:
-                    # No type column — infer from sign; zero is rejected
-                    if amount == 0:
-                        errors.append(f"Row {row_num}: Amount cannot be zero")
-                        continue
-                    trans_type = TransactionType.INCOME if amount > 0 else TransactionType.EXPENSE
-                    amount = abs(amount)
+                    trans_type = TransactionType.INCOME if amount >= 0 else TransactionType.EXPENSE
+
+                amount = abs(amount)
+
+                if not date_str:
+                    errors.append(f'Row {row_num}: Missing date')
+                    continue
 
                 try:
                     datetime.strptime(date_str, '%Y-%m-%d')
                 except ValueError:
-                    errors.append(f"Row {row_num}: Invalid date format '{date_str}' (use YYYY-MM-DD)")
+                    errors.append(
+                        f'Row {row_num}: Invalid date format "{date_str}" (expected YYYY-MM-DD)'
+                    )
                     continue
 
                 tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
@@ -255,21 +270,21 @@ def import_transactions():
                     category=category if category else None,
                     tags=tags
                 )
-
                 imported_count += 1
 
-            except Exception as row_exc:
-                errors.append(f"Row {row_num}: {str(row_exc)}")
-                g.db.rollback()
+            except Exception as e:  # pylint: disable=broad-except
+                errors.append(f'Row {row_num}: {str(e)}')
 
-        g.db.commit()
-
-        return jsonify({
+        response_data: Dict[str, Any] = {
             'success': True,
             'imported': imported_count,
-            'errors': errors
-        })
+            'errors': errors,
+            'message': f'Successfully imported {imported_count} transaction(s)'
+        }
+        if errors:
+            response_data['message'] += f' with {len(errors)} error(s)'
 
-    except Exception as exc:
-        g.db.rollback()
-        return jsonify({'error': f'Failed to process CSV: {str(exc)}'}), 500
+        return jsonify(response_data)
+
+    except Exception as e:  # pylint: disable=broad-except
+        return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500

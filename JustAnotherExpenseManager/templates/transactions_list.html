@@ -64,25 +64,20 @@
         </tbody>
     </table>
 
-    {# Monthly summary #}
-    {% set month_income = 0 %}
-    {% set month_expense = 0 %}
-    {% for trans in transactions %}
-        {% if trans.is_income %}
-            {% set month_income = month_income + trans.amount_dollars %}
-        {% else %}
-            {% set month_expense = month_expense + trans.amount_dollars %}
-        {% endif %}
-    {% endfor %}
-    <div style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; display: flex; gap: 20px; font-size: 14px;">
-        <div style="color: #00b894;">
-            <strong>Income:</strong> ${{ "%.2f"|format(month_income) }}
+    {# Monthly summary totals.
+       NOTE: month_income and month_expense are computed in Python (routes/transactions.py)
+       and passed as explicit template variables.  Do NOT try to accumulate them with
+       {% set %} inside a {% for %} loop — Jinja2 scopes loop-body assignments to the
+       loop block, so the outer variables always stay 0. #}
+    <div class="monthly-totals" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 6px; display: flex; gap: 20px; font-size: 14px;">
+        <div class="total-income" style="color: #00b894;">
+            <strong>Income:</strong> <span class="total-income-value">${{ "%.2f"|format(month_income) }}</span>
         </div>
-        <div style="color: #d63031;">
-            <strong>Expenses:</strong> ${{ "%.2f"|format(month_expense) }}
+        <div class="total-expense" style="color: #d63031;">
+            <strong>Expenses:</strong> <span class="total-expense-value">${{ "%.2f"|format(month_expense) }}</span>
         </div>
-        <div style="color: #333;">
-            <strong>Net:</strong> ${{ "%.2f"|format(month_income - month_expense) }}
+        <div class="total-net" style="color: #333;">
+            <strong>Net:</strong> <span class="total-net-value">${{ "%.2f"|format(month_income - month_expense) }}</span>
         </div>
         <div style="color: #666; margin-left: auto;">
             <strong>Transactions:</strong> {{ transactions|length }}
