@@ -364,7 +364,7 @@ class TestCategoryService:
     def test_update_category_renames(self, app, db):
         svc = CategoryService(db)
         svc.add_category('oldname')
-        success, error = svc.rename_category('oldname', 'newname')
+        success, error = svc.update_category('oldname', 'newname')
         assert success is True
         assert error is None
 
@@ -376,14 +376,14 @@ class TestCategoryService:
         svc = CategoryService(db)
         svc.add_category('alpha')
         svc.add_category('beta')
-        success, error = svc.rename_category('alpha', 'beta')
+        success, error = svc.update_category('alpha', 'beta')
         assert success is False
         assert error is not None
 
     def test_update_category_to_self_is_noop(self, app, db):
         svc = CategoryService(db)
         svc.add_category('alpha')
-        success, error = svc.rename_category('alpha', 'alpha')
+        success, error = svc.update_category('alpha', 'alpha')
         assert success is True
         assert error is None
 
@@ -394,7 +394,7 @@ class TestCategoryService:
         cat_svc.add_category('groceries')
         _create(trans_svc, 'Grocery item', 30.00, 'expense', '2026-02-01', category='groceries')
 
-        success, error = cat_svc.merge_category('groceries', 'food')
+        success, error = cat_svc.update_category('groceries', 'food')
         assert success is True
         assert error is None
 
@@ -407,13 +407,13 @@ class TestCategoryService:
         cat_svc.add_category('groceries')
         _create(trans_svc, 'Item', 30.00, 'expense', '2026-02-01', category='groceries')
 
-        cat_svc.merge_category('groceries', 'food')
+        cat_svc.update_category('groceries', 'food')
         names = [c['category_name'] for c in cat_svc.get_all_categories()]
         assert 'groceries' not in names
 
     def test_merge_nonexistent_source_returns_error(self, app, db):
         svc = CategoryService(db)
-        success, error = svc.merge_category('doesnotexist', 'food')
+        success, error = svc.update_category('doesnotexist', 'food')
         assert success is False
         assert 'not found' in error.lower()
 
@@ -446,44 +446,37 @@ class TestTagService:
     def test_rename_tag(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        success, error = svc.rename_tag('important', 'priority')
+        success, error = svc.update_tag('important', 'priority')
         assert success is True
         assert error is None
         assert 'priority' in svc.get_all_tags()
         assert 'important' not in svc.get_all_tags()
 
-    def test_rename_tag_to_existing_returns_error(self, app, db):
-        self._setup_tags(db)
-        svc = CategoryService(db)
-        success, error = svc.rename_tag('important', 'urgent')
-        assert success is False
-        assert error is not None
-
     def test_rename_tag_to_self_is_noop(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        success, error = svc.rename_tag('urgent', 'urgent')
+        success, error = svc.update_tag('urgent', 'urgent')
         assert success is True
         assert error is None
 
     def test_rename_tag_to_category_prefix_rejected(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        success, error = svc.rename_tag('urgent', 'category:food')
+        success, error = svc.update_tag('urgent', 'category:food')
         assert success is False
         assert error is not None
 
     def test_merge_tags_removes_source(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        svc.merge_tag('important', 'urgent')
+        svc.update_tag('important', 'urgent')
         assert 'important' not in svc.get_all_tags()
         assert 'urgent' in svc.get_all_tags()
 
     def test_merge_nonexistent_source_returns_error(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        success, error = svc.merge_tag('doesnotexist', 'urgent')
+        success, error = svc.update_tag('doesnotexist', 'urgent')
         assert success is False
         assert 'not found' in error.lower()
 

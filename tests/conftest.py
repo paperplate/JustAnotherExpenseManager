@@ -11,8 +11,8 @@ import tempfile
 import pytest
 from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
-from JustAnotherExpenseManager.utils.database import create_database_manager
-from JustAnotherExpenseManager.models import Base, Transaction, Tag, transaction_tags
+from JustAnotherExpenseManager.utils.database import create_database_manager, db
+from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
 
 
 def _clear_tables(session):
@@ -47,10 +47,6 @@ def app():
     }
 
     app = create_app(test_config, db_manager=db_manager)
-
-    # Initialize the database tables
-    with app.app_context():
-        Base.metadata.create_all(bind=db_manager.engine)
 
     yield app
 
