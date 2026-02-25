@@ -6,7 +6,7 @@ and proper enums for transaction types.
 """
 
 import enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from sqlalchemy import Column, Integer, String, DateTime, Table, ForeignKey, Enum
 from sqlalchemy.orm import relationship, validates
@@ -14,6 +14,8 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from JustAnotherExpenseManager.utils.database import db
 
+
+utcnow = lambda: datetime.now(timezone.utc).replace(tzinfo=None)
 
 class TransactionType(enum.Enum):
     """Enum for transaction types."""
@@ -40,7 +42,7 @@ class Tag(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     transactions = relationship(
         'Transaction',
@@ -95,11 +97,11 @@ class Transaction(db.Model):
     amount_cents = Column(Integer, nullable=False)
     type = Column(Enum(TransactionType), nullable=False, index=True)
     date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD format
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
     updated_at = Column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
+        default=utcnow,
+        onupdate=utcnow,
         nullable=False
     )
 
