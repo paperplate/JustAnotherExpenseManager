@@ -364,7 +364,7 @@ class TestCategoryService:
     def test_update_category_renames(self, app, db):
         svc = CategoryService(db)
         svc.add_category('oldname')
-        success, error = svc.update_category('oldname', 'newname')
+        success, error = svc.rename_category('oldname', 'newname')
         assert success is True
         assert error is None
 
@@ -376,14 +376,14 @@ class TestCategoryService:
         svc = CategoryService(db)
         svc.add_category('alpha')
         svc.add_category('beta')
-        success, error = svc.update_category('alpha', 'beta')
+        success, error = svc.rename_category('alpha', 'beta')
         assert success is False
         assert error is not None
 
     def test_update_category_to_self_is_noop(self, app, db):
         svc = CategoryService(db)
         svc.add_category('alpha')
-        success, error = svc.update_category('alpha', 'alpha')
+        success, error = svc.rename_category('alpha', 'alpha')
         assert success is True
         assert error is None
 
@@ -394,7 +394,7 @@ class TestCategoryService:
         cat_svc.add_category('groceries')
         _create(trans_svc, 'Grocery item', 30.00, 'expense', '2026-02-01', category='groceries')
 
-        success, error = cat_svc.merge_categories('groceries', 'food')
+        success, error = cat_svc.merge_category('groceries', 'food')
         assert success is True
         assert error is None
 
@@ -407,13 +407,13 @@ class TestCategoryService:
         cat_svc.add_category('groceries')
         _create(trans_svc, 'Item', 30.00, 'expense', '2026-02-01', category='groceries')
 
-        cat_svc.merge_categories('groceries', 'food')
+        cat_svc.merge_category('groceries', 'food')
         names = [c['category_name'] for c in cat_svc.get_all_categories()]
         assert 'groceries' not in names
 
     def test_merge_nonexistent_source_returns_error(self, app, db):
         svc = CategoryService(db)
-        success, error = svc.merge_categories('doesnotexist', 'food')
+        success, error = svc.merge_category('doesnotexist', 'food')
         assert success is False
         assert 'not found' in error.lower()
 

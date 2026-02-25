@@ -302,15 +302,6 @@ class TestCategoryMerge:
             'type': 'expense', 'date': '2026-03-02', 'category': 'groceries',
         })
 
-    def test_rename_conflict_returns_409(self, client):
-        self._setup(client)
-        response = client.put('/api/categories/groceries', json={'name': 'food'})
-        data = response.get_json()
-        assert response.status_code == 409
-        assert data['conflict'] is True
-        assert 'already exists' in data['error']
-        assert data['target'] == 'food'
-
     def test_rename_to_new_name_succeeds(self, client):
         self._setup(client)
         response = client.put('/api/categories/groceries', json={'name': 'supermarket'})

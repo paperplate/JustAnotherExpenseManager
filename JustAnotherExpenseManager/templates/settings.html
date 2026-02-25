@@ -37,13 +37,13 @@
                     <div class="category-list">
                         {% for cat in categories %}
                         <div class="category-item">
-                            <span class="category-name">{{ cat.category_name }}</span>
+                            <span class="category-name">{{ cat }}</span>
                             <div class="category-actions">
                                 <button class="btn btn-edit btn-small"
-                                        data-name="{{ cat.category_name }}"
+                                        data-name="{{ cat }}"
                                         onclick="editCategory(this.dataset.name)">Edit</button>
                                 <button class="btn btn-delete btn-small"
-                                        data-name="{{ cat.category_name }}"
+                                        data-name="{{ cat }}"
                                         onclick="deleteCategory(this.dataset.name)">Delete</button>
                             </div>
                         </div>

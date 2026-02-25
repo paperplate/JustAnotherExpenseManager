@@ -37,7 +37,6 @@ def get_stats() -> str:
     start_date: Optional[str] = request.args.get('start_date', None)
     end_date: Optional[str] = request.args.get('end_date', None)
     page: int = request.args.get('page', 1, type=int)
-    per_page: int = 6  # Show 6 months per page
 
     # Use g.db (set by app.before_request)
     service = StatsService(g.db)  # Only pass db_session
@@ -57,15 +56,14 @@ def get_stats() -> str:
 
     # Get monthly data with pagination
     monthly = service.get_monthly_data(
-        categories_param, time_range, start_date, end_date,
-        limit=per_page, tag_filter=tags_param
+        categories_param, tags_param
     )
 
     # Calculate pagination for monthly data
     total_months: int = service.count_months(
         categories_param, time_range, start_date, end_date, tags_param
     )
-    total_pages: int = (total_months + per_page - 1) // per_page if total_months > 0 else 1
+    #total_pages: int = (total_months + per_page - 1) // per_page if total_months > 0 else 1
 
     return render_template(
         'stats.html',
@@ -79,7 +77,8 @@ def get_stats() -> str:
         end_date=end_date,
         category_breakdown=category_breakdown,
         monthly=monthly,
-        pagination={'page': page, 'total_pages': total_pages}
+        pagination={'page': page#, 'total_pages': total_pages
+                    }
     )
 
 
@@ -107,8 +106,7 @@ def chart_data() -> Response:
 
     # Monthly data
     monthly_data = service.get_monthly_data(
-        categories_param, time_range, start_date, end_date,
-        limit=12, tag_filter=tags_param
+        categories_param, tags_param
     )
 
     return jsonify({

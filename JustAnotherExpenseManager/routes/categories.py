@@ -48,7 +48,7 @@ def add_category() -> Union[Response, Tuple[Response, int]]:
 
     try:
         service = CategoryService(g.db)
-        tag, error = service.create_category(category_name)
+        tag, error = service.add_category(category_name)
 
         if error:
             return jsonify({'error': error}), 400
@@ -112,7 +112,7 @@ def merge_category(category_name: str) -> Union[Response, Tuple[Response, int]]:
         return jsonify({'error': 'Target category name required'}), 400
 
     service = CategoryService(g.db)
-    success, error = service.merge_categories(category_name, target_name)
+    success, error = service.update_category(category_name, target_name)
 
     if error:
         return jsonify({'error': error}), 400
@@ -176,7 +176,7 @@ def rename_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
         return jsonify({'error': 'Tag name required'}), 400
 
     service = CategoryService(g.db)
-    success, error = service.rename_tag(tag_name, new_name)
+    success, error = service.update_tag(tag_name, new_name)
 
     if error:
         if 'already exists' in error:
@@ -206,7 +206,7 @@ def merge_tag(tag_name: str) -> Union[Response, Tuple[Response, int]]:
         return jsonify({'error': 'Target tag name required'}), 400
 
     service = CategoryService(g.db)
-    success, error = service.merge_tags(tag_name, target_name)
+    success, error = service.update_tag(tag_name, target_name)
 
     if error:
         return jsonify({'error': error}), 400

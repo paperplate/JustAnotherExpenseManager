@@ -9,10 +9,10 @@ import enum
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from sqlalchemy import Column, Integer, String, DateTime, Table, ForeignKey, Enum
-from sqlalchemy.orm import relationship, declarative_base, validates
+from sqlalchemy.orm import relationship, validates
 from sqlalchemy.ext.hybrid import hybrid_property
 
-Base = declarative_base()
+from JustAnotherExpenseManager.utils.database import db
 
 
 class TransactionType(enum.Enum):
@@ -27,13 +27,13 @@ class TransactionType(enum.Enum):
 # Association table for transaction-tag relationship
 transaction_tags = Table(
     'transaction_tags',
-    Base.metadata,
+    db.metadata,
     Column('transaction_id', Integer, ForeignKey('transactions.id', ondelete='CASCADE')),
     Column('tag_id', Integer, ForeignKey('tags.id', ondelete='CASCADE'))
 )
 
 
-class Tag(Base):
+class Tag(db.Model):
     """Tag model for categorization and labeling."""
 
     __tablename__ = 'tags'
@@ -42,12 +42,11 @@ class Tag(Base):
     name = Column(String(100), unique=True, nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    # Relationships
     transactions = relationship(
         'Transaction',
         secondary=transaction_tags,
         back_populates='tags',
-        lazy='dynamic'
+        lazy='select'
     )
 
     @property
@@ -81,7 +80,7 @@ class Tag(Base):
         return f"<Tag(id={self.id}, name='{self.name}')>"
 
 
-class Transaction(Base):
+class Transaction(db.Model):
     """
     Transaction model for both income and expenses.
 
@@ -97,9 +96,13 @@ class Transaction(Base):
     type = Column(Enum(TransactionType), nullable=False, index=True)
     date = Column(String(10), nullable=False, index=True)  # YYYY-MM-DD format
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+        nullable=False
+    )
 
-    # Relationships
     tags = relationship(
         'Tag',
         secondary=transaction_tags,
@@ -192,8 +195,8 @@ class Transaction(Base):
         """
         try:
             datetime.strptime(date, '%Y-%m-%d')
-        except ValueError:
-            raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD")
+        except ValueError as exc:
+            raise ValueError(f"Invalid date format: {date}. Expected YYYY-MM-DD") from exc
         return date
 
     @validates('amount_cents')

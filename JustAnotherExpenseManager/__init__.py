@@ -5,17 +5,24 @@ This application follows SOLID principles with separation of concerns:
 - Models: Database models (models/)
 - Services: Business logic (utils/services.py)
 - Routes: HTTP handlers (routes/)
-- Database: Configuration and session management (utils/database.py)
+- Database: Flask-SQLAlchemy extension and helpers (utils/database.py)
 """
 
 import sys
 import click
 from flask import Flask, g
+from flask_debugtoolbar import DebugToolbarExtension
 from dotenv import dotenv_values
+
 from JustAnotherExpenseManager.utils.database import (
+    db,
+    build_database_url,
+    init_database,
+    reset_database,
+    check_health,
     get_database_manager,
     create_database_manager,
-    DatabaseManager
+    DatabaseManager,
 )
 from JustAnotherExpenseManager.routes.transactions import transaction_bp
 from JustAnotherExpenseManager.routes.stats import stats_bp
@@ -23,59 +30,92 @@ from JustAnotherExpenseManager.routes.categories import categories_bp
 from JustAnotherExpenseManager.routes.settings import settings_bp
 
 
+toolbar = DebugToolbarExtension()
+
+
 def create_app(test_config=None, db_manager: DatabaseManager = None):
     """
     Create and configure the Flask application.
 
+    When ``db_manager`` is supplied (e.g. from test fixtures) its
+    ``database_url`` is used directly so the caller controls which database
+    is targeted.  When omitted the URL is derived from environment variables
+    via ``build_database_url()``.
+
     Args:
-        test_config: Optional test configuration dictionary
-        db_manager: Optional DatabaseManager instance (for testing)
+        test_config: Optional test configuration dictionary.
+        db_manager: Optional DatabaseManager instance (for testing).
 
     Returns:
-        Flask: Configured Flask application
+        Flask: Configured Flask application.
     """
     app = Flask(__name__)
+    app.config['SECRET_KEY'] = 'asdf'
+    toolbar.init_app(app)
 
-    # Load configuration
+    # ------------------------------------------------------------------
+    # Configuration
+    # ------------------------------------------------------------------
     if test_config is None:
         try:
             config = dotenv_values('.flaskenv')
             app.config.from_mapping(config)
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             print(f"Warning: Could not load .flaskenv file: {err}")
             app.config.from_mapping({})
     else:
         app.config.from_mapping(test_config)
 
-    # Set up database manager
+    # ------------------------------------------------------------------
+    # Database URL
+    # ------------------------------------------------------------------
+    if db_manager is not None:
+        # Test fixture supplied an explicit manager — honour its URL.
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_manager.database_url
+    elif 'SQLALCHEMY_DATABASE_URI' not in app.config:
+        app.config['SQLALCHEMY_DATABASE_URI'] = build_database_url()
+
+    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+
+    # ------------------------------------------------------------------
+    # Flask-SQLAlchemy initialisation
+    # ------------------------------------------------------------------
+    db.init_app(app)
+
+    # Attach the manager to the app for CLI commands and test fixtures that
+    # reference ``app.db_manager``.
     if db_manager is None:
         db_manager = get_database_manager()
-        db_manager.init_database()
+    db_manager._bind_app(app)  # pylint: disable=protected-access
     app.db_manager = db_manager
 
-    # Register blueprints
+    with app.app_context():
+        init_database(app)
+
+    # ------------------------------------------------------------------
+    # Blueprints
+    # ------------------------------------------------------------------
     app.register_blueprint(stats_bp)
     app.register_blueprint(transaction_bp)
     app.register_blueprint(categories_bp)
     app.register_blueprint(settings_bp)
 
-    # Database session management
+    # ------------------------------------------------------------------
+    # Request-scoped session alias
+    #
+    # Routes currently access the session via ``g.db``.  We keep that
+    # working by pointing ``g.db`` at the Flask-SQLAlchemy scoped session.
+    # Flask-SQLAlchemy already calls ``db.session.remove()`` on
+    # ``teardown_appcontext``, so no extra cleanup hook is required here.
+    # ------------------------------------------------------------------
     @app.before_request
-    def before_request():
-        """Create database session before each request."""
-        g.db = app.db_manager.get_session()
+    def _set_g_db():
+        """Expose db.session as g.db for backward compatibility with routes."""
+        g.db = db.session
 
-    @app.teardown_appcontext
-    def teardown_db(exception=None):
-        """Remove database session at end of request."""
-        db = g.pop('db', None)
-        if db is not None:
-            if exception is not None:
-                db.rollback()
-            db.close()
-        app.db_manager.shutdown_session(exception)
-
-    # Register CLI commands
+    # ------------------------------------------------------------------
+    # CLI commands
+    # ------------------------------------------------------------------
     register_cli_commands(app)
 
     return app
@@ -86,7 +126,7 @@ def register_cli_commands(app: Flask):
     Register Flask CLI commands.
 
     Args:
-        app: Flask application instance
+        app: Flask application instance.
     """
 
     @app.cli.command('init-db')
@@ -103,17 +143,17 @@ def register_cli_commands(app: Flask):
         """
         if drop:
             click.echo('Dropping existing tables...')
-            app.db_manager.reset_database()
+            reset_database(app)
             click.echo('Database reset complete.')
         else:
             click.echo('Initializing database...')
-            app.db_manager.init_database()
+            init_database(app)
             click.echo('Database initialized successfully.')
 
         if sample_data:
-            from JustAnotherExpenseManager.utils.sample_data import load_sample_data
+            from JustAnotherExpenseManager.utils.sample_data import load_sample_data  # pylint: disable=import-outside-toplevel
             click.echo('Loading sample data...')
-            load_sample_data(app.db_manager)
+            load_sample_data(db.session)
             click.echo('Sample data loaded.')
 
     @app.cli.command('db-info')
@@ -135,61 +175,34 @@ def register_cli_commands(app: Flask):
         This will DELETE ALL DATA!
         """
         click.echo('Resetting database...')
-        app.db_manager.reset_database()
+        reset_database(app)
         click.echo('Database has been reset.')
 
     @app.cli.command('db-health')
     def db_health_command():
         """Check database health/connectivity."""
         click.echo('Checking database health...')
-        try:
-            db = app.db_manager.get_session()
-            db.execute('SELECT 1')
-            db.close()
+        if check_health():
             click.echo('✓ Database is healthy and responding.')
-        except Exception as e:
-            click.echo(f'✗ Database health check failed: {e}', err=True)
+        else:
+            click.echo('✗ Database health check failed.', err=True)
             sys.exit(1)
 
     @app.cli.command('db-stats')
     def db_stats_command():
         """Display database statistics."""
-        from JustAnotherExpenseManager.models import Transaction, Tag
-
-        db = app.db_manager.get_session()
-        try:
-            transaction_count = db.query(Transaction).count()
-            tag_count = db.query(Tag).count()
-            category_count = db.query(Tag).filter(Tag.name.like('category:%')).count()
-
-            income_count = db.query(Transaction).filter_by(type='income').count()
-            expense_count = db.query(Transaction).filter_by(type='expense').count()
-
-            click.echo('Database Statistics:')
-            click.echo(f'  Total Transactions: {transaction_count}')
-            click.echo(f'    Income: {income_count}')
-            click.echo(f'    Expenses: {expense_count}')
-            click.echo(f'  Total Tags: {tag_count}')
-            click.echo(f'  Categories: {category_count}')
-        finally:
-            db.close()
+        from JustAnotherExpenseManager.models import Transaction, Tag  # pylint: disable=import-outside-toplevel
+        transaction_count = db.session.query(Transaction).count()
+        tag_count = db.session.query(Tag).count()
+        click.echo('Database Statistics:')
+        click.echo(f'  Transactions: {transaction_count}')
+        click.echo(f'  Tags:         {tag_count}')
 
 
 def main():
-    """Main entry point for the application."""
-    try:
-        config = dotenv_values('.flaskenv')
-    except Exception as err:
-        print(f"Warning: Could not load .flaskenv file: {err}")
-        config = {}
-
+    """Entry point for the installed ``JustAnotherExpenseManager`` command."""
+    import os  # pylint: disable=import-outside-toplevel
     app = create_app()
-    app.run(
-        host=config.get('FLASK_RUN_HOST', '127.0.0.1'),
-        port=int(config.get('FLASK_RUN_PORT', 5000)),
-        debug=(config.get('FLASK_ENV') == 'development')
-    )
-
-
-if __name__ == '__main__':
-    main()
+    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_RUN_PORT', '5000'))
+    app.run(host=host, port=port)
