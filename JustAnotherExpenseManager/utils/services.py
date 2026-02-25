@@ -388,16 +388,18 @@ class CategoryService:
         """Initialize CategoryService."""
         self.db = db_session
 
-    def get_all_categories(self) -> List[str]:
+    def get_all_categories(self) -> List[Dict[str, Any]]:
         """Get all category names (without the 'category:' prefix)."""
         tags = self.db.scalars(
             select(Tag).where(Tag.name.like('category:%'))
         ).all()
-        return [tag.name[len('category:'):] for tag in tags]
+        return [
+            {'full_name': tag.name, 'category_name': tag.name[len('category:'):]}
+            for tag in tags
+        ]
 
     def get_all_tags(self) -> List[str]:
         """Get all non-category tag names."""
-        #tags = self.db.query(Tag).filter(~Tag.name.like('category:%')).all()
         tags = self.db.scalars(
             select(Tag).where(~Tag.name.like('category:%'))
         ).all()
