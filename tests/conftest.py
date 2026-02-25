@@ -51,7 +51,8 @@ def app():
     yield app
 
     # Cleanup: dispose engine and remove the temporary database
-    db_manager.close_all_connections()
+    with app.app_context():
+        db_manager.close_all_connections()
     os.unlink(db_path)
 
 

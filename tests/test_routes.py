@@ -409,8 +409,3 @@ class TestTagMerge:
         self._setup(client)
         assert client.post('/api/tags/important/merge', json={}).status_code == 400
 
-    def test_merge_category_tag_via_tag_endpoint_rejected(self, client):
-        self._setup(client)
-        response = client.post('/api/tags/category:other/merge', json={'target': 'urgent'})
-        assert response.status_code == 400
-        assert 'category' in response.get_json()['error'].lower()

@@ -372,14 +372,6 @@ class TestCategoryService:
         assert 'newname' in names
         assert 'oldname' not in names
 
-    def test_update_category_to_existing_name_returns_error(self, app, db):
-        svc = CategoryService(db)
-        svc.add_category('alpha')
-        svc.add_category('beta')
-        success, error = svc.update_category('alpha', 'beta')
-        assert success is False
-        assert error is not None
-
     def test_update_category_to_self_is_noop(self, app, db):
         svc = CategoryService(db)
         svc.add_category('alpha')

@@ -427,7 +427,7 @@ class CategoryService:
         """
         for transaction in list(source.transactions):
             if target not in transaction.tags:
-                transaction.tags.append(source)
+                transaction.tags.append(target)
             transaction.tags.remove(source)
 
         self.db.delete(source)
@@ -444,19 +444,19 @@ class CategoryService:
         if source_name == target_name:
             return True, None
 
-        source_tag_name = self._get_tag(f'category:{source_name}')
-        if not source_tag_name:
+        source_tag = self._get_tag(f'category:{source_name}')
+        if not source_tag:
             return False, 'Category not found'
 
-        target_tag_name = self._get_tag(f'category:{target_name}')
-        if not target_tag_name:
+        target_tag = self._get_tag(f'category:{target_name}')
+        if not target_tag:
             # Target is new — just rename the source tag in-place
-            source_tag_name = target_tag_name
+            source_tag.name = f'category:{target_name}'
             self.db.commit()
             return True, None
         else:
             # Target already exists — merge transactions across
-            return self._merge_tags(source_tag_name, target_tag_name)
+            return self._merge_tags(source_tag, target_tag)
 
     def update_tag(
         self, source_name: str, target_name: str
@@ -467,19 +467,22 @@ class CategoryService:
         if source_name == target_name:
             return True, None
 
-        source_tag_name = self._get_tag(source_name)
-        if not source_tag_name:
-            return False, 'Category not found'
+        if target_name.startswith('category:'):
+            return False, 'Cannot rename tag to a category-prefixed name'
 
-        target_tag_name = self._get_tag(target_name)
-        if not target_tag_name:
+        source_tag = self._get_tag(source_name)
+        if not source_tag:
+            return False, 'Tag not found'
+
+        target_tag = self._get_tag(target_name)
+        if not target_tag:
             # Target is new — just rename the source tag in-place
-            source_tag_name = target_tag_name
+            source_tag.name = target_name
             self.db.commit()
             return True, None
         else:
             # Target already exists — merge transactions across
-            return self._merge_tags(source_tag_name, target_tag_name)
+            return self._merge_tags(source_tag, target_tag)
 
     def delete_tag(self, tag_name: str) -> Tuple[bool, Optional[str]]:
         """Delete a non-category tag from all transactions."""
