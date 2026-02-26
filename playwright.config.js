@@ -81,7 +81,7 @@ module.exports = defineConfig({
       DATABASE_TYPE: process.env.DATABASE_TYPE || 'sqlite',
       SQLITE_PATH: process.env.SQLITE_PATH || './data/expenses.db',
       SECRET_KEY: process.env.SECRET_KEY || 'dev-insecure-default-change-me',
-      FLASK_DEBUG: '1',
+      //FLASK_DEBUG: '1',
     },
   },
 });
