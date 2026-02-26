@@ -338,6 +338,71 @@ class TestStatsService:
         assert '2026-01' in months
         assert '2026-02' in months
 
+    def test_stats_filtered_by_tag(self, app, db):
+        svc = _make_service(db)
+        _create(svc, 'Tagged', 200.00, 'expense', '2026-02-01',
+                category='food', tags=['mytag'])
+        _create(svc, 'Untagged', 100.00, 'expense', '2026-02-01',
+                category='food', tags=[])
+
+        stats = StatsService(db).get_summary_stats(tags='mytag')
+        assert stats['expenses'] == 200.00
+
+    def test_stats_with_current_month_time_range(self, app, db):
+        """get_summary_stats with time_range='current_month' should not crash."""
+        stats = StatsService(db).get_summary_stats(time_range='current_month')
+        assert 'income' in stats
+        assert 'expenses' in stats
+
+    def test_stats_with_3_months_time_range(self, app, db):
+        stats = StatsService(db).get_summary_stats(time_range='3_months')
+        assert 'net' in stats
+
+    def test_stats_with_6_months_time_range(self, app, db):
+        stats = StatsService(db).get_summary_stats(time_range='6_months')
+        assert 'net' in stats
+
+    def test_stats_with_current_year_time_range(self, app, db):
+        stats = StatsService(db).get_summary_stats(time_range='current_year')
+        assert 'net' in stats
+
+    def test_stats_with_unknown_time_range_does_not_crash(self, app, db):
+        """An unknown time_range value should be silently ignored."""
+        stats = StatsService(db).get_summary_stats(time_range='not_a_real_range')
+        assert 'income' in stats
+
+    def test_stats_with_start_and_end_date(self, app, db):
+        svc = _make_service(db)
+        _create(svc, 'In Range', 300.00, 'expense', '2026-01-15', category='food')
+        _create(svc, 'Out of Range', 999.00, 'expense', '2025-06-01', category='food')
+
+        stats = StatsService(db).get_summary_stats(
+            start_date='2026-01-01',
+            end_date='2026-01-31',
+        )
+        assert stats['expenses'] == 300.00
+
+    def test_stats_invalid_date_format_ignored(self, app, db):
+        """Invalid date strings in start/end should not raise — just ignored."""
+        stats = StatsService(db).get_summary_stats(
+            start_date='not-a-date',
+            end_date='also-not-a-date',
+        )
+        assert 'income' in stats
+
+    def test_category_breakdown_filtered_by_tag(self, app, db):
+        svc = _make_service(db)
+        _create(svc, 'Tagged Food', 150.00, 'expense', '2026-02-01',
+                category='food', tags=['special'])
+        _create(svc, 'Regular Food', 50.00, 'expense', '2026-02-01',
+                category='food', tags=[])
+
+        breakdown = StatsService(db).get_category_breakdown(tags='special')
+        food = next((b for b in breakdown if b[0] == 'food'), None)
+        assert food is not None
+        assert food[1] == 150.00
+
+
 
 # ---------------------------------------------------------------------------
 # CategoryService
@@ -419,6 +484,38 @@ class TestCategoryService:
         names = [c['category_name'] for c in svc.get_all_categories()]
         assert 'temporary' not in names
 
+    def test_update_category_to_new_name(self, app, db):
+        """Renaming to a name that does not yet exist renames in-place."""
+        svc = CategoryService(db)
+        svc.add_category('oldcat')
+        success, error = svc.update_category('oldcat', 'newcat')
+        assert success is True
+        assert error is None
+        names = [c['category_name'] for c in svc.get_all_categories()]
+        assert 'newcat' in names
+        assert 'oldcat' not in names
+
+    def test_update_category_to_existing_merges_transactions(self, app, db):
+        """Renaming onto an existing category merges all transactions."""
+        trans_svc = _make_service(db)
+        cat_svc = CategoryService(db)
+        _create(trans_svc, 'T1', 100.00, 'expense', '2026-01-01', category='alpha')
+        _create(trans_svc, 'T2', 50.00, 'expense', '2026-01-02', category='beta')
+
+        success, error = cat_svc.update_category('alpha', 'beta')
+        assert success is True
+        assert error is None
+
+        all_tx = trans_svc.get_all_transactions()['transactions']
+        assert all(t.category == 'beta' for t in all_tx)
+
+    def test_update_nonexistent_category_returns_error(self, app, db):
+        svc = CategoryService(db)
+        success, error = svc.update_category('ghost', 'newname')
+        assert success is False
+        assert error is not None
+
+
 
 # ---------------------------------------------------------------------------
 # CategoryService — tag operations
@@ -479,3 +576,34 @@ class TestTagService:
         assert success is True
         assert error is None
         assert 'urgent' not in svc.get_all_tags()
+
+    def test_update_tag_to_new_name(self, app, db):
+        self._setup_tags(db)
+        svc = CategoryService(db)
+        success, error = svc.update_tag('important', 'priority')
+        assert success is True
+        assert error is None
+        assert 'priority' in svc.get_all_tags()
+        assert 'important' not in svc.get_all_tags()
+
+    def test_update_tag_to_existing_merges(self, app, db):
+        self._setup_tags(db)
+        svc = CategoryService(db)
+        success, error = svc.update_tag('important', 'urgent')
+        assert success is True
+        assert error is None
+        assert 'important' not in svc.get_all_tags()
+        assert 'urgent' in svc.get_all_tags()
+
+    def test_delete_tag_removes_from_all_transactions(self, app, db):
+        self._setup_tags(db)
+        trans_svc = _make_service(db)
+        cat_svc = CategoryService(db)
+        success, error = cat_svc.delete_tag('urgent')
+        assert success is True
+        assert error is None
+
+        tx = trans_svc.get_all_transactions()['transactions']
+        all_tag_names = [t.name for tx_item in tx for t in tx_item.tags]
+        assert 'urgent' not in all_tag_names
+

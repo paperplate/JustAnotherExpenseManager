@@ -106,6 +106,21 @@ class TestTransactionAPI:
     def test_delete_nonexistent_transaction_is_noop(self, client):
         assert client.delete('/api/transactions/99999').status_code == 200
 
+    def test_update_transaction_invalid_type_returns_400(self, client, db):
+        from JustAnotherExpenseManager.utils.services import TransactionService
+        from JustAnotherExpenseManager.models import TransactionType
+        trans_id = TransactionService(db).create_transaction(
+            description='Original', amount_dollars=10.0,
+            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+        )
+        response = client.put(f'/api/transactions/{trans_id}', data={
+            'description': 'Updated',
+            'amount': '20.00',
+            'type': 'bad_type',
+            'date': '2026-02-01',
+        })
+        assert response.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # Transaction filtering and pagination
@@ -199,6 +214,67 @@ class TestCategoryAPI:
         response = client.post('/api/categories', json={'name': 'has space'})
         assert response.status_code == 400
 
+    def test_add_category_no_json_body_returns_error(self, client):
+        response = client.post(
+            '/api/categories',
+            data='not-json',
+            content_type='text/plain',
+        )
+        # Flask returns 415 Unsupported Media Type when Content-Type is not application/json
+        assert response.status_code in (400, 415)
+
+    def test_add_category_empty_name_returns_400(self, client):
+        response = client.post('/api/categories', json={'name': '   '})
+        assert response.status_code == 400
+
+    def test_add_category_name_too_long_returns_400(self, client):
+        long_name = 'a' * 51
+        response = client.post('/api/categories', json={'name': long_name})
+        assert response.status_code == 400
+        assert 'too long' in response.get_json().get('error', '').lower()
+
+    def test_add_category_special_chars_rejected(self, client):
+        response = client.post('/api/categories', json={'name': 'bad name!'})
+        assert response.status_code == 400
+
+    def test_update_category_no_json_returns_error(self, client, sample_transactions):
+        response = client.put(
+            '/api/categories/food',
+            data='not-json',
+            content_type='text/plain',
+        )
+        assert response.status_code in (400, 415)
+
+    def test_update_category_missing_new_name_returns_400(self, client, sample_transactions):
+        response = client.put('/api/categories/food', json={})
+        assert response.status_code == 400
+
+    def test_update_nonexistent_category_returns_error(self, client):
+        response = client.put(
+            '/api/categories/does-not-exist',
+            json={'new_name': 'something'},
+        )
+        assert response.status_code in (400, 404)
+
+    def test_delete_nonexistent_category_returns_error(self, client):
+        response = client.delete('/api/categories/does-not-exist')
+        assert response.status_code in (400, 404)
+        assert 'error' in response.get_json()
+
+    def test_update_tag_no_json_returns_error(self, client):
+        response = client.put(
+            '/api/tags/sometag',
+            data='not-json',
+            content_type='text/plain',
+        )
+        assert response.status_code in (400, 415)
+
+    def test_delete_nonexistent_tag_returns_error(self, client):
+        response = client.delete('/api/tags/does-not-exist')
+        assert response.status_code in (400, 404)
+        assert 'error' in response.get_json()
+
+
 
 # ---------------------------------------------------------------------------
 # Tag API
@@ -268,6 +344,107 @@ class TestCSVImport:
         assert result['imported'] == 2
         assert len(result['errors']) == 1
 
+    def test_import_empty_filename_returns_400(self, client):
+        """Sending a file object with an empty filename triggers the 'No file selected' guard."""
+        import io
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (io.BytesIO(b''), '')},
+            content_type='multipart/form-data',
+        )
+        assert response.status_code == 400
+
+    def test_import_missing_description_skips_row(self, client):
+        """Row with no description is counted as an error, not imported."""
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b',100.00,expense,food,2026-02-01,\n'
+            b'Valid Row,50.00,income,salary,2026-02-01,'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+        assert len(result['errors']) == 1
+
+    def test_import_missing_date_skips_row(self, client):
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b'No Date Row,100.00,expense,food,,\n'
+            b'Valid Row,50.00,income,salary,2026-02-01,'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+        assert len(result['errors']) >= 1
+
+    def test_import_invalid_date_format_skips_row(self, client):
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b'Bad Date,100.00,expense,food,01/15/2026,\n'
+            b'Good Date,50.00,income,salary,2026-02-01,'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+        assert len(result['errors']) == 1
+
+    def test_import_invalid_transaction_type_skips_row(self, client):
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b'Bad Type,100.00,unknown_type,food,2026-02-01,\n'
+            b'Good Row,50.00,income,salary,2026-02-01,'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+        assert len(result['errors']) == 1
+
+    def test_import_negative_amount_infers_expense_type(self, client):
+        """When 'type' column is absent, negative amounts are treated as expense."""
+        csv_content = (
+            b'description,amount,category,date\n'
+            b'Implicit Expense,-75.00,food,2026-02-01'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+
+    def test_import_missing_amount_skips_row(self, client):
+        csv_content = (
+            b'description,amount,type,category,date,tags\n'
+            b'No Amount,,expense,food,2026-02-01,\n'
+            b'Valid,50.00,income,salary,2026-02-01,'
+        )
+        response = client.post(
+            '/api/transactions/import',
+            data={'csv_file': (BytesIO(csv_content), 'test.csv')},
+            content_type='multipart/form-data',
+        )
+        result = response.get_json()
+        assert result['imported'] == 1
+        assert len(result['errors']) == 1
+
+
 
 # ---------------------------------------------------------------------------
 # Settings API
@@ -283,6 +460,35 @@ class TestSettingsAPI:
 
     def test_settings_page_accessible(self, client):
         assert client.get('/settings').status_code == 200
+
+    def test_clear_all_transactions_succeeds_in_testing_mode(self, client, db):
+        """clear-all is allowed when app.testing is True (even without debug)."""
+        from JustAnotherExpenseManager.utils.services import TransactionService
+        from JustAnotherExpenseManager.models import TransactionType
+        TransactionService(db).create_transaction(
+            description='To Clear', amount_dollars=10.0,
+            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+        )
+        response = client.post('/api/transactions/clear-all')
+        assert response.status_code == 200
+        assert response.get_json()['success'] is True
+
+    def test_clear_all_leaves_database_empty(self, client, db):
+        """After clear-all, no transactions remain."""
+        from JustAnotherExpenseManager.utils.services import TransactionService
+        from JustAnotherExpenseManager.models import TransactionType
+        svc = TransactionService(db)
+        svc.create_transaction(
+            description='T1', amount_dollars=10.0,
+            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+        )
+        svc.create_transaction(
+            description='T2', amount_dollars=20.0,
+            type=TransactionType.INCOME, date='2026-01-02', category='salary', tags=[],
+        )
+        client.post('/api/transactions/clear-all')
+        db.expire_all()
+        assert svc.get_all_transactions()['total'] == 0
 
 
 # ---------------------------------------------------------------------------

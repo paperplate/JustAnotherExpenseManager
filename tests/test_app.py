@@ -75,3 +75,25 @@ class TestTransactionLifecycle:
         saved = result['transactions'][0]
         assert saved.description == 'Persistent Test'
         assert saved.amount_dollars == pytest.approx(99.99, abs=0.01)
+
+
+# ---------------------------------------------------------------------------
+# CLI commands
+# ---------------------------------------------------------------------------
+
+class TestCLICommands:
+    """Invoke Flask CLI commands to cover __init__.py branches."""
+
+    def test_db_health_command(self, runner):
+        result = runner.invoke(args=['db-health'])
+        assert result.exit_code == 0
+        assert 'health' in result.output.lower()
+
+    def test_db_stats_command(self, runner):
+        result = runner.invoke(args=['db-stats'])
+        assert result.exit_code == 0
+        assert 'Transactions' in result.output
+
+    def test_init_db_command_no_drop(self, runner):
+        result = runner.invoke(args=['init-db'])
+        assert result.exit_code == 0
