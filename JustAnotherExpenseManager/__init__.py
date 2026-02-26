@@ -8,6 +8,7 @@ This application follows SOLID principles with separation of concerns:
 - Database: Flask-SQLAlchemy extension and helpers (utils/database.py)
 """
 
+import os
 import sys
 import click
 from flask import Flask, g
@@ -47,7 +48,6 @@ def create_app(test_config=None):
         Flask: Configured Flask application.
     """
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = 'asdf'
     toolbar.init_app(app)
 
     # ------------------------------------------------------------------
@@ -62,6 +62,19 @@ def create_app(test_config=None):
             app.config.from_mapping({})
     else:
         app.config.from_mapping(test_config)
+
+    # Resolve SECRET_KEY in priority order:
+    #   1. test_config / .flaskenv (already applied above)
+    #   2. environment variable (covers Docker and CI)
+    #   3. dev-only fallback — warns loudly so it is never used in production
+    if not app.config.get('SECRET_KEY'):
+        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+    if not app.config.get('SECRET_KEY'):
+        app.logger.warning(
+            'SECRET_KEY is not set. Using an insecure default — '
+            'set SECRET_KEY in .flaskenv or as an environment variable.'
+        )
+        app.config['SECRET_KEY'] = 'dev-insecure-default-change-me'
 
     # ------------------------------------------------------------------
     # Database URL
