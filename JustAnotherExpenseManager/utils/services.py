@@ -389,7 +389,11 @@ class CategoryService:
         self, source_name: str, target_name: str
     ) -> Tuple[bool, Optional[str]]:
         """
-        Rename to a new category or merge into existing category
+        Rename source_name to target_name.
+
+        Returns (False, 'Category already exists') when target_name already
+        exists so the route can return a 409 and let the client prompt the user
+        to confirm a merge via POST /api/categories/<name>/merge.
         """
         if source_name == target_name:
             return True, None
@@ -398,21 +402,41 @@ class CategoryService:
         if not source_tag:
             return False, 'Category not found'
 
+        if self._get_tag(f'category:{target_name}'):
+            return False, 'Category already exists'
+
+        source_tag.name = f'category:{target_name}'
+        self.db.commit()
+        return True, None
+
+    def merge_category(
+        self, source_name: str, target_name: str
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Merge source_name into target_name.
+
+        All transactions tagged with source_name are re-tagged to target_name,
+        then source_name is deleted.
+        """
+        source_tag = self._get_tag(f'category:{source_name}')
+        if not source_tag:
+            return False, 'Category not found'
+
         target_tag = self._get_tag(f'category:{target_name}')
         if not target_tag:
-            # Target is new — just rename the source tag in-place
-            source_tag.name = f'category:{target_name}'
-            self.db.commit()
-            return True, None
-        else:
-            # Target already exists — merge transactions across
-            return self._merge_tags(source_tag, target_tag)
+            return False, 'Target category not found'
+
+        return self._merge_tags(source_tag, target_tag)
 
     def update_tag(
         self, source_name: str, target_name: str
     ) -> Tuple[bool, Optional[str]]:
         """
-        Rename to a new tag or merge into existing tag
+        Rename source_name to target_name.
+
+        Returns (False, 'Tag already exists') when target_name already exists
+        so the route can return a 409 and let the client prompt the user to
+        confirm a merge via POST /api/tags/<name>/merge.
         """
         if source_name == target_name:
             return True, None
@@ -424,15 +448,31 @@ class CategoryService:
         if not source_tag:
             return False, 'Tag not found'
 
+        if self._get_tag(target_name):
+            return False, 'Tag already exists'
+
+        source_tag.name = target_name
+        self.db.commit()
+        return True, None
+
+    def merge_tag(
+        self, source_name: str, target_name: str
+    ) -> Tuple[bool, Optional[str]]:
+        """
+        Merge source_name into target_name.
+
+        All transactions tagged with source_name are re-tagged to target_name,
+        then source_name is deleted.
+        """
+        source_tag = self._get_tag(source_name)
+        if not source_tag:
+            return False, 'Tag not found'
+
         target_tag = self._get_tag(target_name)
         if not target_tag:
-            # Target is new — just rename the source tag in-place
-            source_tag.name = target_name
-            self.db.commit()
-            return True, None
-        else:
-            # Target already exists — merge transactions across
-            return self._merge_tags(source_tag, target_tag)
+            return False, 'Target tag not found'
+
+        return self._merge_tags(source_tag, target_tag)
 
     def delete_tag(self, tag_name: str) -> Tuple[bool, Optional[str]]:
         """Delete a non-category tag from all transactions."""

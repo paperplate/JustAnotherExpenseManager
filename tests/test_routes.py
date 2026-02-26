@@ -542,6 +542,33 @@ class TestCategoryMerge:
         self._setup(client)
         assert client.post('/api/categories/groceries/merge', json={}).status_code == 400
 
+    def test_rename_to_existing_returns_409_with_conflict(self, client):
+        self._setup(client)
+        response = client.put('/api/categories/groceries', json={'name': 'food'})
+        data = response.get_json()
+        assert response.status_code == 409
+        assert data['conflict'] is True
+        assert data['target'] == 'food'
+
+    def test_rename_to_existing_does_not_auto_merge(self, client):
+        self._setup(client)
+        client.put('/api/categories/groceries', json={'name': 'food'})
+        names = [c['category_name'] for c in client.get('/api/categories').get_json()]
+        assert 'groceries' in names
+        assert 'food' in names
+
+    def test_merge_nonexistent_source_returns_400(self, client):
+        self._setup(client)
+        response = client.post('/api/categories/doesnotexist/merge', json={'target': 'food'})
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
+    def test_merge_nonexistent_target_returns_400(self, client):
+        self._setup(client)
+        response = client.post('/api/categories/groceries/merge', json={'target': 'doesnotexist'})
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
+
 
 # ---------------------------------------------------------------------------
 # Tag rename / merge
@@ -615,3 +642,23 @@ class TestTagMerge:
         self._setup(client)
         assert client.post('/api/tags/important/merge', json={}).status_code == 400
 
+    def test_rename_to_existing_returns_409_with_conflict(self, client):
+        self._setup(client)
+        response = client.put('/api/tags/important', json={'name': 'urgent'})
+        data = response.get_json()
+        assert response.status_code == 409
+        assert data['conflict'] is True
+        assert data['target'] == 'urgent'
+
+    def test_rename_to_existing_does_not_auto_merge(self, client):
+        self._setup(client)
+        client.put('/api/tags/important', json={'name': 'urgent'})
+        tags = client.get('/api/tags').get_json()
+        assert 'important' in tags
+        assert 'urgent' in tags
+
+    def test_merge_nonexistent_target_returns_400(self, client):
+        self._setup(client)
+        response = client.post('/api/tags/important/merge', json={'target': 'doesnotexist'})
+        assert response.status_code == 400
+        assert 'not found' in response.get_json()['error'].lower()
