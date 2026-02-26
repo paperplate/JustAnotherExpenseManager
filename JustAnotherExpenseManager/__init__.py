@@ -20,9 +20,6 @@ from JustAnotherExpenseManager.utils.database import (
     init_database,
     reset_database,
     check_health,
-    get_database_manager,
-    create_database_manager,
-    DatabaseManager,
 )
 from JustAnotherExpenseManager.routes.transactions import transaction_bp
 from JustAnotherExpenseManager.routes.stats import stats_bp
@@ -33,7 +30,7 @@ from JustAnotherExpenseManager.routes.settings import settings_bp
 toolbar = DebugToolbarExtension()
 
 
-def create_app(test_config=None, db_manager: DatabaseManager = None):
+def create_app(test_config=None):
     """
     Create and configure the Flask application.
 
@@ -69,10 +66,7 @@ def create_app(test_config=None, db_manager: DatabaseManager = None):
     # ------------------------------------------------------------------
     # Database URL
     # ------------------------------------------------------------------
-    if db_manager is not None:
-        # Test fixture supplied an explicit manager — honour its URL.
-        app.config['SQLALCHEMY_DATABASE_URI'] = db_manager.database_url
-    elif 'SQLALCHEMY_DATABASE_URI' not in app.config:
+    if 'SQLALCHEMY_DATABASE_URI' not in app.config:
         app.config['SQLALCHEMY_DATABASE_URI'] = build_database_url()
 
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
@@ -81,13 +75,6 @@ def create_app(test_config=None, db_manager: DatabaseManager = None):
     # Flask-SQLAlchemy initialisation
     # ------------------------------------------------------------------
     db.init_app(app)
-
-    # Attach the manager to the app for CLI commands and test fixtures that
-    # reference ``app.db_manager``.
-    if db_manager is None:
-        db_manager = get_database_manager()
-    db_manager._bind_app(app)  # pylint: disable=protected-access
-    app.db_manager = db_manager
 
     with app.app_context():
         init_database(app)
@@ -159,10 +146,12 @@ def register_cli_commands(app: Flask):
     @app.cli.command('db-info')
     def db_info_command():
         """Display database information."""
+        url = str(db.engine.url)
+        db_type = url.split('://')[0].split('+')[0]
         click.echo('Database Configuration:')
-        click.echo(f'  Type: {app.db_manager.type}')
-        click.echo(f'  URL: {app.db_manager.url}')
-        click.echo(f'  Engine: {app.db_manager.engine}')
+        click.echo(f'  Type: {db_type}')
+        click.echo(f'  URL: {url}')
+        click.echo(f'  Engine: {db.engine}')
 
     @app.cli.command('db-reset')
     @click.confirmation_option(

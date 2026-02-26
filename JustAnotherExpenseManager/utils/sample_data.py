@@ -7,19 +7,18 @@ Not intended for use in production or automated tests.
 
 from datetime import datetime, timedelta
 
-from JustAnotherExpenseManager.utils.database import DatabaseManager
+from sqlalchemy.orm import Session
 
 
-def load_sample_data(db_manager: DatabaseManager) -> None:
+def load_sample_data(session: Session) -> None:
     """
     Load a small set of fixed sample transactions into the database.
 
     Args:
-        db_manager: DatabaseManager instance
+        session: SQLAlchemy session to use for inserting data.
     """
     from JustAnotherExpenseManager.models import Transaction, Tag
 
-    db = db_manager.get_session()
     try:
         sample_transactions = [
             {
@@ -54,9 +53,9 @@ def load_sample_data(db_manager: DatabaseManager) -> None:
             },
         ]
 
-        food_category = db.query(Tag).filter_by(name='category:food').first()
-        transport_category = db.query(Tag).filter_by(name='category:transport').first()
-        salary_category = db.query(Tag).filter_by(name='category:salary').first()
+        food_category = session.query(Tag).filter_by(name='category:food').first()
+        transport_category = session.query(Tag).filter_by(name='category:transport').first()
+        salary_category = session.query(Tag).filter_by(name='category:salary').first()
 
         for i, trans_data in enumerate(sample_transactions):
             transaction = Transaction(**trans_data)
@@ -70,11 +69,9 @@ def load_sample_data(db_manager: DatabaseManager) -> None:
             elif i in (0, 4):  # Salary / Freelance
                 transaction.tags.append(salary_category)
 
-            db.add(transaction)
+            session.add(transaction)
 
-        db.commit()
+        session.commit()
     except Exception as e:
-        db.rollback()
+        session.rollback()
         raise e
-    finally:
-        db.close()

@@ -42,6 +42,8 @@ def build_database_url(
     Returns:
         str: A SQLAlchemy-compatible database URL.
     """
+
+    path_str = ''
     resolved_type = (db_type or os.getenv('DATABASE_TYPE', 'sqlite')).lower()
 
     if resolved_type == 'postgresql':
@@ -50,19 +52,19 @@ def build_database_url(
         name = db_name or os.getenv('DATABASE_NAME', 'expenses')
         user = db_user or os.getenv('DATABASE_USER', 'expensemanager')
         password = db_password or os.getenv('DATABASE_PASSWORD', 'expensemanager')
-        return f'postgresql://{user}:{password}@{host}:{port}/{name}'
-
-    if resolved_type == 'mysql':
+        path_str = f'postgresql://{user}:{password}@{host}:{port}/{name}'
+    elif resolved_type == 'mysql':
         host = db_host or os.getenv('DATABASE_HOST', 'localhost')
         port = db_port or os.getenv('DATABASE_PORT', '3306')
         name = db_name or os.getenv('DATABASE_NAME', 'expenses')
         user = db_user or os.getenv('DATABASE_USER', 'expensemanager')
         password = db_password or os.getenv('DATABASE_PASSWORD', 'expensemanager')
-        return f'mysql+pymysql://{user}:{password}@{host}:{port}/{name}'
-
-    # SQLite (default)
-    path = os.path.abspath(sqlite_path or os.getenv('SQLITE_PATH', './data/expenses.db'))
-    return f'sqlite:///{path}'
+        path_str = f'mysql+pymysql://{user}:{password}@{host}:{port}/{name}'
+    else:
+        # SQLite (default)
+        path = os.path.abspath(sqlite_path or os.getenv('SQLITE_PATH', './data/expenses.db'))
+        path_str = f'sqlite:///{path}'
+    return path_str
 
 
 def init_database(app: Flask) -> None:
@@ -154,125 +156,3 @@ def _seed_default_categories() -> None:
 
     db.session.commit()
 
-
-# ---------------------------------------------------------------------------
-# Backward-compatibility shim
-# ---------------------------------------------------------------------------
-
-class DatabaseManager:
-    """
-    Thin wrapper kept for backward compatibility with existing test fixtures.
-
-    New code should use the ``db`` extension object and the module-level
-    helper functions (``build_database_url``, ``init_database``, etc.)
-    directly.
-    """
-
-    def __init__(
-        self,
-        db_type: Optional[str] = None,
-        db_host: Optional[str] = None,
-        db_port: Optional[str] = None,
-        db_name: Optional[str] = None,
-        db_user: Optional[str] = None,
-        db_password: Optional[str] = None,
-        sqlite_path: Optional[str] = None,
-    ):
-        self._db_type = (db_type or os.getenv('DATABASE_TYPE', 'sqlite')).lower()
-        self._sqlite_path = sqlite_path or os.getenv('SQLITE_PATH', './data/expenses.db')
-        self.database_url = build_database_url(
-            db_type=db_type,
-            db_host=db_host,
-            db_port=db_port,
-            db_name=db_name,
-            db_user=db_user,
-            db_password=db_password,
-            sqlite_path=sqlite_path,
-        )
-        # Expose engine and session via the shared db extension once bound.
-        self._app: Optional[Flask] = None
-
-    # ------------------------------------------------------------------
-    # Properties referenced by existing CLI commands / tests
-    # ------------------------------------------------------------------
-
-    @property
-    def engine(self):
-        """Return the SQLAlchemy engine from the Flask-SQLAlchemy extension."""
-        return db.engine
-
-    @property
-    def url(self) -> str:
-        """Return the database URL."""
-        return self.database_url
-
-    @property
-    def type(self) -> str:
-        """Return the database type string."""
-        return self._db_type
-
-    # ------------------------------------------------------------------
-    # Session helpers used by test fixtures
-    # ------------------------------------------------------------------
-
-    def get_session(self):
-        """Return the scoped session managed by Flask-SQLAlchemy."""
-        return db.session
-
-    def shutdown_session(self, exception: Optional[Exception] = None) -> None:
-        """Remove the scoped session (Flask-SQLAlchemy handles this automatically)."""
-        db.session.remove()
-
-    def close_all_connections(self) -> None:
-        """Remove the session and dispose of the engine."""
-        db.session.remove()
-        db.engine.dispose()
-
-    # ------------------------------------------------------------------
-    # Lifecycle helpers
-    # ------------------------------------------------------------------
-
-    def init_database(self) -> None:
-        """Initialize the database (must be called inside an app context)."""
-        if self._app is None:
-            raise RuntimeError(
-                "DatabaseManager is not bound to a Flask app. "
-                "Call create_app() before init_database()."
-            )
-        init_database(self._app)
-
-    def reset_database(self) -> None:
-        """Drop and recreate all tables (must be called inside an app context)."""
-        if self._app is None:
-            raise RuntimeError(
-                "DatabaseManager is not bound to a Flask app. "
-                "Call create_app() before reset_database()."
-            )
-        reset_database(self._app)
-
-    def _bind_app(self, app: Flask) -> None:
-        """Called by create_app() to store a reference to the Flask application."""
-        self._app = app
-
-
-def get_database_manager() -> DatabaseManager:
-    """
-    Create a ``DatabaseManager`` instance from environment configuration.
-
-    Returns:
-        DatabaseManager: Configured database manager.
-    """
-    return DatabaseManager()
-
-
-def create_database_manager(**kwargs) -> DatabaseManager:
-    """
-    Create a ``DatabaseManager`` instance with explicit configuration.
-
-    Args:
-        **kwargs: Configuration parameters forwarded to ``DatabaseManager``.
-
-    Returns:
-        DatabaseManager: New database manager instance.
-    """
-    return DatabaseManager(**kwargs)

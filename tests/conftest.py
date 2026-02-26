@@ -11,7 +11,7 @@ import tempfile
 import pytest
 from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
-from JustAnotherExpenseManager.utils.database import create_database_manager, db
+from JustAnotherExpenseManager.utils.database import db as _db
 from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
 
 
@@ -33,26 +33,22 @@ def app():
     db_fd, db_path = tempfile.mkstemp(suffix='.db')
     os.close(db_fd)
 
-    # Create a dedicated DatabaseManager for testing using the temp SQLite file
-    db_manager = create_database_manager(
-        db_type='sqlite',
-        sqlite_path=db_path
-    )
-
     # Configure app for testing
     test_config = {
         'TESTING': True,
         'WTF_CSRF_ENABLED': False,
-        'SECRET_KEY': 'test-secret-key'
+        'SECRET_KEY': 'test-secret-key',
+        'SQLALCHEMY_DATABASE_URI': f'sqlite:///{db_path}',
     }
 
-    app = create_app(test_config, db_manager=db_manager)
+    app = create_app(test_config)
 
     yield app
 
     # Cleanup: dispose engine and remove the temporary database
     with app.app_context():
-        db_manager.close_all_connections()
+        _db.session.remove()
+        _db.engine.dispose()
     os.unlink(db_path)
 
 
@@ -79,9 +75,10 @@ def db(app):
     Provide a database session for tests.
     This fixture ensures each test has a fresh database state.
     """
-    session = app.db_manager.get_session()
-    yield session
-    session.close()
+    with app.app_context():
+        session = _db.session
+        yield session
+        session.close()
 
 
 @pytest.fixture(scope='function')
@@ -149,7 +146,7 @@ def reset_database(app):
     Clears junction table first to avoid FK/stale-data issues.
     """
     with app.app_context():
-        session = app.db_manager.get_session()
+        session = _db.session
         try:
             _clear_tables(session)
         finally:
@@ -158,7 +155,7 @@ def reset_database(app):
     yield
 
     with app.app_context():
-        session = app.db_manager.get_session()
+        session = _db.session
         try:
             _clear_tables(session)
         finally:
