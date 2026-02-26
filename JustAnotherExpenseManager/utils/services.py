@@ -331,56 +331,6 @@ class StatsService:
             unique_months = set(trans.date[:7] for trans in transactions)
             return len(unique_months)
 
-    def _build_filtered_query(
-        self,
-        categories: Optional[str],
-        time_range: Optional[str],
-        start_date: Optional[str],
-        end_date: Optional[str],
-        tags: Optional[str]
-    ):
-        """Build a query with common filters applied."""
-        query = self.db.query(Transaction)
-
-        # Date range
-        if start_date and end_date:
-            try:
-                datetime.strptime(start_date, '%Y-%m-%d')
-                datetime.strptime(end_date, '%Y-%m-%d')
-                query = query.filter(and_(
-                    Transaction.date >= start_date,
-                    Transaction.date <= end_date
-                ))
-            except ValueError:
-                pass
-        elif time_range:
-            today = datetime.now().date()
-            ranges = {
-                'current_month': lambda: today.replace(day=1),
-                '3_months': lambda: today - timedelta(days=90),
-                '6_months': lambda: today - timedelta(days=180),
-                'current_year': lambda: today.replace(month=1, day=1),
-            }
-            if time_range in ranges:
-                start = ranges[time_range]().strftime('%Y-%m-%d')
-                query = query.filter(Transaction.date >= start)
-
-        # Category filter — join once for categories
-        if categories:
-            category_list = [f'category:{c.strip()}' for c in categories.split(',') if c.strip()]
-            if category_list:
-                CategoryTag = aliased(Tag)
-                query = query.join(CategoryTag, Transaction.tags).filter(CategoryTag.name.in_(category_list))
-
-        # Tag filter — use a separate alias so this join is independent of the category join
-        if tags:
-            tag_list = [t.strip() for t in tags.split(',') if t.strip()]
-            if tag_list:
-                FilterTag = aliased(Tag)
-                query = query.join(FilterTag, Transaction.tags).filter(FilterTag.name.in_(tag_list))
-
-        return query
-
 class CategoryService:
     """Service class for category and tag management."""
 
