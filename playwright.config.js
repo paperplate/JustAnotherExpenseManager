@@ -19,11 +19,13 @@ module.exports = defineConfig({
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   
-  /* Reporter to use */
-  reporter: [
-    ['html', { outputFolder: 'playwright-report' }],
-    ['list']
-  ],
+  /* Reporters: blob for CI sharding (merged later), html+list locally */
+  reporter: process.env.CI
+    ? [['blob'], ['list']]
+    : [['html', { outputFolder: 'playwright-report' }], ['list']],
+
+  /* Workers: 2 in CI (GitHub Actions 2-CPU runners), unlimited locally */
+  workers: process.env.CI ? 2 : undefined,
   
   /* Shared settings for all the projects below */
   use: {

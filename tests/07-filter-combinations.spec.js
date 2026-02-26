@@ -5,12 +5,16 @@ const { test, expect } = require('@playwright/test');
  * Tests all meaningful combinations of category, tag, and time-range filters
  * on both the Summary and Transactions pages.
  *
- * Data setup (shared via beforeEach):
+ * Data setup (seeded once per describe block via beforeAll, not before every test):
  *   - 3 food expenses:       Groceries ($120, recurring), Pizza ($40, dining), Snacks ($15, today)
  *   - 1 transport expense:   Bus Pass ($60, commute, recurring)
  *   - 1 salary income:       Salary ($3000, recurring)
  *   - 1 entertainment exp:   Cinema ($30, leisure)
  * All transactions are dated today so time-range filters always include them.
+ *
+ * Each describe block is marked serial so tests within it run sequentially and
+ * share the same seeded state. This avoids re-seeding 6 transactions before
+ * every one of the 36 tests, cutting setup time from O(n_tests) to O(n_blocks).
  */
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -97,9 +101,15 @@ async function seedData(page) {
 
 // ─── Summary page filter combinations ────────────────────────────────────────
 
-test.describe('Summary page — filter combinations', () => {
-    test.beforeEach(async ({ page }) => {
+test.describe.serial('Summary page — filter combinations', () => {
+    test.beforeAll(async ({ browser }) => {
+        const page = await browser.newPage();
         await seedData(page);
+        await page.close();
+    });
+
+    test.beforeEach(async ({ page }) => {
+        // Navigate to a clean summary view before each test; data is already seeded.
         await page.goto('/summary');
         await page.waitForLoadState('networkidle');
     });
@@ -307,9 +317,15 @@ test.describe('Summary page — filter combinations', () => {
 
 // ─── Transactions page filter combinations ────────────────────────────────────
 
-test.describe('Transactions page — filter combinations', () => {
-    test.beforeEach(async ({ page }) => {
+test.describe.serial('Transactions page — filter combinations', () => {
+    test.beforeAll(async ({ browser }) => {
+        const page = await browser.newPage();
         await seedData(page);
+        await page.close();
+    });
+
+    test.beforeEach(async ({ page }) => {
+        // Navigate to a clean transactions view before each test; data is already seeded.
         await page.goto('/transactions');
         await page.waitForLoadState('networkidle');
     });
