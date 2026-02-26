@@ -36,17 +36,15 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
 
-    - name: Initialize Database
-      run: |
-        python -c "
-        from JustAnotherExpenseManager.utils.database import get_database_manager
-        db = get_database_manager()
-        db.init_database()
-        print('Database initialized successfully.')
-        "
+    - name: Start Flask server
+      run: flask run &
       env:
+        FLASK_APP: JustAnotherExpenseManager
         DATABASE_TYPE: sqlite
         SQLITE_PATH: ./test-expenses.db
+
+    - name: Wait for Flask server to be ready
+      run: npx wait-on http://localhost:5000 --timeout 30000
 
     - name: Run Playwright tests
       run: npx playwright test --project=chromium
