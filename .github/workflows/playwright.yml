@@ -36,39 +36,13 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps chromium
 
-    - name: Start Flask server
-      run: |
-        nohup flask run --host=0.0.0.0 --port=5000 > flask.log 2>&1 &
-        echo $! > flask.pid
-        echo "Flask server started with PID $(cat flask.pid)"
-      env:
-        FLASK_APP: JustAnotherExpenseManager
-        DATABASE_TYPE: sqlite
-        SQLITE_PATH: ./test-expenses.db
-        SECRET_KEY: ci-test-secret-key
-
-    - name: Wait for Flask server to be ready
-      run: |
-        echo "Waiting for Flask server..."
-        for i in $(seq 1 30); do
-          if curl -sf http://localhost:5000 > /dev/null 2>&1; then
-            echo "Flask server is ready after ${i}s"
-            exit 0
-          fi
-          echo "Attempt $i/30 — not ready yet, waiting 1s..."
-          sleep 1
-        done
-        echo "Flask server did not start in time. Logs:"
-        cat flask.log
-        exit 1
-
     - name: Run Playwright tests
       run: npx playwright test --project=chromium
       env:
         CI: true
         DATABASE_TYPE: sqlite
         SQLITE_PATH: ./test-expenses.db
-        BASE_URL: http://localhost:5000
+        SECRET_KEY: ci-test-secret-key
 
     - name: Upload test results
       uses: actions/upload-artifact@v4

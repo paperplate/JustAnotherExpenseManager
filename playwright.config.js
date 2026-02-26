@@ -73,11 +73,12 @@ module.exports = defineConfig({
   webServer: {
     command: 'JustAnotherExpenseManager',
     url: 'http://localhost:5000',
-    reuseExistingServer: !process.env.CI,
+    reuseExistingServer: true,
     timeout: 120 * 1000,
     env: {
       DATABASE_TYPE: process.env.DATABASE_TYPE || 'sqlite',
       SQLITE_PATH: process.env.SQLITE_PATH || './data/expenses.db',
+      SECRET_KEY: process.env.SECRET_KEY || 'dev-insecure-default-change-me',
     },
   },
 });
