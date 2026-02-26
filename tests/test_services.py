@@ -451,7 +451,7 @@ class TestCategoryService:
         cat_svc.add_category('groceries')
         _create(trans_svc, 'Grocery item', 30.00, 'expense', '2026-02-01', category='groceries')
 
-        success, error = cat_svc.update_category('groceries', 'food')
+        success, error = cat_svc.merge_category('groceries', 'food')
         assert success is True
         assert error is None
 
@@ -502,7 +502,7 @@ class TestCategoryService:
         _create(trans_svc, 'T1', 100.00, 'expense', '2026-01-01', category='alpha')
         _create(trans_svc, 'T2', 50.00, 'expense', '2026-01-02', category='beta')
 
-        success, error = cat_svc.update_category('alpha', 'beta')
+        success, error = cat_svc.merge_category('alpha', 'beta')
         assert success is True
         assert error is None
 
@@ -558,7 +558,7 @@ class TestTagService:
     def test_merge_tags_removes_source(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        svc.update_tag('important', 'urgent')
+        svc.merge_tag('important', 'urgent')
         assert 'important' not in svc.get_all_tags()
         assert 'urgent' in svc.get_all_tags()
 
@@ -589,7 +589,7 @@ class TestTagService:
     def test_update_tag_to_existing_merges(self, app, db):
         self._setup_tags(db)
         svc = CategoryService(db)
-        success, error = svc.update_tag('important', 'urgent')
+        success, error = svc.merge_tag('important', 'urgent')
         assert success is True
         assert error is None
         assert 'important' not in svc.get_all_tags()
