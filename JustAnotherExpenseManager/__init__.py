@@ -48,7 +48,6 @@ def create_app(test_config=None):
         Flask: Configured Flask application.
     """
     app = Flask(__name__)
-    toolbar.init_app(app)
 
     # ------------------------------------------------------------------
     # Configuration
@@ -76,6 +75,7 @@ def create_app(test_config=None):
         )
         app.config['SECRET_KEY'] = 'dev-insecure-default-change-me'
 
+    toolbar.init_app(app)
     # ------------------------------------------------------------------
     # Database URL
     # ------------------------------------------------------------------
