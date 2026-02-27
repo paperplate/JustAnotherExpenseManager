@@ -19,6 +19,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '45.50');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
     await page.selectOption('#category', 'food');
     await page.fill('#tags', 'test, automated');
 
@@ -37,6 +38,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '1500.00');
     await page.selectOption('#type', 'income');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="salary"]`, { timeout: 5000 });
     await page.selectOption('#category', 'salary');
 
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -62,6 +64,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '35.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
     await page.selectOption('#category', 'food');
 
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -77,6 +80,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '25.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
     await page.selectOption('#category', 'other');
 
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -103,6 +107,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '20.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
     await page.selectOption('#category', 'food');
 
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -124,6 +129,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '10.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
     await page.selectOption('#category', 'other');
 
     await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -144,6 +150,7 @@ test.describe('Transactions', () => {
     await page.fill('#amount', '50.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="shopping"]`, { timeout: 5000 });
     await page.selectOption('#category', 'shopping');
     await page.fill('#tags', 'urgent, important, business');
 

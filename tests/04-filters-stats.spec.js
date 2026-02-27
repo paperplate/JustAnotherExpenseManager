@@ -24,6 +24,7 @@ test.describe('Filters and Statistics', () => {
     await page.fill('#amount', '100.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
     await page.selectOption('#category', 'food');
     await page.click('button[type="submit"]:has-text("Add Transaction")');
     await page.waitForLoadState('networkidle');
@@ -32,6 +33,7 @@ test.describe('Filters and Statistics', () => {
     await page.fill('#amount', '500.00');
     await page.selectOption('#type', 'income');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="salary"]`, { timeout: 5000 });
     await page.selectOption('#category', 'salary');
     await page.click('button[type="submit"]:has-text("Add Transaction")');
     await page.waitForLoadState('networkidle');
@@ -167,6 +169,7 @@ test.describe('Filters and Statistics', () => {
     await page.fill('#amount', '10.00');
     await page.selectOption('#type', 'expense');
     await page.fill('#date', today);
+    await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
     await page.selectOption('#category', 'other');
     await page.fill('#tags', 'playwrighttest');
     await page.click('button[type="submit"]:has-text("Add Transaction")');

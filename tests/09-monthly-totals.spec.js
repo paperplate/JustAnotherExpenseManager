@@ -31,6 +31,10 @@ async function addTransaction(page, { description, amount, type, category, tags 
     await page.fill('#amount', String(amount));
     await page.selectOption('#type', type);
     await page.fill('#date', date);
+    // The category <select> is populated asynchronously by loadCategorySelect().
+    // Wait for the desired option to appear before selecting it to avoid racing
+    // against the fetch('/api/categories') response.
+    await page.waitForSelector(`#category option[value="${category}"]`, { timeout: 5000 });
     await page.selectOption('#category', category);
     if (tags) await page.fill('#tags', tags);
     await page.click('button[type="submit"]:has-text("Add Transaction")');

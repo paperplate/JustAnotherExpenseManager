@@ -207,7 +207,8 @@ test.describe('Unicode category — merge', () => {
         await page.fill('#amount', '50');
         await page.selectOption('#type', 'expense');
         await page.fill('#date', TODAY);
-        await page.selectOption('#category', '食物');
+        await page.waitForSelector(`#category option[value="食物"]`, { timeout: 5000 });
+    await page.selectOption('#category', '食物');
         await page.click('button[type="submit"]:has-text("Add Transaction")');
         await page.waitForLoadState('networkidle');
 
