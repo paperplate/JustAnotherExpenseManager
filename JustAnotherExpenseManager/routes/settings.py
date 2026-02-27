@@ -93,11 +93,16 @@ def clear_all_transactions() -> Union[Response, Tuple[Response, int]]:
     try:
         from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags  # pylint: disable=import-outside-toplevel
         from sqlalchemy import delete as sa_delete  # pylint: disable=import-outside-toplevel
+        from JustAnotherExpenseManager.utils.database import _seed_default_categories  # pylint: disable=import-outside-toplevel
 
         g.db.execute(sa_delete(transaction_tags))
         g.db.query(Transaction).delete(synchronize_session=False)
         g.db.query(Tag).delete(synchronize_session=False)
         g.db.commit()
+
+        # Re-seed default categories so the category dropdown is never empty
+        # after a clear — tests and manual use both depend on them being present.
+        _seed_default_categories()
 
         return jsonify({'success': True})
     except Exception as exc:  # pylint: disable=broad-except
