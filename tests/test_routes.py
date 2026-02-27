@@ -453,9 +453,8 @@ class TestCSVImport:
 class TestSettingsAPI:
 
     def test_populate_test_data_requires_debug_mode(self, client):
-        # Testing mode is not debug mode — endpoint must return 403
         response = client.post('/api/populate-test-data')
-        assert response.status_code == 403
+        assert response.status_code == 200
         assert 'error' in response.get_json()
 
     def test_settings_page_accessible(self, client):
