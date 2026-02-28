@@ -36,8 +36,9 @@ async function addTransaction(page, { description, amount, type, category, tags 
     // against the fetch('/api/categories') response.
     //await page.waitForSelector(`#category option[value="${category}"]`, { timeout: 5000 });
     //await page.selectOption('#category', category);
-    await page.getByRole('select', {name: 'category'}).click();
-    await page.selectOption('[aria-label="category"]', '${category}');
+    await page.selectOption('select#category', {value: '${category}');
+    //await page.getByRole('select', {name: 'category'}).click();
+    //await page.selectOption('[aria-label="category"]', '${category}');
     if (tags) await page.fill('#tags', tags);
     await page.click('button[type="submit"]:has-text("Add Transaction")');
     await page.waitForLoadState('networkidle');
