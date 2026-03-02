@@ -3,6 +3,8 @@
   "version": "2.3.0",
   "description": "E2E tests for Expense Manager using Playwright",
   "scripts": {
+    "build:static": "tsc --project tsconfig.static.json",
+    "watch:static": "tsc --project tsconfig.static.json --watch",
     "test": "playwright test",
     "test:headed": "playwright test --headed",
     "test:debug": "playwright test --debug",
@@ -14,10 +16,16 @@
     "report": "playwright show-report",
     "codegen": "playwright codegen http://localhost:5000"
   },
-  "keywords": ["playwright", "testing", "e2e"],
+  "keywords": [
+    "playwright",
+    "testing",
+    "e2e"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
   }
 }

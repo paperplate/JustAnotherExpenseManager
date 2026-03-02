@@ -1,6 +1,6 @@
-const { test, expect } = require('@playwright/test');
-const fs = require('fs');
-const path = require('path');
+import { test, expect } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 
 /**
  * CSV Import Tests

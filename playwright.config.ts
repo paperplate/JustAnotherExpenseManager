@@ -1,4 +1,4 @@
-const { defineConfig, devices } = require('@playwright/test');
+import {defineConfig, devices} from '@playwright/test'
 
 /**
  * Playwright configuration for Expense Manager E2E tests
