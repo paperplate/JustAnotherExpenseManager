@@ -153,7 +153,7 @@ test.describe('Filters and Statistics', () => {
     // Now click "All Categories" to reset
     await page.click('#category-summary');
     //await page.locator('#category-options-list .filter-option[data-value="All Categories"]').click();
-    await page.locator('#category-options-list .filter-option').first().click();
+    await page.locator('#filter-option').first().click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
