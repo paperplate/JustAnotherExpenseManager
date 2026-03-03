@@ -118,30 +118,30 @@ test.describe('Unicode category — merge', () => {
   test('merge Chinese source → English target succeeds', async ({ page }) => {
     await addCategory(page, '食物');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     // Rename '食物' to 'food' — conflicts, prompting merge
     await openEditModal(page, '食物');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.fill('#edit-category-name', 'food');
+    await page.fill('#edit-category-name', 'food2');
 
     page.once('dialog', dialog => dialog.accept());
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
     await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
   });
 
   test('merge English source → Chinese target succeeds', async ({ page }) => {
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
     await addCategory(page, '食物');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     // Rename 'food' to '食物' — conflicts, prompting merge
-    await openEditModal(page, 'food');
+    await openEditModal(page, 'food2');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
     await page.fill('#edit-category-name', '食物');
 
@@ -150,7 +150,7 @@ test.describe('Unicode category — merge', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
   });
 
   test('merge Chinese source → Chinese target succeeds', async ({ page }) => {
@@ -172,21 +172,21 @@ test.describe('Unicode category — merge', () => {
   });
 
   test('merge English source → English target succeeds (regression guard)', async ({ page }) => {
-    await addCategory(page, 'groceries');
+    await addCategory(page, 'groceries2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
-    await openEditModal(page, 'groceries');
+    await openEditModal(page, 'groceries2');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.fill('#edit-category-name', 'food');
+    await page.fill('#edit-category-name', 'food2');
 
     page.once('dialog', dialog => dialog.accept());
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'groceries' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'groceries2' })).not.toBeVisible();
   });
 
   test('merge moves transactions from Chinese source to English target', async ({ page }) => {
@@ -206,19 +206,19 @@ test.describe('Unicode category — merge', () => {
     // Now add the target English category and merge
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     await openEditModal(page, '食物');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.fill('#edit-category-name', 'food');
+    await page.fill('#edit-category-name', 'food2');
 
     page.once('dialog', dialog => dialog.accept());
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
     // Verify the transaction is now visible under 'food' filter
-    await page.goto('/transactions?categories=food');
+    await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
     await expect(page.locator('text=Chinese cat transaction')).toBeVisible();
   });
@@ -226,12 +226,12 @@ test.describe('Unicode category — merge', () => {
   test('declining merge prompt leaves both categories intact', async ({ page }) => {
     await addCategory(page, '食物');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     await openEditModal(page, '食物');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.fill('#edit-category-name', 'food');
+    await page.fill('#edit-category-name', 'food2');
 
     // Dismiss the merge confirmation dialog
     page.once('dialog', dialog => dialog.dismiss());
@@ -240,7 +240,7 @@ test.describe('Unicode category — merge', () => {
 
     // Both categories should still exist
     await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
   });
 });
 
