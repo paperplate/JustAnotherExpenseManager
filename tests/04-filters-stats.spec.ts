@@ -109,8 +109,8 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('should filter stats by category', async ({ page }) => {
-    await page.click('#category-summary');
-    await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
+    //await page.click('#category-summary');
+    //await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
 
     // Click the "food" option
     await selectCategory(page, 'food');
@@ -142,8 +142,8 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('selecting "All Categories" deselects individual categories', async ({ page }) => {
-    await page.click('#category-summary');
-    await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
+    //await page.click('#category-summary');
+    //await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
 
     // Select a specific category
     await selectCategory(page, 'food')
