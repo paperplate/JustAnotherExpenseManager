@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addTransaction } from './helpers'
 
 /**
  * Filters and Statistics Tests
@@ -18,27 +19,19 @@ test.describe('Filters and Statistics', () => {
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    const today = new Date().toISOString().split('T')[0];
+    await addTransaction(page, {
+      description: 'Filter Test Expense',
+      amount: 100,
+      type: 'expense',
+      category: 'food'
+    });
 
-    await page.fill('#description', 'Filter Test Expense');
-    await page.fill('#amount', '100.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    //await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
-    //await page.selectOption('#category', 'food');
-    await page.selectOption('select#category', { value: 'food' });
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
-
-    await page.fill('#description', 'Filter Test Income');
-    await page.fill('#amount', '500.00');
-    await page.selectOption('#type', 'income');
-    await page.fill('#date', today);
-    //await page.waitForSelector(`#category option[value="salary"]`, { timeout: 5000 });
-    //await page.selectOption('#category', 'salary');
-    await page.selectOption('select#category', { value: 'salary' });
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: 'Filter Test Expense',
+      amount: 500,
+      type: 'income',
+      category: 'salary'
+    });
 
     await page.click('text=Summary');
     await page.waitForLoadState('networkidle');
@@ -166,17 +159,13 @@ test.describe('Filters and Statistics', () => {
   test('tag filter dropdown opens and shows options', async ({ page }) => {
     // First add a transaction with a tag so there is something to show
     await page.goto('/transactions');
-    const today = new Date().toISOString().split('T')[0];
-    await page.fill('#description', 'Tagged');
-    await page.fill('#amount', '10.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    //await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
-    //await page.selectOption('#category', 'other');
-    await page.selectOption('select#category', { value: 'other' });
-    await page.fill('#tags', 'playwrighttest');
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: 'Tagged',
+      amount: 10.0,
+      type: 'expense',
+      category: 'other',
+      tags: 'playwrighttest'
+    });
 
     await page.goto('/summary');
     await page.waitForLoadState('networkidle');

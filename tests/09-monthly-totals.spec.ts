@@ -1,4 +1,5 @@
-import { test, expect, Page, Browser } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { addTransaction, clearDatabase, parseDollar } from './helpers'
 
 /**
  * Monthly Totals Regression Tests
@@ -14,51 +15,6 @@ import { test, expect, Page, Browser } from '@playwright/test';
  * Also verifies that the transactions list itself is rendered via the
  * transactions_list.html partial on every API response (GET, POST, PUT, DELETE).
  */
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
-
-const TODAY = new Date().toISOString().split('T')[0];
-
-async function clearDatabase(page: Page): Promise<void> {
-  const response = await page.request.post('/api/transactions/clear-all');
-  if (!response.ok()) {
-    throw new Error(`clear-all failed: ${response.status()} ${await response.text()}`);
-  }
-}
-
-async function addTransaction(page: Page, opts: {
-  description: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-  tags?: string;
-  date?: string;
-}): Promise<void> {
-  const { description, amount, type, category, tags = '', date = TODAY } = opts;
-  await page.fill('#description', description);
-  await page.fill('#amount', String(amount));
-  await page.selectOption('#type', type);
-  await page.fill('#date', date);
-  // The category <select> is populated asynchronously by loadCategorySelect().
-  // Wait for the desired option to appear before selecting it to avoid racing
-  // against the fetch('/api/categories') response.
-  //await page.waitForSelector(`#category option[value="${category}"]`, { timeout: 5000 });
-  //await page.selectOption('#category', category);
-  await page.selectOption('select#category', { value: category });
-  //await page.getByRole('select', {name: 'category'}).click();
-  //await page.selectOption('[aria-label="category"]', '${category}');
-  if (tags) await page.fill('#tags', tags);
-  await page.click('button[type="submit"]:has-text("Add Transaction")');
-  await page.waitForLoadState('networkidle');
-  if (tags) await page.fill('#tags', '');
-}
-
-/**
- * Parse a dollar string like "$1,234.56" or "$0.00" to a float.
- */
-function parseDollar(text: string | null): number {
-  return parseFloat((text ?? '0').replace(/[$,]/g, ''));
-}
 
 // ─── Transactions list rendering ─────────────────────────────────────────────
 

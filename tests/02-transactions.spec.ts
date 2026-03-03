@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { addTransaction, clearDatabase, parseDollar } from './helpers'
 
 /**
  * Transaction CRUD Tests
@@ -13,18 +14,13 @@ test.describe('Transactions', () => {
   });
 
   test('should add a new expense transaction', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'Test Grocery Shopping');
-    await page.fill('#amount', '45.50');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'food');
-    await page.fill('#tags', 'test, automated');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: 'Test Grocery Shopping',
+      amount: 45.5,
+      type: 'expense',
+      category: 'food',
+      tags: 'test,automated'
+    });
 
     await expect(page.locator('text=Test Grocery Shopping')).toBeVisible();
     await expect(page.locator('text=-$45.50')).toBeVisible();
@@ -32,17 +28,12 @@ test.describe('Transactions', () => {
   });
 
   test('should add a new income transaction', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'Freelance Payment');
-    await page.fill('#amount', '1500.00');
-    await page.selectOption('#type', 'income');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="salary"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'salary');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: 'Freelance Payment',
+      amount: 1500,
+      type: 'income',
+      category: 'salary'
+    });
 
     await expect(page.locator('text=Freelance Payment')).toBeVisible();
     await expect(page.locator('text=+$1500.00')).toBeVisible();
@@ -58,33 +49,23 @@ test.describe('Transactions', () => {
   });
 
   test('should handle transaction with quotes in description', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', "O'Malley's Irish Pub");
-    await page.fill('#amount', '35.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'food');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: "O'Malley's Irish Pub",
+      amount: 35.0,
+      type: 'expense',
+      category: 'food'
+    });
 
     await expect(page.locator("text=O'Malley's Irish Pub")).toBeVisible();
   });
 
   test('should edit a transaction', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'Original Description');
-    await page.fill('#amount', '25.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'other');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: "Original Description",
+      amount: 25.0,
+      type: 'expense',
+      category: 'other'
+    });
 
     await page.click('button.btn-edit:has-text("Edit")');
     await expect(page.locator('#editModal')).toBeVisible();
@@ -101,17 +82,12 @@ test.describe('Transactions', () => {
   });
 
   test('should pre-select current category in edit modal', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'Category Check');
-    await page.fill('#amount', '20.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="food"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'food');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: "Category Check",
+      amount: 20.0,
+      type: 'expense',
+      category: 'food'
+    });
 
     await page.click('button.btn-edit:has-text("Edit")');
     await expect(page.locator('#editModal')).toBeVisible();
@@ -123,17 +99,12 @@ test.describe('Transactions', () => {
   });
 
   test('should delete a transaction', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'To Be Deleted');
-    await page.fill('#amount', '10.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="other"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'other');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: "To Be Deleted",
+      amount: 10.0,
+      type: 'expense',
+      category: 'other'
+    });
 
     page.on('dialog', dialog => dialog.accept());
 
@@ -144,18 +115,13 @@ test.describe('Transactions', () => {
   });
 
   test('should handle tags correctly', async ({ page }) => {
-    const today = new Date().toISOString().split('T')[0];
-
-    await page.fill('#description', 'Tagged Transaction');
-    await page.fill('#amount', '50.00');
-    await page.selectOption('#type', 'expense');
-    await page.fill('#date', today);
-    await page.waitForSelector(`#category option[value="shopping"]`, { timeout: 5000 });
-    await page.selectOption('#category', 'shopping');
-    await page.fill('#tags', 'urgent, important, business');
-
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, {
+      description: "Tagged Transaction",
+      amount: 50.0,
+      type: 'expense',
+      category: 'shopping',
+      tags: 'urgent important, business'
+    });
 
     await expect(page.locator('.tag-badge:has-text("urgent")')).toBeVisible();
     await expect(page.locator('.tag-badge:has-text("important")')).toBeVisible();
