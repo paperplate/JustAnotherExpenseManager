@@ -1,4 +1,4 @@
-import {test, expect} from '@playwrite/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * Navigation Tests
