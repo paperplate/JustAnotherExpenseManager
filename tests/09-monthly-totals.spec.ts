@@ -138,8 +138,8 @@ test.describe('Monthly totals — mixed', () => {
     await addTransaction(page, { description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await addTransaction(page, { description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
 
-    const income = parseDollar(await page.locator('.total-income-value').textContent());
-    const expense = parseDollar(await page.locator('.total-expense-value').textContent());
+    const income = parseDollar(await page.locator('#total-income-value').textContent());
+    const expense = parseDollar(await page.locator('#total-expense-value').textContent());
 
     expect(income).toBeGreaterThan(0);
     expect(expense).toBeGreaterThan(0);
@@ -229,7 +229,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
 
-    const rows = await page.locator('.transactions-table tbody tr').count();
+    const rows = await page.locator('.transactions-list tbody tr').count();
     const countText = await page.locator('.monthly-totals').textContent();
 
     expect(rows).toBe(3);

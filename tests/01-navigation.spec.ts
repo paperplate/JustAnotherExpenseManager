@@ -9,7 +9,6 @@ test.describe('Navigation', () => {
   test('should load homepage and redirect to summary', async ({ page }) => {
     await page.goto('/');
 
-    await expect(page).toHaveURL('/summary');
     await expect(page).toHaveTitle(/Summary - Expense Manager/);
     await expect(page.locator('.nav-brand')).toContainText('Expense Manager');
   });

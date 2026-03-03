@@ -15,7 +15,7 @@ interface TransactionOptions {
   type: 'income' | 'expense';
   category: string;
   tags?: string;
-  date: string;
+  date?: string;
 }
 
 async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {

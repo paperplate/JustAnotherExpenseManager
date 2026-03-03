@@ -267,16 +267,16 @@ test.describe('Unicode category — delete', () => {
   });
 
   test('delete English category succeeds (regression guard)', async ({ page }) => {
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('.category-item', { hasText: 'food' })
+    await page.locator('.category-item', { hasText: 'food2' })
       .locator('button:has-text("Delete")')
       .click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
   });
 
   test('deleting Chinese category removes it from transaction dropdown', async ({ page }) => {
