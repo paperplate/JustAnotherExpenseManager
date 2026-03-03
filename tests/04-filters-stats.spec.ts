@@ -142,18 +142,12 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('selecting "All Categories" deselects individual categories', async ({ page }) => {
-    //await page.click('#category-summary');
-    //await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
-
     // Select a specific category
     await selectCategory(page, 'food')
-    //await page.locator('#category-options-list .filter-option').first().click();
-    //await page.waitForLoadState('networkidle');
 
     // Now click "All Categories" to reset
     await page.click('#category-summary');
-    //await page.locator('#category-options-list .filter-option[data-value="All Categories"]').click();
-    await page.locator('#filter-option').first().click();
+    await page.locator('#category-options-list .filter-option[data-value=""]').click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');

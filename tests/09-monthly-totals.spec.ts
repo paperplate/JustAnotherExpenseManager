@@ -230,7 +230,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
 
     const rows = await page.locator('.transactions-list tbody tr').count();
-    const countText = await page.locator('#monthly-totals').textContent();
+    const countText = await page.locator('.monthly-totals').textContent();
 
     expect(rows).toBe(3);
     expect(countText).toContain('3');
