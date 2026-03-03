@@ -56,6 +56,48 @@ async function submitRename(page: Page, newName: string): Promise<void> {
   await page.waitForLoadState('networkidle');
 }
 
+async function openCategoryFilter(page: Page): Promise<void> {
+  const details = page.locator('#category-details');
+  if (!(await details.getAttribute('open'))) {
+    await page.click('#category-summary');
+  }
+}
+
+async function openTagFilter(page: Page): Promise<void> {
+  const details = page.locator('#tag-details');
+  if (!(await details.getAttribute('open'))) {
+    await page.click('#tag-summary');
+  }
+}
+
+async function selectCategory(page: Page, name: string): Promise<void> {
+  await openCategoryFilter(page);
+  await page.locator('#category-options-list .filter-option', { hasText: new RegExp(`^${name}$`, 'i') }).click();
+  await page.waitForLoadState('networkidle');
+}
+
+async function selectTag(page: Page, name: string): Promise<void> {
+  await openTagFilter(page);
+  await page.locator('#tag-options-list .filter-option', { hasText: new RegExp(`^${name}$`, 'i') }).click();
+  await page.waitForLoadState('networkidle');
+}
+
+async function resetCategoryFilter(page: Page): Promise<void> {
+  await openCategoryFilter(page);
+  await page.locator('#category-details .filter-option[data-value=""]').click();
+  await page.waitForLoadState('networkidle');
+}
+
+async function resetTagFilter(page: Page): Promise<void> {
+  await openTagFilter(page);
+  await page.locator('#tag-details .filter-option[data-value=""]').click();
+  await page.waitForLoadState('networkidle');
+}
+
+async function scrollToTotals(page: Page): Promise<void> {
+  await page.locator('#monthly-totals').scrollIntoViewIfNeeded();
+}
+
 export {
   clearDatabase,
   addTransaction,
@@ -63,5 +105,10 @@ export {
   addCategory,
   openEditModal,
   submitRename,
-  TODAY
+  TODAY,
+  selectCategory,
+  selectTag,
+  resetCategoryFilter,
+  resetTagFilter,
+  scrollToTotals
 };

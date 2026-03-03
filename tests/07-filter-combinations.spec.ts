@@ -1,5 +1,14 @@
 import { test, expect, Page, Browser } from '@playwright/test';
-import { clearDatabase, addTransaction, TODAY } from './helpers';
+import {
+  clearDatabase,
+  addTransaction,
+  TODAY,
+  selectCategory,
+  selectTag,
+  resetCategoryFilter,
+  resetTagFilter,
+  scrollToTotals
+} from './helpers';
 
 /**
  * Filter Combination Tests
@@ -17,50 +26,8 @@ import { clearDatabase, addTransaction, TODAY } from './helpers';
  * share the same seeded state. This avoids re-seeding 6 transactions before
  * every one of the 36 tests, cutting setup time from O(n_tests) to O(n_blocks).
  */
-// ─── helpers ────────────────────────────────────────────────────────────────
-async function openCategoryFilter(page: Page): Promise<void> {
-  const details = page.locator('#category-details');
-  if (!(await details.getAttribute('open'))) {
-    await page.click('#category-summary');
-  }
-  await expect(page.locator('#category-options-list .filter-option').first())
-    .toBeVisible({ timeout: 5000 });
-}
-
-async function openTagFilter(page: Page): Promise<void> {
-  const details = page.locator('#tag-details');
-  if (!(await details.getAttribute('open'))) {
-    await page.click('#tag-summary');
-  }
-  await expect(page.locator('#tag-options-list .filter-option').first())
-    .toBeVisible({ timeout: 5000 });
-}
-
-async function selectCategory(page: Page, name: string): Promise<void> {
-  await openCategoryFilter(page);
-  await page.locator('#category-options-list .filter-option', { hasText: new RegExp(`^${name}$`, 'i') }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function selectTag(page: Page, name: string): Promise<void> {
-  await openTagFilter(page);
-  await page.locator('#tag-options-list .filter-option', { hasText: new RegExp(`^${name}$`, 'i') }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetCategoryFilter(page: Page): Promise<void> {
-  await openCategoryFilter(page);
-  await page.locator('#category-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetTagFilter(page: Page): Promise<void> {
-  await openTagFilter(page);
-  await page.locator('#tag-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
 // ─── shared setup ────────────────────────────────────────────────────────────
+
 async function seedData(page: Page): Promise<void> {
   await clearDatabase(page);
 
@@ -357,7 +324,7 @@ test.describe.serial('Transactions page — filter combinations', () => {
 
   test('category:food — shows all three food transactions', async ({ page }) => {
     await selectCategory(page, 'food');
-
+    await scrollToTotals(page);
     await expect(page.locator('text=Groceries')).toBeVisible();
     await expect(page.locator('text=Pizza')).toBeVisible();
     await expect(page.locator('text=Snacks')).toBeVisible();

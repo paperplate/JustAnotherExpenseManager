@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { addTransaction } from './helpers'
+import { addTransaction, selectCategory } from './helpers'
 
 /**
  * Filters and Statistics Tests
@@ -113,9 +113,10 @@ test.describe('Filters and Statistics', () => {
     await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
 
     // Click the "food" option
-    const foodOption = page.locator('#category-options-list .filter-option', { hasText: 'Food' });
-    await foodOption.click();
-    await page.waitForLoadState('networkidle');
+    await selectCategory(page, 'food');
+    //const foodOption = page.locator('#category-options-list .filter-option', { hasText: 'Food' });
+    //await foodOption.click();
+    //await page.waitForLoadState('networkidle');
 
     // Summary should update and still be visible
     await expect(page.locator('.summary-card.expense')).toBeVisible();
@@ -145,12 +146,14 @@ test.describe('Filters and Statistics', () => {
     await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
 
     // Select a specific category
-    await page.locator('#category-options-list .filter-option').first().click();
-    await page.waitForLoadState('networkidle');
+    await selectCategory(page, 'food')
+    //await page.locator('#category-options-list .filter-option').first().click();
+    //await page.waitForLoadState('networkidle');
 
     // Now click "All Categories" to reset
     await page.click('#category-summary');
-    await page.locator('#category-options-list .filter-option[data-value=""]').click();
+    //await page.locator('#category-options-list .filter-option[data-value="All Categories"]').click();
+    await page.locator('#category-options-list .filter-option').first().click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
