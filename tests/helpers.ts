@@ -9,22 +9,21 @@ async function clearDatabase(page: Page): Promise<void> {
   }
 }
 
-async function addTransaction(page: Page, opts: {
+interface TransactionOptions {
   description: string;
   amount: number;
   type: 'income' | 'expense';
   category: string;
   tags?: string;
-  date?: string;
-}): Promise<void> {
+  date: string;
+}
+
+async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
   const { description, amount, type, category, tags = '', date = TODAY } = opts;
   await page.fill('#description', description);
   await page.fill('#amount', String(amount));
   await page.selectOption('#type', type);
   await page.fill('#date', date);
-  // The category <select> is populated asynchronously by loadCategorySelect().
-  // Wait for the desired option to appear before selecting it to avoid racing
-  // against the fetch('/api/categories') response.
   await page.selectOption('select#category', { value: category });
   if (tags) await page.fill('#tags', tags);
   await page.click('button[type="submit"]:has-text("Add Transaction")');
@@ -63,5 +62,6 @@ export {
   parseDollar,
   addCategory,
   openEditModal,
-  submitRename
+  submitRename,
+  TODAY
 };

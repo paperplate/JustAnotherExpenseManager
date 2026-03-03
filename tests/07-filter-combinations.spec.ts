@@ -1,4 +1,5 @@
 import { test, expect, Page, Browser } from '@playwright/test';
+import { clearDatabase, addTransaction, TODAY } from './helpers';
 
 /**
  * Filter Combination Tests
@@ -16,42 +17,7 @@ import { test, expect, Page, Browser } from '@playwright/test';
  * share the same seeded state. This avoids re-seeding 6 transactions before
  * every one of the 36 tests, cutting setup time from O(n_tests) to O(n_blocks).
  */
-
-// ─── types ───────────────────────────────────────────────────────────────────
-
-interface TransactionOptions {
-  description: string;
-  amount: number;
-  type: 'income' | 'expense';
-  category: string;
-  tags?: string;
-  date: string;
-}
-
 // ─── helpers ────────────────────────────────────────────────────────────────
-
-async function clearDatabase(page: Page): Promise<void> {
-  const response = await page.request.post('/api/transactions/clear-all');
-  if (!response.ok()) {
-    throw new Error(`Failed to clear database: ${response.status()} ${await response.text()}`);
-  }
-}
-
-async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
-  const { description, amount, type, category, tags = '', date } = opts;
-  await page.fill('#description', description);
-  await page.fill('#amount', String(amount));
-  await page.selectOption('#type', type);
-  await page.fill('#date', date);
-  await page.waitForSelector(`#category option[value="${category}"]`, { timeout: 5000 });
-  await page.selectOption('#category', category);
-  if (tags) await page.fill('#tags', tags);
-  await page.click('button[type="submit"]:has-text("Add Transaction")');
-  await page.waitForLoadState('networkidle');
-  // Reset tags field so it doesn't bleed into the next call
-  await page.fill('#tags', '');
-}
-
 async function openCategoryFilter(page: Page): Promise<void> {
   const details = page.locator('#category-details');
   if (!(await details.getAttribute('open'))) {
@@ -95,21 +61,65 @@ async function resetTagFilter(page: Page): Promise<void> {
 }
 
 // ─── shared setup ────────────────────────────────────────────────────────────
-
-const TODAY = new Date().toISOString().split('T')[0];
-
 async function seedData(page: Page): Promise<void> {
   await clearDatabase(page);
 
   await page.goto('/transactions');
   await page.waitForLoadState('networkidle');
 
-  await addTransaction(page, { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring', date: TODAY });
-  await addTransaction(page, { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining', date: TODAY });
-  await addTransaction(page, { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '', date: TODAY });
-  await addTransaction(page, { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute', date: TODAY });
-  await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary', tags: 'recurring', date: TODAY });
-  await addTransaction(page, { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY });
+  await addTransaction(page, {
+    description: 'Groceries',
+    amount: 120,
+    type: 'expense',
+    category: 'food',
+    tags: 'recurring',
+    date: TODAY
+  });
+
+  await addTransaction(page, {
+    description: 'Pizza',
+    amount: 40,
+    type: 'expense',
+    category: 'food',
+    tags: 'dining',
+    date: TODAY
+  });
+
+  await addTransaction(page, {
+    description: 'Snacks',
+    amount: 15,
+    type: 'expense',
+    category: 'food',
+    tags: '',
+    date: TODAY
+  });
+
+  await addTransaction(page, {
+    description: 'Bus Pass',
+    amount: 60,
+    type: 'expense',
+    category: 'transport',
+    tags: 'recurring,commute',
+    date: TODAY
+  });
+
+  await addTransaction(page, {
+    description: 'Salary',
+    amount: 3000,
+    type: 'income',
+    category: 'salary',
+    tags: 'recurring',
+    date: TODAY
+  });
+
+  await addTransaction(page, {
+    description: 'Cinema',
+    amount: 30,
+    type: 'expense',
+    category: 'entertainment',
+    tags: 'leisure',
+    date: TODAY
+  });
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
@@ -445,7 +455,7 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await expect(page.locator('text=Groceries')).not.toBeVisible();
     // Should show empty state rather than a broken page
     const listText = await page.locator('#transactions-list').textContent();
-    expect(listText.trim().length).toBeGreaterThan(0); // not blank
+    expect(listText!.trim().length).toBeGreaterThan(0); // not blank
   });
 
   // ── Time range only ────────────────────────────────────────────────────────
