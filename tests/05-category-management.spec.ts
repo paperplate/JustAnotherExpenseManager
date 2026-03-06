@@ -82,7 +82,7 @@ test.describe('Category Management', () => {
     await page.waitForLoadState('networkidle');
 
     const editButton = page.locator('.category-item', { hasText: originalName })
-                           .locator('button:has-text("Edit")');
+      .locator('button:has-text("Edit")');
     await editButton.click();
 
     await expect(page.locator('#editCategoryModal')).toBeVisible();
@@ -114,11 +114,11 @@ test.describe('Category Management', () => {
     });
 
     const deleteButton = page.locator('.category-item', { hasText: categoryName })
-                             .locator('button:has-text("Delete")');
+      .locator('button:has-text("Delete")');
     await deleteButton.click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator(`text=${categoryName}`)).not.toBeVisible();
+    await expect(page.locator(`text=${categoryName}`)).not.toBeAttached();
   });
 
   test('should reject invalid category characters', async ({ page }) => {

@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename } from './helpers'
+import { test, expect, Page } from '@playwright/test';
+import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename, scrollToTotals } from './helpers'
 
 /**
  * Unicode Category Management Tests
@@ -28,7 +28,18 @@ import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename
  *     - English category    (regression guard)
  */
 
+// ─── helpers ─────────────────────────────────────────────────────────────
+async function renameCategory(page: Page, original: string, renamed: string): Promise<void> {
+  await addCategory(page, original);
+  await expect(page.locator('#add-category-result')).toContainText('added successfully');
+
+  await openEditModal(page, original);
+  await expect(page.locator('#editCategoryModal')).toBeVisible();
+  await submitRename(page, renamed);
+}
+
 // ─── Rename tests ─────────────────────────────────────────────────────────────
+
 
 test.describe('Unicode category — rename', () => {
   test.beforeEach(async ({ page }) => {
@@ -38,64 +49,45 @@ test.describe('Unicode category — rename', () => {
   });
 
   test('rename Chinese → English succeeds', async ({ page }) => {
-    await addCategory(page, '食物');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-    await openEditModal(page, '食物');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await submitRename(page, 'food-renamed');
-
+    const original: string = '食物';
+    const renamed: string = 'food-renamed';
+    await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food-renamed' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
   });
 
   test('rename English → Chinese succeeds', async ({ page }) => {
-    await addCategory(page, 'food2');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-    await openEditModal(page, 'food2');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await submitRename(page, '食物');
-
+    const original: string = 'food2';
+    const renamed: string = '食物';
+    await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
   });
 
   test('rename Chinese → Chinese succeeds', async ({ page }) => {
-    await addCategory(page, '食物');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-    await openEditModal(page, '食物');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await submitRename(page, '餐饮');
-
+    const original: string = '食物';
+    const renamed: string = '餐饮';
+    await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '餐饮' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
   });
 
-  test('rename English → English succeeds (regression guard)', async ({ page }) => {
-    await addCategory(page, 'groceries');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-    await openEditModal(page, 'groceries');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await submitRename(page, 'supermarket');
-
+  test('rename English → English succeeds', async ({ page }) => {
+    const original: string = 'groceries';
+    const renamed: string = 'supermarket';
+    await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'supermarket' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'groceries' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
   });
 
   test('renamed Chinese category appears in transaction form dropdown', async ({ page }) => {
-    await addCategory(page, '交通');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-    await openEditModal(page, '交通');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await submitRename(page, 'transport');
+    const original: string = '交通';
+    const renamed: string = 'transport';
+    await renameCategory(page, original, renamed);
 
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
@@ -220,18 +212,21 @@ test.describe('Unicode category — merge', () => {
     // Verify the transaction is now visible under 'food' filter
     await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
+    await scrollToTotals(page);
     await expect(page.locator('text=Chinese cat transaction')).toBeVisible();
   });
 
   test('declining merge prompt leaves both categories intact', async ({ page }) => {
-    await addCategory(page, '食物');
+    const cat1: string = '食物2';
+    const cat2: string = 'food22';
+    await addCategory(page, cat1);
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    await addCategory(page, 'food2');
+    await addCategory(page, cat2);
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
-    await openEditModal(page, '食物');
+    await openEditModal(page, cat1);
     await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.fill('#edit-category-name', 'food2');
+    await page.fill('#edit-category-name', cat2);
 
     // Dismiss the merge confirmation dialog
     page.once('dialog', dialog => dialog.dismiss());
@@ -239,8 +234,8 @@ test.describe('Unicode category — merge', () => {
     await page.waitForTimeout(500);
 
     // Both categories should still exist
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: cat1 })).toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: cat2 })).toBeVisible();
   });
 });
 

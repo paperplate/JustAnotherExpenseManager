@@ -147,8 +147,9 @@ test.describe('Filters and Statistics', () => {
 
     // Now click "All Categories" to reset
     await page.click('#category-summary');
-    await page.locator('#category-options-list .filter-option[data-value=""]').click();
-    await page.waitForLoadState('networkidle');
+    //await page.locator('#category-options-list .filter-option[data-value=""]').click();
+    //await page.waitForLoadState('networkidle');
+    await selectCategory(page, "");
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
   });
