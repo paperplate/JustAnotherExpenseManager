@@ -51,16 +51,16 @@ test.describe('Unicode category — rename', () => {
   });
 
   test('rename English → Chinese succeeds', async ({ page }) => {
-    await addCategory(page, 'food');
+    await addCategory(page, 'food2');
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
-    await openEditModal(page, 'food');
+    await openEditModal(page, 'food2');
     await expect(page.locator('#editCategoryModal')).toBeVisible();
     await submitRename(page, '食物');
 
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
     await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food' })).not.toBeVisible();
+    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
   });
 
   test('rename Chinese → Chinese succeeds', async ({ page }) => {

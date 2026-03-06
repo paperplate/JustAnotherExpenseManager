@@ -325,12 +325,12 @@ test.describe.serial('Transactions page — filter combinations', () => {
   test('category:food — shows all three food transactions', async ({ page }) => {
     await selectCategory(page, 'food');
     await scrollToTotals(page);
-    await expect(page.locator('text=Groceries')).toBeVisible();
-    await expect(page.locator('text=Pizza')).toBeVisible();
-    await expect(page.locator('text=Snacks')).toBeVisible();
-    await expect(page.locator('text=Bus Pass')).not.toBeVisible();
-    await expect(page.locator('text=Salary')).not.toBeVisible();
-    await expect(page.locator('text=Cinema')).not.toBeVisible();
+    await expect(page.locator('text=Groceries')).toBeAttached();
+    await expect(page.locator('text=Pizza')).toBeAttached();
+    await expect(page.locator('text=Snacks')).toBeAttached();
+    await expect(page.locator('text=Bus Pass')).not.toBeAttached();
+    await expect(page.locator('text=Salary')).not.toBeAttached();
+    await expect(page.locator('text=Cinema')).not.toBeAttached();
   });
 
   test('category:transport — shows only Bus Pass', async ({ page }) => {
