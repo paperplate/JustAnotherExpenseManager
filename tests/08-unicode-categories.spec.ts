@@ -92,9 +92,9 @@ test.describe('Unicode category — rename', () => {
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    const option = page.locator('#category option[value="transport"]');
+    const option = page.locator('#category-options-list option[value="transport"]');
     await expect(option).toBeAttached();
-    await expect(page.locator('#category option[value="交通"]')).not.toBeAttached();
+    await expect(page.locator('#category-options-list option[value="交通"]')).not.toBeAttached();
   });
 });
 

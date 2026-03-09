@@ -95,7 +95,7 @@ async function resetTagFilter(page: Page): Promise<void> {
 }
 
 async function scrollToTotals(page: Page): Promise<void> {
-  await page.locator('.monthly-totals').scrollIntoViewIfNeeded();
+  await page.locator('#monthly-totals').scrollIntoViewIfNeeded();
 }
 
 export {
@@ -103,6 +103,7 @@ export {
   addTransaction,
   parseDollar,
   addCategory,
+  openCategoryFilter,
   openEditModal,
   submitRename,
   TODAY,

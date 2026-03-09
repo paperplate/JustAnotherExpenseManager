@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { addTransaction, selectCategory } from './helpers'
+import { addTransaction, selectCategory, openCategoryFilter } from './helpers'
 
 /**
  * Filters and Statistics Tests
@@ -141,15 +141,26 @@ test.describe('Filters and Statistics', () => {
     }
   });
 
-  test('selecting "All Categories" deselects individual categories', async ({ page }) => {
+  test('Transactions page selecting "All Categories" deselects individual categories', async ({ page }) => {
+    await page.goto('/transactions');
     // Select a specific category
     await selectCategory(page, 'food')
 
     // Now click "All Categories" to reset
-    await page.click('#category-summary');
-    //await page.locator('#category-options-list .filter-option[data-value=""]').click();
-    //await page.waitForLoadState('networkidle');
-    await selectCategory(page, "");
+    await openCategoryFilter(page);
+    await page.getByText('All Categories').click();
+
+    await expect(page.locator('#category-summary')).toContainText('All Categories');
+  });
+
+  test('Summary page selecting "All Categories" deselects individual categories', async ({ page }) => {
+    await page.goto('/summary');
+    // Select a specific category
+    await selectCategory(page, 'food')
+
+    // Now click "All Categories" to reset
+    await openCategoryFilter(page);
+    await page.getByText('All Categories').click();
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
   });
