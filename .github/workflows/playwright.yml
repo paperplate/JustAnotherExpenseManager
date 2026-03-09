@@ -50,7 +50,7 @@ jobs:
           restore-keys: ${{ runner.os }}-node-
 
       - name: Install Node dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
