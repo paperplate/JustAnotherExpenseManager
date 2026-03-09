@@ -454,7 +454,7 @@ class TestSettingsAPI:
 
     def test_populate_test_data_requires_debug_mode(self, client):
         response = client.post('/api/populate-test-data')
-        assert response.status_code == 200
+        assert response.status_code == 403
         assert 'error' in response.get_json()
 
     def test_settings_page_accessible(self, client):

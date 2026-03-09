@@ -206,5 +206,5 @@ def main():
     host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
     port = int(os.getenv('FLASK_RUN_PORT', '5000'))
     debug = os.getenv('FLASK_DEBUG', '0') == '1'
-    app = create_app(isDebug=debug)
+    app = create_app()
     app.run(host=host, port=port, debug=debug)
