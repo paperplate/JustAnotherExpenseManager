@@ -28,6 +28,10 @@ import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename
  *     - English category    (regression guard)
  */
 
+// ─── constants ─────────────────────────────────────────────────────────────
+const SETTINGS_CATEGORY_LIST_ITEM: string = '#categories-list .category-item';
+const FILTER_CATEGORY_LIST: string = '#category-options-list .filter-option';
+
 // ─── helpers ─────────────────────────────────────────────────────────────
 async function renameCategory(page: Page, original: string, renamed: string): Promise<void> {
   await addCategory(page, original);
@@ -53,8 +57,8 @@ test.describe('Unicode category — rename', () => {
     const renamed: string = 'food-renamed';
     await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
   });
 
   test('rename English → Chinese succeeds', async ({ page }) => {
@@ -62,8 +66,8 @@ test.describe('Unicode category — rename', () => {
     const renamed: string = '食物';
     await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
   });
 
   test('rename Chinese → Chinese succeeds', async ({ page }) => {
@@ -71,8 +75,8 @@ test.describe('Unicode category — rename', () => {
     const renamed: string = '餐饮';
     await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
   });
 
   test('rename English → English succeeds', async ({ page }) => {
@@ -80,8 +84,8 @@ test.describe('Unicode category — rename', () => {
     const renamed: string = 'supermarket';
     await renameCategory(page, original, renamed);
     await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: renamed })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: original })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
   });
 
   test('renamed Chinese category appears in transaction form dropdown', async ({ page }) => {
@@ -92,9 +96,8 @@ test.describe('Unicode category — rename', () => {
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    const option = page.locator('#category-options-list option[value="transport"]');
-    await expect(option).toBeAttached();
-    await expect(page.locator('#category-options-list option[value="交通"]')).not.toBeAttached();
+    await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: renamed })).toBeAttached();
+    await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: original })).not.toBeAttached();
   });
 });
 
@@ -122,8 +125,8 @@ test.describe('Unicode category — merge', () => {
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
   });
 
   test('merge English source → Chinese target succeeds', async ({ page }) => {
@@ -141,8 +144,8 @@ test.describe('Unicode category — merge', () => {
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).not.toBeVisible();
   });
 
   test('merge Chinese source → Chinese target succeeds', async ({ page }) => {
@@ -159,8 +162,8 @@ test.describe('Unicode category — merge', () => {
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: '饮食' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '饮食' })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
   });
 
   test('merge English source → English target succeeds (regression guard)', async ({ page }) => {
@@ -177,8 +180,8 @@ test.describe('Unicode category — merge', () => {
     await page.click('#editCategoryModal button:has-text("Save Changes")');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: 'groceries2' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'groceries2' })).not.toBeVisible();
   });
 
   test('merge moves transactions from Chinese source to English target', async ({ page }) => {
@@ -234,8 +237,8 @@ test.describe('Unicode category — merge', () => {
     await page.waitForTimeout(500);
 
     // Both categories should still exist
-    await expect(page.locator('#categories-list .category-item', { hasText: cat1 })).toBeVisible();
-    await expect(page.locator('#categories-list .category-item', { hasText: cat2 })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: cat1 })).toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: cat2 })).toBeVisible();
   });
 });
 
@@ -258,7 +261,7 @@ test.describe('Unicode category — delete', () => {
       .click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: '食物' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
   });
 
   test('delete English category succeeds (regression guard)', async ({ page }) => {
@@ -271,7 +274,7 @@ test.describe('Unicode category — delete', () => {
       .click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('#categories-list .category-item', { hasText: 'food2' })).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).not.toBeVisible();
   });
 
   test('deleting Chinese category removes it from transaction dropdown', async ({ page }) => {
