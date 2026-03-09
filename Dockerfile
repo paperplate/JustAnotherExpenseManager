@@ -23,5 +23,4 @@ EXPOSE 5000
 # while the .flaskenv default of 127.0.0.1 keeps local dev restricted.
 ENV FLASK_RUN_HOST=0.0.0.0
 
-CMD ["flask", "--app", "JustAnotherExpenseManager", "init-db"]
-CMD ["flask", "--app", "JustAnotherExpenseManager", "run", "--debug"]
+CMD ["flask", "--app", "JustAnotherExpenseManager", "run"]

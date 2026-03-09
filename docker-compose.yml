@@ -9,6 +9,7 @@ services:
       - FLASK_ENV=development
       - DATABASE_TYPE=sqlite
       - SQLITE_PATH=/app/data/expenses.db
+      - FLASK_DEBUG=0
     restart: unless-stopped
 
 volumes:

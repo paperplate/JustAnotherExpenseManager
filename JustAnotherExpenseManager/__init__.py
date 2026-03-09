@@ -12,7 +12,6 @@ import os
 import sys
 import click
 from flask import Flask, g
-from flask_debugtoolbar import DebugToolbarExtension
 from dotenv import dotenv_values
 
 from JustAnotherExpenseManager.utils.database import (
@@ -26,9 +25,6 @@ from JustAnotherExpenseManager.routes.transactions import transaction_bp
 from JustAnotherExpenseManager.routes.stats import stats_bp
 from JustAnotherExpenseManager.routes.categories import categories_bp
 from JustAnotherExpenseManager.routes.settings import settings_bp
-
-
-toolbar = DebugToolbarExtension()
 
 
 def create_app(test_config=None):
@@ -75,7 +71,10 @@ def create_app(test_config=None):
         )
         app.config['SECRET_KEY'] = 'dev-insecure-default-change-me'
 
-    toolbar.init_app(app)
+    if app.config.get('FLASK_DEBUG') == 1:
+        from flask_debugtoolbar import DebugToolbarExtension
+        toolbar = DebugToolbarExtension(app)
+
     # ------------------------------------------------------------------
     # Database URL
     # ------------------------------------------------------------------
@@ -204,8 +203,8 @@ def register_cli_commands(app: Flask):
 def main():
     """Entry point for the installed ``JustAnotherExpenseManager`` command."""
     import os  # pylint: disable=import-outside-toplevel
-    app = create_app()
     host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
     port = int(os.getenv('FLASK_RUN_PORT', '5000'))
     debug = os.getenv('FLASK_DEBUG', '0') == '1'
+    app = create_app(isDebug=debug)
     app.run(host=host, port=port, debug=debug)
