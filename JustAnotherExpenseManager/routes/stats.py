@@ -43,7 +43,7 @@ def get_stats() -> str:
 
     # Get summary stats
     stats: Dict[str, float] = service.get_summary_stats(
-        categories_param, time_range, start_date, end_date, tags_param
+        categories_param, tags_param, time_range, start_date, end_date
     )
 
     # Get all categories for dropdown
@@ -51,7 +51,7 @@ def get_stats() -> str:
 
     # Get category breakdown
     category_breakdown = service.get_category_breakdown(
-        categories_param, time_range, start_date, end_date, tags_param
+        categories_param, tags_param, time_range, start_date, end_date
     )
 
     # Get monthly data with pagination
@@ -101,7 +101,7 @@ def chart_data() -> Response:
 
     # Category data
     category_data = service.get_category_breakdown(
-        categories_param, time_range, start_date, end_date, tags_param
+        categories_param, tags_param, time_range, start_date, end_date
     )
 
     # Monthly data
