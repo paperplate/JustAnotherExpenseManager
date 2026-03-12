@@ -26,42 +26,55 @@ from JustAnotherExpenseManager.routes.stats import stats_bp
 from JustAnotherExpenseManager.routes.categories import categories_bp
 from JustAnotherExpenseManager.routes.settings import settings_bp
 
+def _load_config_file(path: str) -> dict:
+    """
+    Load a dotenv-style config file and return its contents as a dictionary.
+ 
+    Args:
+        path: Path to the config file.
+ 
+    Returns:
+        dict: Parsed key/value pairs from the file.
+ 
+    Raises:
+        SystemExit: If the file does not exist or cannot be read.
+    """
+    if not os.path.isfile(path):
+        print(f"Error: config file not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    try:
+        return dict(dotenv_values(path))
+    except Exception as err:  # pylint: disable=broad-except
+        print(f"Error: could not read config file '{path}': {err}", file=sys.stderr)
+        sys.exit(1)
 
-def create_app(test_config=None):
+
+def create_app(config=None):
     """
     Create and configure the Flask application.
-
-    When ``db_manager`` is supplied (e.g. from test fixtures) its
-    ``database_url`` is used directly so the caller controls which database
-    is targeted.  When omitted the URL is derived from environment variables
-    via ``build_database_url()``.
-
-    Args:
-        test_config: Optional test configuration dictionary.
-        db_manager: Optional DatabaseManager instance (for testing).
 
     Returns:
         Flask: Configured Flask application.
     """
     app = Flask(__name__)
 
-    # ------------------------------------------------------------------
     # Configuration
-    # ------------------------------------------------------------------
-    if test_config is None:
+    if config is None:
         try:
-            config = dotenv_values('.flaskenv')
-            app.config.from_mapping(config)
+            loaded = dotenv_values('.flaskenv')
+            app.config.from_mapping(loaded)
         except Exception as err:  # pylint: disable=broad-except
             print(f"Warning: Could not load .flaskenv file: {err}")
             app.config.from_mapping({})
     else:
-        app.config.from_mapping(test_config)
+        app.config.from_mapping(config)
 
-    # Resolve SECRET_KEY in priority order:
-    #   1. test_config / .flaskenv (already applied above)
-    #   2. environment variable (covers Docker and CI)
-    #   3. dev-only fallback — warns loudly so it is never used in production
+    _BOOL_KEYS = ('TESTING', 'FLASK_DEBUG', 'WTF_CSRF_ENABLED')
+    for _key in _BOOL_KEYS:
+        _val = app.config.get(_key)
+        if isinstance(_val, str):
+            app.config[_key] = _val.strip().lower() in ('1', 'true', 'yes')
+
     if not app.config.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
     if not app.config.get('SECRET_KEY'):
@@ -73,48 +86,35 @@ def create_app(test_config=None):
 
     if app.config.get('FLASK_DEBUG') == 1:
         from flask_debugtoolbar import DebugToolbarExtension
-        toolbar = DebugToolbarExtension(app)
+        DebugToolbarExtension(app)
 
-    # ------------------------------------------------------------------
-    # Database URL
-    # ------------------------------------------------------------------
     if 'SQLALCHEMY_DATABASE_URI' not in app.config:
-        app.config['SQLALCHEMY_DATABASE_URI'] = build_database_url()
+        app.config['SQLALCHEMY_DATABASE_URI'] = build_database_url(
+            db_type=app.config.get('DATABASE_TYPE'),
+            db_host=app.config.get('DATABASE_HOST'),
+            db_port=app.config.get('DATABASE_PORT'),
+            db_name=app.config.get('DATABASE_NAME'),
+            db_user=app.config.get('DATABASE_USER'),
+            db_password=app.config.get('DATABASE_PASSWORD'),
+            sqlite_path=app.config.get('SQLITE_PATH')
+        )
 
     app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
-    # ------------------------------------------------------------------
-    # Flask-SQLAlchemy initialisation
-    # ------------------------------------------------------------------
     db.init_app(app)
-
     with app.app_context():
         init_database(app)
 
-    # ------------------------------------------------------------------
-    # Blueprints
-    # ------------------------------------------------------------------
     app.register_blueprint(stats_bp)
     app.register_blueprint(transaction_bp)
     app.register_blueprint(categories_bp)
     app.register_blueprint(settings_bp)
 
-    # ------------------------------------------------------------------
-    # Request-scoped session alias
-    #
-    # Routes currently access the session via ``g.db``.  We keep that
-    # working by pointing ``g.db`` at the Flask-SQLAlchemy scoped session.
-    # Flask-SQLAlchemy already calls ``db.session.remove()`` on
-    # ``teardown_appcontext``, so no extra cleanup hook is required here.
-    # ------------------------------------------------------------------
     @app.before_request
     def _set_g_db():
-        """Expose db.session as g.db for backward compatibility with routes."""
+        """Expose db.session as g.db to make use of Flask's g global variable."""
         g.db = db.session
 
-    # ------------------------------------------------------------------
-    # CLI commands
-    # ------------------------------------------------------------------
     register_cli_commands(app)
 
     return app
@@ -202,9 +202,34 @@ def register_cli_commands(app: Flask):
 
 def main():
     """Entry point for the installed ``JustAnotherExpenseManager`` command."""
-    import os  # pylint: disable=import-outside-toplevel
-    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
-    port = int(os.getenv('FLASK_RUN_PORT', '5000'))
-    debug = os.getenv('FLASK_DEBUG', '0') == '1'
+    import argparse
+    parser = argparse.ArgumentParser(
+        prog='JustAnotherExpenseManager',
+        description='Run the JustAnotherExpenseManager application.'
+    )
+    #parser.add_argument('--config', type=str, action='store_const', help='Path to config file')
+
+    #if parser.parse_args('--config') is None:
+    #    import os  # pylint: disable=import-outside-toplevel
+    #    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
+    #    port = int(os.getenv('FLASK_RUN_PORT', '5000'))
+    #    debug = os.getenv('FLASK_DEBUG', '0') == '1'
+    parser.add_argument(
+        '--config', '-c',
+        metavar='FILE',
+        default=None,
+        help='Path to a dotenv-style config file (e.g. .flaskenv, production.env). '
+             'Defaults to .flaskenv in the current directory when omitted.',
+    )
+    args = parser.parse_args()
+ 
+    config = _load_config_file(args.config) if args.config else None
+    app = create_app(config)
+ 
+
+    host = app.config.get('FLASK_RUN_HOST') or os.getenv('FLASK_RUN_HOST', '127.0.0.1')
+    port = int(app.config.get('FLASK_RUN_PORT') or os.getenv('FLASK_RUN_PORT', '5000'))
+    debug = (app.config.get('FLASK_DEBUG') or os.getenv('FLASK_DEBUG', '0')) == '1'
+
     app = create_app()
     app.run(host=host, port=port, debug=debug)

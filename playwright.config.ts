@@ -76,15 +76,9 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'JustAnotherExpenseManager',
+    command: 'JustAnotherExpenseManager --config test.env',
     url: 'http://localhost:5000',
     reuseExistingServer: true,
     timeout: 120 * 1000,
-    env: {
-      DATABASE_TYPE: process.env.DATABASE_TYPE || 'sqlite',
-      SQLITE_PATH: process.env.SQLITE_PATH || './data/expenses.db',
-      SECRET_KEY: process.env.SECRET_KEY || 'dev-insecure-default-change-me',
-      ENABLE_TEST_ROUTES: '1',
-    },
   },
 });

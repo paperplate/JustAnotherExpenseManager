@@ -9,10 +9,13 @@ under [tool.pytest.ini_options]. This file only contains fixtures.
 import os
 import tempfile
 import pytest
+from dotenv import dotenv_values
 from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
 from JustAnotherExpenseManager.utils.database import db as _db
 from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
+
+_TEST_ENV_PATH = os.path.join(os.path.dirname(__file__), '..', 'test.env')
 
 
 def _clear_tables(session):
@@ -34,14 +37,10 @@ def app():
     os.close(db_fd)
 
     # Configure app for testing
-    test_config = {
-        'TESTING': True,
-        'WTF_CSRF_ENABLED': False,
-        'SECRET_KEY': 'test-secret-key',
-        'SQLALCHEMY_DATABASE_URI': f'sqlite:///{db_path}',
-    }
+    config = dict(dotenv_values(_TEST_ENV_PATH))
+    config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
-    app = create_app(test_config)
+    app = create_app(config)
 
     yield app
 
