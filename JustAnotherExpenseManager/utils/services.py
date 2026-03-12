@@ -1,13 +1,9 @@
 """
 Service layer for transaction operations.
-
-This version requires proper types:
-- TransactionType enum (not strings)
-- Float amounts (converted to cents internally by model)
 """
 
 from typing import Optional, List, Dict, Any, Tuple
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, select
 from datetime import datetime, timedelta
 
@@ -39,14 +35,18 @@ def _apply_transaction_filters(
 
     if time_range and not (start_date or end_date):
         today = datetime.now().date()
-        if time_range == '7d':
-            start = (today - timedelta(days=7)).strftime('%Y-%m-%d')
-            stmt = stmt.where(Transaction.date >= start)
-        elif time_range == '30d':
-            start = (today - timedelta(days=30)).strftime('%Y-%m-%d')
-            stmt = stmt.where(Transaction.date >= start)
-        elif time_range == '90d':
+        start = None
+
+        if time_range == 'current_month':
+            start = today.replace(day=1).strftime('%Y-%m-%d')
+        elif time_range == '3_months':
             start = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+        elif time_range == '6_months':
+            start = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+        elif time_range == 'current_year':
+            start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
+
+        if start:
             stmt = stmt.where(Transaction.date >= start)
 
     return stmt
@@ -119,13 +119,13 @@ class TransactionService:
         Get paginated list of transactions by month.
         Each page shows all transactions for one month.
         """
-        stmt = select(Transaction)
+        stmt = select(Transaction).options(selectinload(Transaction.tags))
         stmt = _apply_transaction_filters(
             stmt, categories, tags, time_range, start_date, end_date
         )
         stmt = stmt.order_by(Transaction.date.desc(), Transaction.id.desc())
 
-        all_transactions = self.db.scalars(stmt).unique().all()
+        all_transactions = self.db.scalars(stmt).all()
 
         months: Dict[str, List[Transaction]] = {}
         for trans in all_transactions:
@@ -238,7 +238,7 @@ class StatsService:
         stmt = _apply_transaction_filters(
             stmt, categories, tags, time_range, start_date, end_date
         )
-        transactions = self.db.scalars(stmt).unique().all()
+        transactions = self.db.scalars(stmt).all()
 
         income = sum(
             t.amount_dollars for t in transactions
@@ -269,7 +269,7 @@ class StatsService:
         stmt = _apply_transaction_filters(
             stmt, categories, tags, time_range, start_date, end_date
         )
-        transactions = self.db.scalars(stmt).unique().all()
+        transactions = self.db.scalars(stmt).all()
 
         category_totals: Dict[str, Dict[str, float]] = {}
         for trans in transactions:
@@ -296,7 +296,7 @@ class StatsService:
         """Get monthly income and expense totals."""
         stmt = select(Transaction)
         stmt = _apply_transaction_filters(stmt, categories, tags)
-        transactions = self.db.scalars(stmt).unique().all()
+        transactions = self.db.scalars(stmt).all()
 
         monthly: Dict[str, Dict[str, float]] = {}
         for trans in transactions:
@@ -326,7 +326,7 @@ class StatsService:
             """Count unique months with transactions."""
             stmt = select(Transaction)
             stmt = _apply_transaction_filters(stmt, categories, time_range, start_date, end_date, tags)
-            transactions = self.db.scalars(stmt).unique().all()
+            transactions = self.db.scalars(stmt).all()
 
             unique_months = set(trans.date[:7] for trans in transactions)
             return len(unique_months)
