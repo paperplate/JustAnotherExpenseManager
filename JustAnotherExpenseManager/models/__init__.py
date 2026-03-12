@@ -109,7 +109,7 @@ class Transaction(db.Model):
         'Tag',
         secondary=transaction_tags,
         back_populates='transactions',
-        lazy='joined'
+        lazy='select'
     )
 
     def __init__(
