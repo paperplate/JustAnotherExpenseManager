@@ -5,7 +5,6 @@ Tests that overlap with test_routes.py (CSV import, stats, filtering) live there
 """
 
 import pytest
-from JustAnotherExpenseManager import create_app
 from JustAnotherExpenseManager.models import TransactionType
 from JustAnotherExpenseManager.utils.services import TransactionService
 
@@ -76,10 +75,6 @@ class TestTransactionLifecycle:
         assert saved.description == 'Persistent Test'
         assert saved.amount_dollars == pytest.approx(99.99, abs=0.01)
 
-
-# ---------------------------------------------------------------------------
-# CLI commands
-# ---------------------------------------------------------------------------
 
 class TestCLICommands:
     """Invoke Flask CLI commands to cover __init__.py branches."""

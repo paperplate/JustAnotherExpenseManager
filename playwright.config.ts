@@ -1,4 +1,4 @@
-import {defineConfig, devices} from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Playwright configuration for Expense Manager E2E tests
@@ -6,19 +6,19 @@ import {defineConfig, devices} from '@playwright/test'
  */
 module.exports = defineConfig({
   testDir: './tests',
-  
+
   /* Maximum time one test can run for */
   timeout: 30 * 1000,
-  
+
   /* Run tests in files in parallel */
   fullyParallel: true,
-  
+
   /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
-  
+
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
-  
+
   /* Reporters: blob for CI sharding (merged later), html+list locally */
   reporter: process.env.CI
     ? [['blob'], ['list']]
@@ -26,20 +26,23 @@ module.exports = defineConfig({
 
   /* Workers: 2 in CI (GitHub Actions 2-CPU runners), unlimited locally */
   workers: process.env.CI ? 2 : undefined,
-  
+
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
     baseURL: process.env.BASE_URL || 'http://localhost:5000',
-    
+
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
-    
+
     /* Screenshot on failure */
     screenshot: 'only-on-failure',
-    
+
     /* Video on failure */
-    video: 'retain-on-failure',
+    video: {
+      mode: 'retain-on-failure',
+      size: { width: 1200, height: 1200 }
+    }
   },
 
   /* Configure projects for major browsers */
@@ -48,23 +51,23 @@ module.exports = defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    
+
     {
       name: 'firefox',
       use: { ...devices['Desktop Firefox'] },
     },
-    
+
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    
+
     /* Test against mobile viewports */
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
     },
-    
+
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
@@ -81,7 +84,7 @@ module.exports = defineConfig({
       DATABASE_TYPE: process.env.DATABASE_TYPE || 'sqlite',
       SQLITE_PATH: process.env.SQLITE_PATH || './data/expenses.db',
       SECRET_KEY: process.env.SECRET_KEY || 'dev-insecure-default-change-me',
-      ENABLE_TEST_ROUTES:'1',
+      ENABLE_TEST_ROUTES: '1',
     },
   },
 });
