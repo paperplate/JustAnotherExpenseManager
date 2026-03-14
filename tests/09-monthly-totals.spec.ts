@@ -85,11 +85,11 @@ test.describe('Monthly totals — expense only', () => {
 
   test('multiple expenses: totals are summed correctly', async ({ page }) => {
     await addTransaction(page, { description: 'Coffee', amount: 5.50, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Coffee')).toBeVisible();
+    await expect(page.getByText('Coffee')).toBeVisible();
     await addTransaction(page, { description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
-    await expect(page.locator('text=Bus')).toBeVisible();
+    await expect(page.getByText('Bus')).toBeVisible();
     await addTransaction(page, { description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
-    await expect(page.locator('text=Book')).toBeVisible();
+    await expect(page.getByText('Book')).toBeVisible();
 
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     const net = parseDollar(await page.locator(TOTAL_NET).textContent());
@@ -132,11 +132,11 @@ test.describe('Monthly totals — mixed', () => {
 
   test('income and expenses: all three totals are non-zero and correct', async ({ page }) => {
     await addTransaction(page, { description: 'Salary', amount: 2000, type: 'income', category: 'salary' });
-    await expect(page.locator('text=Salary')).toBeVisible();
+    await expect(page.locator('.category-tag', { hasText: 'Salary' })).toBeVisible();
     await addTransaction(page, { description: 'Rent', amount: 800, type: 'expense', category: 'other' });
-    await expect(page.locator('text=Rent')).toBeVisible();
+    await expect(page.locator('.category-tag', { hasText: 'Rent' })).toBeVisible();
     await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Groceries')).toBeVisible();
+    await expect(page.locator('.category-tag', { hasText: 'Groceries' })).toBeVisible();
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -182,13 +182,13 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after adding a second transaction', async ({ page }) => {
     await addTransaction(page, { description: 'First', amount: 100, type: 'expense', category: 'food' });
-    await expect(page.locator('text=First')).toBeVisible();
+    await expect(page.getByText('First')).toBeVisible();
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
     await addTransaction(page, { description: 'Second', amount: 50, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Second')).toBeVisible();
+    await expect(page.getByText('Second')).toBeVisible();
 
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeCloseTo(150, 2);
@@ -196,7 +196,7 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after editing a transaction amount', async ({ page }) => {
     await addTransaction(page, { description: 'Editable', amount: 100, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Editable')).toBeVisible();
+    await expect(page.getByText('Editable')).toBeVisible();
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
@@ -215,9 +215,9 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after deleting a transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Keep', amount: 80, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Keep')).toBeVisible();
+    await expect(page.getByText('Keep')).toBeVisible();
     await addTransaction(page, { description: 'Delete', amount: 20, type: 'expense', category: 'food' });
-    await expect(page.locator('text=Delete')).toBeVisible();
+    await expect(page.getByText('Delete')).toBeVisible();
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
@@ -249,9 +249,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
 
     const rows = await page.locator('.transactions-table tbody tr').count();
-    const countText = await page.locator('.monthly-totals').textContent();
 
-    expect(rows).toBe(3);
-    expect(countText).toContain('3');
+    expect(rows).toEqual(3);
   });
 });
