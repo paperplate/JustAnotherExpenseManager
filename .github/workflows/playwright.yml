@@ -18,7 +18,7 @@ jobs:
         shard: [1, 2, 3]
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Python 3.11
         uses: actions/setup-python@v6
@@ -59,10 +59,6 @@ jobs:
         run: npx playwright test --project=chromium --shard=${{ matrix.shard }}/3
         env:
           CI: true
-          DATABASE_TYPE: sqlite
-          SQLITE_PATH: ./test-expenses-${{ matrix.shard }}.db
-          SECRET_KEY: ci-test-secret-key-${{ matrix.shard }}
-          ENABLE_TEST_ROUTES: "1"
 
       - name: Upload blob report for merge
         uses: actions/upload-artifact@v6
@@ -87,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Set up Node.js 24
         uses: actions/setup-node@v6
@@ -112,4 +108,4 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
-          retention-days: 30
+          retention-days: 10

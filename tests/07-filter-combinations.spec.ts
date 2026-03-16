@@ -1,4 +1,5 @@
-import { test, expect, Page, Browser } from '@playwright/test';
+import { Page, Browser } from '@playwright/test';
+import { test, expect } from './fixtures';
 import {
   clearDatabase,
   addTransaction,
