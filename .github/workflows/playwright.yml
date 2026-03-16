@@ -98,7 +98,7 @@ jobs:
         run: npm ci
 
       - name: Download blob reports from all shards
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-shard-*
           merge-multiple: true
