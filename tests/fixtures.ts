@@ -76,6 +76,10 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
     const dbPath = path.resolve(`test-expenses-worker-${workerInfo.workerIndex}.db`);
     const cfgPath = path.resolve(`test-worker-${workerInfo.workerIndex}.env`);
 
+    // Remove any stale DB left by a previously crashed run before Flask
+    // starts — otherwise init_database will fail with "table already exists".
+    if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
+
     fs.writeFileSync(cfgPath, [
       'TESTING=True',
       'WTF_CSRF_ENABLED=False',
