@@ -19,6 +19,10 @@ jobs:
     name: Playwright
     uses: ./.github/workflows/playwright.yml
 
+  run-pylint:
+    name: Pylint
+    uses: ./.github/workflows/pylint.yml
+
   # ── Build & publish only if both pass ────────────────────────────────────
   docker:
     name: Build & Publish Docker Image
