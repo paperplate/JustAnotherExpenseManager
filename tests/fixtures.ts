@@ -98,21 +98,30 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
 
       // Fail immediately if the process exits before the port opens, rather
       // than letting waitForPort poll silently until its timeout expires.
+      // startupComplete suppresses the rejection when SIGTERM fires during
+      // normal teardown — without it, the exit listener would reject the
+      // promise on every successful cleanup and cause a spurious test failure.
+      let startupComplete = false;
       const earlyExit = new Promise<never>((_, reject) => {
         server!.once('exit', (code, signal) => {
-          reject(new Error(
-            `Worker ${workerInfo.workerIndex}: Flask process exited early ` +
-            `(code=${code}, signal=${signal}). Check port ${port} and config ${cfgPath}.`
-          ));
+          if (!startupComplete) {
+            reject(new Error(
+              `Worker ${workerInfo.workerIndex}: Flask process exited early ` +
+              `(code=${code}, signal=${signal}). Check port ${port} and config ${cfgPath}.`
+            ));
+          }
         });
         server!.once('error', (err) => {
-          reject(new Error(
-            `Worker ${workerInfo.workerIndex}: Failed to spawn Flask process: ${err.message}`
-          ));
+          if (!startupComplete) {
+            reject(new Error(
+              `Worker ${workerInfo.workerIndex}: Failed to spawn Flask process: ${err.message}`
+            ));
+          }
         });
       });
 
       await Promise.race([waitForPort(port), earlyExit]);
+      startupComplete = true;
       await use(`http://127.0.0.1:${port}`);
     } finally {
       server?.kill('SIGTERM');
