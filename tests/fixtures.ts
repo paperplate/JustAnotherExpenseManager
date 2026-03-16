@@ -23,6 +23,23 @@ import * as path from 'path';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 /**
+ * Ask the OS for a free TCP port by binding a server to port 0, reading the
+ * assigned port, then closing the server before Flask tries to bind to it.
+ * There is a small TOCTOU window between close and Flask binding, but in
+ * practice this is reliable and far safer than hardcoded port offsets.
+ */
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer();
+    server.listen(0, '127.0.0.1', () => {
+      const { port } = server.address() as net.AddressInfo;
+      server.close(() => resolve(port));
+    });
+    server.on('error', reject);
+  });
+}
+
+/**
  * Poll until the given TCP port accepts connections, or throw after `timeout` ms.
  */
 async function waitForPort(port: number, timeout = 30_000): Promise<void> {
@@ -55,8 +72,7 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
    * (along with its config file and database) when the worker exits.
    */
   workerBaseURL: [async ({}, use, workerInfo) => {
-    // Use ports 5100+ to avoid clashing with a local dev server on 5000.
-    const port = 5100 + workerInfo.workerIndex;
+    const port = await getFreePort();
     const dbPath = path.resolve(`test-expenses-worker-${workerInfo.workerIndex}.db`);
     const cfgPath = path.resolve(`test-worker-${workerInfo.workerIndex}.env`);
 
