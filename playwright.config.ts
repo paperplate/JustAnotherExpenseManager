@@ -42,7 +42,9 @@ module.exports = defineConfig({
     video: {
       mode: 'retain-on-failure',
       size: { width: 1200, height: 1200 }
-    }
+    },
+
+    viewport: { width: 1200, height: 1200 }
   },
 
   /* Configure projects for major browsers */
