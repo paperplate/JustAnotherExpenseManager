@@ -97,10 +97,12 @@ async function seedData(page: Page): Promise<void> {
 // ─── Summary page filter combinations ────────────────────────────────────────
 
 test.describe.serial('Summary page — filter combinations', () => {
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser, workerBaseURL }) => {
+    const ctx = await browser.newContext({ baseURL: workerBaseURL });
     const page = await browser.newPage();
     await seedData(page);
     await page.close();
+    await ctx.close();
   });
 
   test.beforeEach(async ({ page }) => {

@@ -80,7 +80,23 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
       server.stdout?.on('data', (d: Buffer) => process.stdout.write(d));
       server.stderr?.on('data', (d: Buffer) => process.stderr.write(d));
 
-      await waitForPort(port);
+      // Fail immediately if the process exits before the port opens, rather
+      // than letting waitForPort poll silently until its timeout expires.
+      const earlyExit = new Promise<never>((_, reject) => {
+        server!.once('exit', (code, signal) => {
+          reject(new Error(
+            `Worker ${workerInfo.workerIndex}: Flask process exited early ` +
+            `(code=${code}, signal=${signal}). Check port ${port} and config ${cfgPath}.`
+          ));
+        });
+        server!.once('error', (err) => {
+          reject(new Error(
+            `Worker ${workerInfo.workerIndex}: Failed to spawn Flask process: ${err.message}`
+          ));
+        });
+      });
+
+      await Promise.race([waitForPort(port), earlyExit]);
       await use(`http://127.0.0.1:${port}`);
     } finally {
       server?.kill('SIGTERM');
