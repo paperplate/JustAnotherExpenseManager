@@ -5,13 +5,6 @@
  * with its own SQLite database file.  This eliminates all cross-worker
  * database contention without requiring tests to clear and re-seed before
  * every single case.
- *
- * Usage — replace the @playwright/test import in every spec file:
- *
- *   // before
- *   import { test, expect } from '@playwright/test';
- *   // after
- *   import { test, expect } from './fixtures';
  */
 
 import { test as base, BrowserContext } from '@playwright/test';
@@ -71,7 +64,7 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
    * Worker-scoped: starts one Flask server per worker and tears it down
    * (along with its config file and database) when the worker exits.
    */
-  workerBaseURL: [async ({}, use, workerInfo) => {
+  workerBaseURL: [async ({ }, use, workerInfo) => {
     const port = await getFreePort();
     const dbPath = path.resolve(`test-expenses-worker-${workerInfo.workerIndex}.db`);
     const cfgPath = path.resolve(`test-worker-${workerInfo.workerIndex}.env`);
