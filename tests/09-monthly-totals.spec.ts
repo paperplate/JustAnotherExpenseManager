@@ -120,7 +120,6 @@ test.describe('Monthly totals — mixed', () => {
     await addTransaction(page, { description: 'Rent', amount: 800, type: 'expense', category: 'other' });
     await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
 
-    await scrollToTotals(page);
     await expect(page.locator('.category-tag', { hasText: 'Groceries' })).toBeVisible();
     await expect(page.locator('.category-tag', { hasText: 'Salary' })).toBeVisible();
     await expect(page.locator('.category-tag', { hasText: 'Rent' })).toBeVisible();

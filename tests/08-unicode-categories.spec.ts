@@ -110,7 +110,6 @@ test.describe('Unicode category — rename', () => {
 
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
-    await scrollToTotals(page);
 
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: renamed })).toBeAttached();
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: original })).not.toBeAttached();
@@ -197,7 +196,6 @@ test.describe('Unicode category — merge', () => {
     // Verify the transaction is now visible under 'food' filter
     await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
-    await scrollToTotals(page);
     await expect(page.locator('text=Chinese cat transaction')).toBeVisible();
   });
 

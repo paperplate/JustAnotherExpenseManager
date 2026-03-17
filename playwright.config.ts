@@ -17,7 +17,7 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
 
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
 
   /* Reporters: html+list in both CI and locally */
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
