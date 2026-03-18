@@ -73,7 +73,7 @@ def create_app(config=None):
     for _key in _BOOL_KEYS:
         _val = app.config.get(_key)
         if isinstance(_val, str):
-            app.config[_key] = _val.strip().lower() in ('1', 'yes')
+            app.config[_key] = _val.strip().lower() in ('True', 'yes')
 
     if not app.config.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
@@ -224,5 +224,4 @@ def main():
     port = config.get('FLASK_RUN_PORT') if config else int(os.getenv('FLASK_RUN_PORT', 5000))
     port = int(port if port else 5000)
 
-    app = create_app()
     app.run(host=host, port=port)

@@ -9,13 +9,16 @@ under [tool.pytest.ini_options]. This file only contains fixtures.
 import os
 import tempfile
 import pytest
-from dotenv import dotenv_values
 from sqlalchemy import delete as sa_delete
-from JustAnotherExpenseManager import create_app
+from JustAnotherExpenseManager import create_app, _load_config_file
 from JustAnotherExpenseManager.utils.database import db as _db
 from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
 
-_TEST_ENV_PATH = os.path.join(os.path.dirname(__file__), '..', 'test.env')
+
+def pytest_addoption(parser):
+    parser.addoption(
+        '--config', action='store', default=os.path.join(os.path.dirname(__file__), '..', 'test.env')
+    )
 
 
 def _clear_tables(session):
@@ -27,7 +30,7 @@ def _clear_tables(session):
 
 
 @pytest.fixture(scope='session')
-def app():
+def app(request):
     """
     Create and configure a test Flask application instance.
     This fixture is session-scoped, so it's created once per test session.
@@ -37,7 +40,16 @@ def app():
     os.close(db_fd)
 
     # Configure app for testing
-    config = dict(dotenv_values(_TEST_ENV_PATH))
+    config_path = request.config.getoption('--config')
+    if not os.path.isabs(config_path):
+        config_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), '..', config_path)
+        )
+
+    if not os.path.isfile(config_path):
+        raise FileNotFoundError(f'Test config file not found: {config_path}')
+
+    config = _load_config_file(config_path)
     config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     app = create_app(config)
