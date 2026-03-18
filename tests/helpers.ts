@@ -86,13 +86,13 @@ async function selectTag(page: Page, name: string): Promise<void> {
 
 async function resetCategoryFilter(page: Page): Promise<void> {
   await openCategoryFilter(page);
-  await page.locator('#category-details .filter-option[data-value=""]').click();
+  await page.locator('#category-summary .filter-option[data-value=""]').click();
   await page.waitForLoadState('networkidle');
 }
 
 async function resetTagFilter(page: Page): Promise<void> {
   await openTagFilter(page);
-  await page.locator('#tag-details .filter-option[data-value=""]').click();
+  await page.locator('#tag-summary .filter-option[data-value=""]').click();
   await page.waitForLoadState('networkidle');
 }
 
