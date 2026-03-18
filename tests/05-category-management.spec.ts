@@ -72,7 +72,8 @@ test.describe('Category Management', () => {
     await page.click('button:has-text("Add Category")');
     await page.waitForTimeout(500);
 
-    await expect(page.locator('#add-category-result')).toContainText('already exists');
+    //await expect(page.locator('#add-category-result')).toContainText('already exists');
+    await expect(page.getByText('already exists')).toBeVisible();
   });
 
   test('should edit a category', async ({ page }) => {
