@@ -69,11 +69,11 @@ def create_app(config=None):
     else:
         app.config.from_mapping(config)
 
-    _BOOL_KEYS = ('TESTING', 'FLASK_DEBUG', 'WTF_CSRF_ENABLED')
+    _BOOL_KEYS = ('TESTING', 'WTF_CSRF_ENABLED')
     for _key in _BOOL_KEYS:
         _val = app.config.get(_key)
         if isinstance(_val, str):
-            app.config[_key] = _val.strip().lower() in ('1', 'true', 'yes')
+            app.config[_key] = _val.strip().lower() in ('1', 'yes')
 
     if not app.config.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
@@ -207,13 +207,7 @@ def main():
         prog='JustAnotherExpenseManager',
         description='Run the JustAnotherExpenseManager application.'
     )
-    #parser.add_argument('--config', type=str, action='store_const', help='Path to config file')
 
-    #if parser.parse_args('--config') is None:
-    #    import os  # pylint: disable=import-outside-toplevel
-    #    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
-    #    port = int(os.getenv('FLASK_RUN_PORT', '5000'))
-    #    debug = os.getenv('FLASK_DEBUG', '0') == '1'
     parser.add_argument(
         '--config', '-c',
         metavar='FILE',
@@ -225,11 +219,10 @@ def main():
  
     config = _load_config_file(args.config) if args.config else None
     app = create_app(config)
- 
 
-    host = app.config.get('FLASK_RUN_HOST') or os.getenv('FLASK_RUN_HOST', '127.0.0.1')
-    port = int(app.config.get('FLASK_RUN_PORT') or os.getenv('FLASK_RUN_PORT', '5000'))
-    debug = (app.config.get('FLASK_DEBUG') or os.getenv('FLASK_DEBUG', '0')) == '1'
+    host = config.get('FLASK_RUN_HOST') if config else os.getenv('FLASK_RUN_HOST', '127.0.0.1')
+    port = config.get('FLASK_RUN_PORT') if config else int(os.getenv('FLASK_RUN_PORT', 5000))
+    port = int(port if port else 5000)
 
     app = create_app()
-    app.run(host=host, port=port, debug=debug)
+    app.run(host=host, port=port)

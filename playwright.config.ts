@@ -76,7 +76,7 @@ module.exports = defineConfig({
   webServer: {
     command: 'JustAnotherExpenseManager --config test.env',
     url: 'http://localhost:5000',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
 });

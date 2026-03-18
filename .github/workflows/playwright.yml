@@ -55,10 +55,6 @@ jobs:
         run: npx playwright test --project=chromium --workers=1
         env:
           CI: true
-          DATABASE_TYPE: sqlite
-          SQLITE_PATH: ./test-expenses.db
-          SECRET_KEY: ci-test-secret-key
-          ENABLE_TEST_ROUTES: "1"
 
       - name: Upload HTML report
         uses: actions/upload-artifact@v6
