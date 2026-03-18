@@ -73,7 +73,7 @@ def create_app(config=None):
     for _key in _BOOL_KEYS:
         _val = app.config.get(_key)
         if isinstance(_val, str):
-            app.config[_key] = _val.strip().lower() in ('True', 'yes')
+            app.config[_key] = _val.strip() in ('True', 'yes')
 
     if not app.config.get('SECRET_KEY'):
         app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
@@ -216,7 +216,7 @@ def main():
              'Defaults to .flaskenv in the current directory when omitted.',
     )
     args = parser.parse_args()
- 
+
     config = _load_config_file(args.config) if args.config else None
     app = create_app(config)
 
