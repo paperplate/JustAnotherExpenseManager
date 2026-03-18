@@ -53,6 +53,7 @@ def app(request):
     config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     app = create_app(config)
+    app.config['TESTING'] = True
 
     yield app
 
