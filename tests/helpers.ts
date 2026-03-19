@@ -21,14 +21,14 @@ interface TransactionOptions {
 async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
   const { description, amount, type, category, tags = '', date = TODAY } = opts;
   await page.getByRole('textbox', { name: 'Description' }).fill(description);
-  await page.getByLabel('Amount ($)').fill(String(amount));
-  await page.getByLabel('Type').selectOption(type);
-  await page.getByLabel('Date').fill(date);
-  await page.getByLabel('Category').selectOption({ value: category });
-  if (tags) await page.getByLabel('Tags (comma-separated, optional)').fill(tags);
+  await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(amount));
+  await page.getByRole('combobox', { name: 'Type' }).selectOption(type);
+  await page.getByRole('textbox', { name: 'Date' }).fill(date);
+  await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: category });
+  if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill(tags);
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  if (tags) await page.getByLabel('Tags (comma-separated, optional)').fill('');
+  if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill('');
 }
 
 /**
