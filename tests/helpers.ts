@@ -123,5 +123,6 @@ export {
   selectTag,
   resetCategoryFilter,
   resetTagFilter,
-  scrollToTotals
+  scrollToTotals,
+  TransactionOptions
 };

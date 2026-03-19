@@ -1,5 +1,4 @@
-import { Page } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, Page } from '@playwright/test';
 import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename, scrollToTotals } from './helpers'
 
 /**

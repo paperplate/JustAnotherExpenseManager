@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures';
+import { test, expect } from '@playwright/test';
 import { addTransaction, clearDatabase, parseDollar, scrollToTotals } from './helpers'
 
 // ─── Constants ─────────────────────────────────────────────

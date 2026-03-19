@@ -1,5 +1,4 @@
-import { Page, Browser } from '@playwright/test';
-import { test, expect } from './fixtures';
+import { test, expect, Page, Browser } from '@playwright/test';
 import {
   clearDatabase,
   addTransaction,
@@ -8,7 +7,8 @@ import {
   selectTag,
   resetCategoryFilter,
   resetTagFilter,
-  scrollToTotals
+  scrollToTotals,
+  TransactionOptions
 } from './helpers';
 
 /**
@@ -40,19 +40,25 @@ async function seedData(page: Page): Promise<void> {
   await page.goto('/transactions');
   await page.waitForLoadState('networkidle');
 
-  await addTransaction(page, { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring', date: TODAY });
-  await addTransaction(page, { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining', date: TODAY });
-  await addTransaction(page, { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '', date: TODAY });
-  await addTransaction(page, { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute', date: TODAY });
-  await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary', tags: 'recurring', date: TODAY });
-  await addTransaction(page, { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY });
+  let transactions: TransactionOptions[] = [
+    { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring', date: TODAY },
+    { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining', date: TODAY },
+    { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '', date: TODAY },
+    { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute', date: TODAY },
+    { description: 'Salary', amount: 3000, type: 'income', category: 'salary', tags: 'recurring', date: TODAY },
+    { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY }
+  ];
+
+  for (const t of transactions) {
+    await addTransaction(page, t);
+  }
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
 
 test.describe.serial('Summary page — filter combinations', () => {
-  test.beforeAll(async ({ browser, workerBaseURL }) => {
-    const ctx = await browser.newContext({ baseURL: workerBaseURL });
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
     const page = await ctx.newPage();
     await seedData(page);
     await page.close();
