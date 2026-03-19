@@ -2,7 +2,6 @@
 Routes for settings page and test data.
 """
 
-import os
 from typing import Tuple, Union
 from flask import Blueprint, render_template, jsonify, current_app, Response, g
 from JustAnotherExpenseManager.utils.services import CategoryService
@@ -16,16 +15,14 @@ def _test_routes_enabled() -> bool:
     Return True when test-utility endpoints should be accessible.
 
     Enabled when any of the following is true:
-    - Flask debug mode is on (local development)
-    - Flask testing mode is on (pytest)
-    - The ENABLE_TEST_ROUTES environment variable is set to '1'
-      (used by the Playwright webServer so tests can run without
-      activating debug mode -- and the DebugToolbar -- in the process)
+    - Flask debug mode is on (DebugConfig)
+    - Flask testing mode is on (TestingConfig / pytest)
+    - ENABLE_TEST_ROUTES is set to True in the active app config
     """
     return (
         current_app.debug
         or current_app.testing
-        or os.environ.get('ENABLE_TEST_ROUTES') == '1'
+        or bool(current_app.config.get('ENABLE_TEST_ROUTES'))
     )
 
 

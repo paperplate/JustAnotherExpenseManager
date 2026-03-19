@@ -5,7 +5,6 @@ WORKDIR /app
 # Copy package metadata first
 COPY pyproject.toml .
 COPY README.md .
-COPY .flaskenv .
 
 # Install pip
 RUN pip install --upgrade pip
@@ -18,9 +17,10 @@ RUN pip install -e .
 
 EXPOSE 5000
 
-# FLASK_RUN_HOST is read automatically by `flask run` from the environment.
-# Set it to 0.0.0.0 here so the container listens on all interfaces,
-# while the .flaskenv default of 127.0.0.1 keeps local dev restricted.
+# Select production configuration and bind to all interfaces so the
+# container is reachable from the host.  Individual settings (SECRET_KEY,
+# DATABASE_* etc.) should be passed via docker-compose environment: or -e flags.
+ENV JAEM_CONFIG=production
 ENV FLASK_RUN_HOST=0.0.0.0
 
-CMD ["flask", "--app", "JustAnotherExpenseManager", "run"]
+CMD ["JustAnotherExpenseManager"]
