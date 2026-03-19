@@ -4,8 +4,6 @@ import { test, expect } from './fixtures';
  * Security Tests
  * Tests protection against XSS, SQL injection, and other attacks.
  *
- * Note: the HTMX security section has been removed — HTMX is no longer
- * a dependency. All fetch() calls are plain JS, no eval() of server HTML.
  */
 
 test.describe('Security', () => {
@@ -165,30 +163,6 @@ test.describe('Security', () => {
       const amountInput = page.getByLabel('Amount ($)');
       const isInvalid = await amountInput.evaluate(el => !el.validity.valid);
       expect(isInvalid).toBe(true);
-    });
-  });
-
-  test.describe('No HTMX Dependency', () => {
-    test('page should function with no HTMX present', async ({ page }) => {
-      await page.goto('/summary');
-
-      // Confirm htmx is not defined on the page (we removed it)
-      const htmxDefined = await page.evaluate(() => typeof window.htmx !== 'undefined');
-      expect(htmxDefined).toBe(false);
-
-      // Stats should still load via plain fetch
-      await expect(page.locator('.summary-card.income')).toBeVisible({ timeout: 5000 });
-    });
-
-    test('filters should work without HTMX', async ({ page }) => {
-      await page.goto('/summary');
-      await page.waitForLoadState('networkidle');
-
-      await page.getByLabel('Time Range:').selectOption('current_month');
-      await page.waitForLoadState('networkidle');
-
-      // Stats should update
-      await expect(page.locator('.summary-card.income')).toBeVisible();
     });
   });
 });

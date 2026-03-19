@@ -229,6 +229,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'A', amount: 10, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
+    await page.waitForLoadState('networkidle');
 
     const rows = await page.getByRole('table').locator('tbody tr').count();
     expect(rows).toEqual(3);
