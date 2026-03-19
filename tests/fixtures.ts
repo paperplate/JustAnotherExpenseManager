@@ -83,7 +83,7 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
 
     let server: ChildProcess | null = null;
     try {
-      server = spawn('flask run', [], {
+      server = spawn('flask', ['run'], {
         stdio: ['ignore', 'pipe', 'pipe'],
         env: workerEnv,
       });

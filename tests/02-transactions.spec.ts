@@ -73,7 +73,8 @@ test.describe('Transactions', () => {
     await page.fill('#edit-description', 'Updated Description');
     await page.fill('#edit-amount', '30.00');
 
-    await page.click('button:has-text("Save Changes")');
+    //await page.click('button:has-text("Save Changes")');
+    await page.getByRole('button').filter({ hasText: 'Save Changes' }).click();
     await expect(page.locator('#editModal')).not.toBeVisible();
     await page.waitForLoadState('networkidle');
 
