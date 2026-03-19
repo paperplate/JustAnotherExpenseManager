@@ -1,20 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { addTransaction, clearDatabase, parseDollar } from './helpers'
-
-/**
- * Monthly Totals Regression Tests
- *
- * Guards against the bug where Income, Expenses, and Net in the monthly summary
- * bar always displayed $0.00.
- *
- * Root cause: Jinja2 variables mutated with {% set %} inside a {% for %} loop
- * are scoped to that loop block — the outer-scope variables stay 0.  The fix
- * computes the totals in Python (routes/transactions.py) and passes them as
- * explicit template variables (month_income, month_expense).
- *
- * Also verifies that the transactions list itself is rendered via the
- * transactions_list.html partial on every API response (GET, POST, PUT, DELETE).
- */
+import { test, expect } from './fixtures';
+import { addTransaction, clearDatabase, parseDollar, scrollToTotals } from './helpers'
 
 // ─── Constants ─────────────────────────────────────────────
 
@@ -132,11 +117,12 @@ test.describe('Monthly totals — mixed', () => {
 
   test('income and expenses: all three totals are non-zero and correct', async ({ page }) => {
     await addTransaction(page, { description: 'Salary', amount: 2000, type: 'income', category: 'salary' });
-    await expect(page.locator('.category-tag', { hasText: 'Salary' })).toBeVisible();
     await addTransaction(page, { description: 'Rent', amount: 800, type: 'expense', category: 'other' });
-    await expect(page.locator('.category-tag', { hasText: 'Rent' })).toBeVisible();
     await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
+
     await expect(page.locator('.category-tag', { hasText: 'Groceries' })).toBeVisible();
+    await expect(page.locator('.category-tag', { hasText: 'Salary' })).toBeVisible();
+    await expect(page.locator('.category-tag', { hasText: 'Rent' })).toBeVisible();
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -218,6 +204,7 @@ test.describe('Monthly totals update after mutations', () => {
     await expect(page.getByText('Keep')).toBeVisible();
     await addTransaction(page, { description: 'Delete', amount: 20, type: 'expense', category: 'food' });
     await expect(page.getByText('Delete')).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);

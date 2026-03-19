@@ -1,5 +1,5 @@
-import { test, expect } from '@playwright/test';
-import { addTransaction, selectCategory, openCategoryFilter } from './helpers'
+import { test, expect } from './fixtures';
+import { addTransaction, selectCategory, openCategoryFilter, resetCategoryFilter } from './helpers'
 
 /**
  * Filters and Statistics Tests
@@ -109,14 +109,8 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('should filter stats by category', async ({ page }) => {
-    //await page.click('#category-summary');
-    //await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
-
     // Click the "food" option
     await selectCategory(page, 'food');
-    //const foodOption = page.locator('#category-options-list .filter-option', { hasText: 'Food' });
-    //await foodOption.click();
-    //await page.waitForLoadState('networkidle');
 
     // Summary should update and still be visible
     await expect(page.locator('.summary-card.expense')).toBeVisible();
@@ -147,8 +141,9 @@ test.describe('Filters and Statistics', () => {
     await selectCategory(page, 'food')
 
     // Now click "All Categories" to reset
-    await openCategoryFilter(page);
-    await page.getByText('All Categories').click();
+    //await openCategoryFilter(page);
+    //await page.getByText('All Categories').click();
+    await resetCategoryFilter(page);
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
   });
@@ -159,8 +154,9 @@ test.describe('Filters and Statistics', () => {
     await selectCategory(page, 'food')
 
     // Now click "All Categories" to reset
-    await openCategoryFilter(page);
-    await page.getByText('All Categories').click();
+    //await openCategoryFilter(page);
+    //await page.getByText('All Categories').click();
+    await resetCategoryFilter(page);
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
   });

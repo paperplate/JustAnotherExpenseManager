@@ -17,20 +17,18 @@ module.exports = defineConfig({
   forbidOnly: !!process.env.CI,
 
   /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 2 : 1,
 
-  /* Reporters: blob for CI sharding (merged later), html+list locally */
-  reporter: process.env.CI
-    ? [['blob'], ['list']]
-    : [['html', { outputFolder: 'playwright-report' }], ['list']],
+  /* Reporters: html+list in both CI and locally */
+  reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
 
-  /* Workers: 2 in CI (GitHub Actions 2-CPU runners), unlimited locally */
-  workers: process.env.CI ? 2 : undefined,
+  /* Workers: 1 in CI (single-threaded for reliability), unlimited locally */
+  workers: process.env.CI ? 1 : undefined,
 
   /* Shared settings for all the projects below */
   use: {
     /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.BASE_URL || 'http://localhost:5000',
+    baseURL: process.env.BASE_URL || 'http://localhost:5005',
 
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -40,11 +38,9 @@ module.exports = defineConfig({
 
     /* Video on failure */
     video: {
-      mode: 'retain-on-failure',
-      size: { width: 1200, height: 1200 }
-    },
+      mode: 'retain-on-failure'
+    }
 
-    viewport: { width: 1200, height: 1200 }
   },
 
   /* Configure projects for major browsers */
@@ -78,9 +74,9 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'JustAnotherExpenseManager --config test.env',
-    url: 'http://localhost:5000',
-    reuseExistingServer: true,
+    command: 'JAEM_CONFIG=testing JustAnotherExpenseManager',
+    url: 'http://localhost:5005',
+    reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
   },
 });

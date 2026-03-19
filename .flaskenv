@@ -22,7 +22,6 @@ DATABASE_TYPE=sqlite
 # Flask Configuration
 FLASK_ENV=production
 FLASK_APP=JustAnotherExpenseManager
-FLASK_DEBUG=0
 
 # Network binding
 # Use 0.0.0.0 to listen on all interfaces (required for Docker),

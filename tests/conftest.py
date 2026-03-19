@@ -9,13 +9,11 @@ under [tool.pytest.ini_options]. This file only contains fixtures.
 import os
 import tempfile
 import pytest
-from dotenv import dotenv_values
 from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
+from JustAnotherExpenseManager.config import TestingConfig
 from JustAnotherExpenseManager.utils.database import db as _db
 from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
-
-_TEST_ENV_PATH = os.path.join(os.path.dirname(__file__), '..', 'test.env')
 
 
 def _clear_tables(session):
@@ -36,11 +34,10 @@ def app():
     db_fd, db_path = tempfile.mkstemp(suffix='.db')
     os.close(db_fd)
 
-    # Configure app for testing
-    config = dict(dotenv_values(_TEST_ENV_PATH))
-    config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
-
-    app = create_app(config)
+    app = create_app(
+        config_class=TestingConfig,
+        config_overrides={'SQLALCHEMY_DATABASE_URI': f'sqlite:///{db_path}'},
+    )
 
     yield app
 
@@ -87,12 +84,10 @@ def sample_transactions(app, db):
     This fixture populates the database with test data.
     """
     from JustAnotherExpenseManager.utils.services import TransactionService
+    from JustAnotherExpenseManager.models import TransactionType
 
     service = TransactionService(db)
 
-    from JustAnotherExpenseManager.models import TransactionType
-
-    # Create sample transactions using the current service API
     transactions_data = [
         {
             'description': 'Grocery shopping',
@@ -100,7 +95,7 @@ def sample_transactions(app, db):
             'type': TransactionType.EXPENSE,
             'date': '2026-01-15',
             'category': 'food',
-            'tags': ['recurring', 'planned']
+            'tags': ['recurring', 'planned'],
         },
         {
             'description': 'Salary',
@@ -108,7 +103,7 @@ def sample_transactions(app, db):
             'type': TransactionType.INCOME,
             'date': '2026-01-01',
             'category': 'salary',
-            'tags': ['recurring']
+            'tags': ['recurring'],
         },
         {
             'description': 'Gas',
@@ -116,7 +111,7 @@ def sample_transactions(app, db):
             'type': TransactionType.EXPENSE,
             'date': '2026-01-20',
             'category': 'transport',
-            'tags': []
+            'tags': [],
         },
         {
             'description': 'Restaurant',
@@ -124,8 +119,8 @@ def sample_transactions(app, db):
             'type': TransactionType.EXPENSE,
             'date': '2026-02-01',
             'category': 'food',
-            'tags': ['dining']
-        }
+            'tags': ['dining'],
+        },
     ]
 
     created_transactions = []

@@ -2,18 +2,19 @@
 Main Flask application entry point.
 
 This application follows SOLID principles with separation of concerns:
-- Models: Database models (models/)
-- Services: Business logic (utils/services.py)
-- Routes: HTTP handlers (routes/)
-- Database: Flask-SQLAlchemy extension and helpers (utils/database.py)
+- Config:    Environment/deployment settings (config.py)
+- Models:    Database models (models/)
+- Services:  Business logic (utils/services.py)
+- Routes:    HTTP handlers (routes/)
+- Database:  Flask-SQLAlchemy extension and helpers (utils/database.py)
 """
 
 import os
 import sys
 import click
 from flask import Flask, g
-from dotenv import dotenv_values
 
+from JustAnotherExpenseManager.config import Config, get_config_class
 from JustAnotherExpenseManager.utils.database import (
     db,
     build_database_url,
@@ -26,68 +27,63 @@ from JustAnotherExpenseManager.routes.stats import stats_bp
 from JustAnotherExpenseManager.routes.categories import categories_bp
 from JustAnotherExpenseManager.routes.settings import settings_bp
 
-def _load_config_file(path: str) -> dict:
-    """
-    Load a dotenv-style config file and return its contents as a dictionary.
- 
-    Args:
-        path: Path to the config file.
- 
-    Returns:
-        dict: Parsed key/value pairs from the file.
- 
-    Raises:
-        SystemExit: If the file does not exist or cannot be read.
-    """
-    if not os.path.isfile(path):
-        print(f"Error: config file not found: {path}", file=sys.stderr)
-        sys.exit(1)
-    try:
-        return dict(dotenv_values(path))
-    except Exception as err:  # pylint: disable=broad-except
-        print(f"Error: could not read config file '{path}': {err}", file=sys.stderr)
-        sys.exit(1)
 
-
-def create_app(config=None):
+def create_app(
+    config_class: type[Config] | None = None,
+    config_overrides: dict | None = None,
+) -> Flask:
     """
     Create and configure the Flask application.
 
+    The active configuration is determined by the ``JAEM_CONFIG`` environment
+    variable (``'production'`` by default) unless *config_class* is supplied
+    explicitly.  *config_overrides* is applied on top of the selected class
+    and is intended for test fixtures that need to swap the database URI.
+
+    Args:
+        config_class: A :class:`~JustAnotherExpenseManager.config.Config`
+            subclass to load.  When ``None`` the class is resolved from
+            ``JAEM_CONFIG``.
+        config_overrides: Optional mapping of config keys to override after
+            the class is loaded (e.g. ``{'SQLALCHEMY_DATABASE_URI': ...}``).
+
     Returns:
-        Flask: Configured Flask application.
+        Configured :class:`flask.Flask` application instance.
     """
     app = Flask(__name__)
 
-    # Configuration
-    if config is None:
-        try:
-            loaded = dotenv_values('.flaskenv')
-            app.config.from_mapping(loaded)
-        except Exception as err:  # pylint: disable=broad-except
-            print(f"Warning: Could not load .flaskenv file: {err}")
-            app.config.from_mapping({})
-    else:
-        app.config.from_mapping(config)
+    # ------------------------------------------------------------------ #
+    # Load configuration                                                   #
+    # ------------------------------------------------------------------ #
+    if config_class is None:
+        config_class = get_config_class()
+    app.config.from_object(config_class)
 
-    _BOOL_KEYS = ('TESTING', 'FLASK_DEBUG', 'WTF_CSRF_ENABLED')
-    for _key in _BOOL_KEYS:
-        _val = app.config.get(_key)
-        if isinstance(_val, str):
-            app.config[_key] = _val.strip().lower() in ('1', 'true', 'yes')
+    if config_overrides:
+        app.config.from_mapping(config_overrides)
 
-    if not app.config.get('SECRET_KEY'):
-        app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-    if not app.config.get('SECRET_KEY'):
+    # Warn loudly if the insecure default secret key is still in place in
+    # a non-testing environment so operators notice it immediately.
+    _insecure_defaults = {'dev-insecure-default-change-me', 'debug-secret-key-change-me'}
+    if not app.testing and app.config.get('SECRET_KEY') in _insecure_defaults:
         app.logger.warning(
-            'SECRET_KEY is not set. Using an insecure default — '
-            'set SECRET_KEY in .flaskenv or as an environment variable.'
+            'SECRET_KEY is not set or uses an insecure default. '
+            'Set the SECRET_KEY environment variable before deploying.'
         )
-        app.config['SECRET_KEY'] = 'dev-insecure-default-change-me'
 
-    if app.config.get('FLASK_DEBUG') == 1:
-        from flask_debugtoolbar import DebugToolbarExtension
-        DebugToolbarExtension(app)
+    # ------------------------------------------------------------------ #
+    # Debug toolbar (only when DEBUG=True and the package is installed)   #
+    # ------------------------------------------------------------------ #
+    if app.debug:
+        try:
+            from flask_debugtoolbar import DebugToolbarExtension  # pylint: disable=import-outside-toplevel
+            DebugToolbarExtension(app)
+        except ImportError:
+            app.logger.debug('flask-debugtoolbar not installed; skipping.')
 
+    # ------------------------------------------------------------------ #
+    # Database                                                             #
+    # ------------------------------------------------------------------ #
     if 'SQLALCHEMY_DATABASE_URI' not in app.config:
         app.config['SQLALCHEMY_DATABASE_URI'] = build_database_url(
             db_type=app.config.get('DATABASE_TYPE'),
@@ -96,15 +92,16 @@ def create_app(config=None):
             db_name=app.config.get('DATABASE_NAME'),
             db_user=app.config.get('DATABASE_USER'),
             db_password=app.config.get('DATABASE_PASSWORD'),
-            sqlite_path=app.config.get('SQLITE_PATH')
+            sqlite_path=app.config.get('SQLITE_PATH'),
         )
-
-    app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
     db.init_app(app)
     with app.app_context():
         init_database(app)
 
+    # ------------------------------------------------------------------ #
+    # Blueprints                                                           #
+    # ------------------------------------------------------------------ #
     app.register_blueprint(stats_bp)
     app.register_blueprint(transaction_bp)
     app.register_blueprint(categories_bp)
@@ -120,7 +117,7 @@ def create_app(config=None):
     return app
 
 
-def register_cli_commands(app: Flask):
+def register_cli_commands(app: Flask) -> None:
     """
     Register Flask CLI commands.
 
@@ -200,36 +197,19 @@ def register_cli_commands(app: Flask):
         click.echo(f'  Tags:         {tag_count}')
 
 
-def main():
-    """Entry point for the installed ``JustAnotherExpenseManager`` command."""
-    import argparse
-    parser = argparse.ArgumentParser(
-        prog='JustAnotherExpenseManager',
-        description='Run the JustAnotherExpenseManager application.'
-    )
-    #parser.add_argument('--config', type=str, action='store_const', help='Path to config file')
+def main() -> None:
+    """
+    Entry point for the installed ``JustAnotherExpenseManager`` command.
 
-    #if parser.parse_args('--config') is None:
-    #    import os  # pylint: disable=import-outside-toplevel
-    #    host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
-    #    port = int(os.getenv('FLASK_RUN_PORT', '5000'))
-    #    debug = os.getenv('FLASK_DEBUG', '0') == '1'
-    parser.add_argument(
-        '--config', '-c',
-        metavar='FILE',
-        default=None,
-        help='Path to a dotenv-style config file (e.g. .flaskenv, production.env). '
-             'Defaults to .flaskenv in the current directory when omitted.',
-    )
-    args = parser.parse_args()
- 
-    config = _load_config_file(args.config) if args.config else None
-    app = create_app(config)
- 
-
-    host = app.config.get('FLASK_RUN_HOST') or os.getenv('FLASK_RUN_HOST', '127.0.0.1')
-    port = int(app.config.get('FLASK_RUN_PORT') or os.getenv('FLASK_RUN_PORT', '5000'))
-    debug = (app.config.get('FLASK_DEBUG') or os.getenv('FLASK_DEBUG', '0')) == '1'
-
+    The active configuration is controlled entirely by environment variables.
+    Set ``JAEM_CONFIG`` to ``debug``, ``testing``, or ``production`` (default).
+    Override individual settings by setting the corresponding environment
+    variable, e.g. ``SECRET_KEY``, ``DATABASE_TYPE``, ``FLASK_RUN_HOST``, etc.
+    """
     app = create_app()
+
+    host = app.config.get('FLASK_RUN_HOST', '0.0.0.0')
+    port = int(app.config.get('FLASK_RUN_PORT', 5000))
+    debug = app.debug
+
     app.run(host=host, port=port, debug=debug)

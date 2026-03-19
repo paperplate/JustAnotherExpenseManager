@@ -22,7 +22,7 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - FLASK_ENV=development
+      - JAEM_CONFIG=production
       - DATABASE_TYPE=mysql
       - DATABASE_HOST=mysql
       - DATABASE_PORT=3306
