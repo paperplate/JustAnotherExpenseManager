@@ -57,11 +57,6 @@ class Config:
     FLASK_RUN_HOST: str = os.environ.get('FLASK_RUN_HOST', '0.0.0.0')
     FLASK_RUN_PORT: int = int(os.environ.get('FLASK_RUN_PORT', '5000'))
 
-    # ------------------------------------------------------------------ #
-    # Application features                                                 #
-    # ------------------------------------------------------------------ #
-    # Enables the /api/populate-test-data endpoint and similar dev helpers.
-    ENABLE_TEST_ROUTES: bool = False
 
 
 class DebugConfig(Config):
@@ -76,7 +71,6 @@ class DebugConfig(Config):
     SECRET_KEY: str = os.environ.get('SECRET_KEY', 'debug-secret-key-change-me')
     SQLITE_PATH: str = os.environ.get('SQLITE_PATH', './data/debug.db')
     FLASK_RUN_HOST: str = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
-    ENABLE_TEST_ROUTES: bool = True
 
 
 class TestingConfig(Config):
@@ -95,7 +89,6 @@ class TestingConfig(Config):
     SQLITE_PATH: str = os.environ.get('SQLITE_PATH', './test-expenses.db')
     FLASK_RUN_HOST: str = os.environ.get('FLASK_RUN_HOST', '127.0.0.1')
     FLASK_RUN_PORT: int = int(os.environ.get('FLASK_RUN_PORT', '5005'))
-    ENABLE_TEST_ROUTES: bool = True
 
 
 class ProductionConfig(Config):

@@ -17,12 +17,10 @@ def _test_routes_enabled() -> bool:
     Enabled when any of the following is true:
     - Flask debug mode is on (DebugConfig)
     - Flask testing mode is on (TestingConfig / pytest)
-    - ENABLE_TEST_ROUTES is set to True in the active app config
     """
     return (
         current_app.debug
-        or current_app.testing
-        or bool(current_app.config.get('ENABLE_TEST_ROUTES'))
+        or current_app.config['TESTING']
     )
 
 

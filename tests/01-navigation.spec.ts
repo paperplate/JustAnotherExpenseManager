@@ -43,7 +43,6 @@ test.describe('Navigation', () => {
   test('should load stats container on summary page', async ({ page }) => {
     await page.goto('/summary');
 
-    // Stats are loaded via fetch — wait for summary cards to appear
     await expect(page.locator('.summary-card.income')).toBeVisible({ timeout: 5000 });
     await expect(page.locator('.summary-card.expense')).toBeVisible();
   });
@@ -51,10 +50,8 @@ test.describe('Navigation', () => {
   test('should load transactions list on transactions page', async ({ page }) => {
     await page.goto('/transactions');
 
-    // Transactions list is loaded via fetch on DOMContentLoaded
     const list = page.locator('#transactions-list');
     await expect(list).toBeVisible();
-    // Either shows transactions or the empty state
     await expect(list).not.toBeEmpty();
   });
 });
