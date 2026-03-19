@@ -11,7 +11,6 @@ import { test as base, BrowserContext } from '@playwright/test';
 import { spawn, ChildProcess } from 'child_process';
 import * as fs from 'fs';
 import * as net from 'net';
-import * as path from 'path';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -66,29 +65,27 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
    */
   workerBaseURL: [async ({ }, use, workerInfo) => {
     const port = await getFreePort();
-    const dbPath = path.resolve(`test-expenses-worker-${workerInfo.workerIndex}.db`);
-    const cfgPath = path.resolve(`test-worker-${workerInfo.workerIndex}.env`);
+    const dbPath = `/tmp/test-expenses-worker-${workerInfo.workerIndex}.db`;
 
     // Remove any stale DB left by a previously crashed run before Flask
     // starts — otherwise init_database will fail with "table already exists".
     if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
 
-    fs.writeFileSync(cfgPath, [
-      'TESTING=True',
-      'WTF_CSRF_ENABLED=False',
-      `SECRET_KEY=test-secret-key-worker-${workerInfo.workerIndex}`,
-      'ENABLE_TEST_ROUTES=1',
-      'FLASK_RUN_HOST=127.0.0.1',
-      `FLASK_RUN_PORT=${port}`,
-      'DATABASE_TYPE=sqlite',
-      `SQLITE_PATH=${dbPath}`,
-      'FLASK_DEBUG=0',
-    ].join('\n'));
+    const workerEnv = {
+      ...process.env,
+      FLASK_APP: 'JustAnotherExpenseManager',
+      JAEM_CONFIG: 'testing',
+      SECRET_KEY: `test-secret-key-worker-${workerInfo.workerIndex}`,
+      FLASK_RUN_HOST: '127.0.0.1',
+      FLASK_RUN_PORT: String(port),
+      SQLITE_PATH: dbPath,
+    };
 
     let server: ChildProcess | null = null;
     try {
-      server = spawn('JustAnotherExpenseManager', ['--config', cfgPath], {
+      server = spawn('flask run', [], {
         stdio: ['ignore', 'pipe', 'pipe'],
+        env: workerEnv,
       });
       server.stdout?.on('data', (d: Buffer) => process.stdout.write(d));
       server.stderr?.on('data', (d: Buffer) => process.stderr.write(d));
@@ -104,7 +101,7 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
           if (!startupComplete) {
             reject(new Error(
               `Worker ${workerInfo.workerIndex}: Flask process exited early ` +
-              `(code=${code}, signal=${signal}). Check port ${port} and config ${cfgPath}.`
+              `(code=${code}, signal=${signal}). Check port ${port}.`
             ));
           }
         });
@@ -123,7 +120,6 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
     } finally {
       server?.kill('SIGTERM');
       if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-      if (fs.existsSync(cfgPath)) fs.unlinkSync(cfgPath);
     }
   }, { scope: 'worker' }],
 
