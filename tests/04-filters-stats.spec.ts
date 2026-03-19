@@ -27,13 +27,13 @@ test.describe('Filters and Statistics', () => {
     });
 
     await addTransaction(page, {
-      description: 'Filter Test Expense',
+      description: 'Filter Test Income',
       amount: 500,
       type: 'income',
       category: 'salary'
     });
 
-    await page.click('text=Summary');
+    await page.getByRole('link', { name: 'Summary' }).click();
     await page.waitForLoadState('networkidle');
   });
 
@@ -54,35 +54,35 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('should filter by time range', async ({ page }) => {
-    await page.selectOption('#time-range', '3_months');
+    await page.getByLabel('Time Range:').selectOption('3_months');
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('.summary-card.income')).toBeVisible();
 
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('.summary-card.income')).toBeVisible();
   });
 
   test('should show custom date range picker when "custom" is selected', async ({ page }) => {
-    await page.selectOption('#time-range', 'custom');
+    await page.getByLabel('Time Range:').selectOption('custom');
 
     await expect(page.locator('#custom-range-picker')).toBeVisible();
-    await expect(page.locator('#start-date')).toBeVisible();
-    await expect(page.locator('#end-date')).toBeVisible();
+    await expect(page.getByLabel('Start Date:')).toBeVisible();
+    await expect(page.getByLabel('End Date:')).toBeVisible();
   });
 
   test('should apply custom date range', async ({ page }) => {
-    await page.selectOption('#time-range', 'custom');
+    await page.getByLabel('Time Range:').selectOption('custom');
     await expect(page.locator('#custom-range-picker')).toBeVisible();
 
     const today = new Date().toISOString().split('T')[0];
     const firstOfMonth = today.substring(0, 7) + '-01';
 
-    await page.fill('#start-date', firstOfMonth);
-    await page.fill('#end-date', today);
-    await page.click('button:has-text("Apply")');
+    await page.getByLabel('Start Date:').fill(firstOfMonth);
+    await page.getByLabel('End Date:').fill(today);
+    await page.getByRole('button', { name: 'Apply' }).click();
     await page.waitForLoadState('networkidle');
 
     await expect(page.locator('.summary-card.income')).toBeVisible();
@@ -93,23 +93,22 @@ test.describe('Filters and Statistics', () => {
     await expect(details).toBeVisible();
 
     // Click the <summary> to open the <details>
-    await page.click('#category-summary');
+    await details.locator('summary').click();
     await expect(details).toHaveAttribute('open', '');
   });
 
   test('category filter options are loaded without category: prefix', async ({ page }) => {
-    await page.click('#category-summary');
+    await page.locator('#category-details').locator('summary').click();
 
     // Wait for options to load (they are fetched async)
-    await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
 
-    const optionTexts = await page.locator('#category-options-list .filter-option').allTextContents();
+    const optionTexts = await page.locator('#category-options-list').getByRole('listitem').allTextContents();
     const hasPrefix = optionTexts.some(t => t.trim().startsWith('category:'));
     expect(hasPrefix).toBe(false);
   });
 
   test('should filter stats by category', async ({ page }) => {
-    // Click the "food" option
     await selectCategory(page, 'food');
 
     // Summary should update and still be visible
@@ -120,10 +119,10 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('should select multiple categories and update summary text', async ({ page }) => {
-    await page.click('#category-summary');
-    await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
+    await page.locator('#category-details').locator('summary').click();
+    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
 
-    const options = page.locator('#category-options-list .filter-option');
+    const options = page.locator('#category-options-list').getByRole('listitem');
     const count = await options.count();
 
     if (count >= 2) {
@@ -137,12 +136,7 @@ test.describe('Filters and Statistics', () => {
 
   test('Transactions page selecting "All Categories" deselects individual categories', async ({ page }) => {
     await page.goto('/transactions');
-    // Select a specific category
-    await selectCategory(page, 'food')
-
-    // Now click "All Categories" to reset
-    //await openCategoryFilter(page);
-    //await page.getByText('All Categories').click();
+    await selectCategory(page, 'food');
     await resetCategoryFilter(page);
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
@@ -150,12 +144,7 @@ test.describe('Filters and Statistics', () => {
 
   test('Summary page selecting "All Categories" deselects individual categories', async ({ page }) => {
     await page.goto('/summary');
-    // Select a specific category
-    await selectCategory(page, 'food')
-
-    // Now click "All Categories" to reset
-    //await openCategoryFilter(page);
-    //await page.getByText('All Categories').click();
+    await selectCategory(page, 'food');
     await resetCategoryFilter(page);
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
@@ -175,17 +164,19 @@ test.describe('Filters and Statistics', () => {
     await page.goto('/summary');
     await page.waitForLoadState('networkidle');
 
-    await page.click('#tag-summary');
+    await page.locator('#tag-details').locator('summary').click();
     await expect(page.locator('#tag-details')).toHaveAttribute('open', '');
 
-    await expect(page.locator('#tag-options-list .filter-option', { hasText: 'playwrighttest' })).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.locator('#tag-options-list').getByRole('listitem').filter({ hasText: 'playwrighttest' })
+    ).toBeVisible({ timeout: 5000 });
   });
 
   test('filter state is reflected in URL', async ({ page }) => {
-    await page.click('#category-summary');
-    await expect(page.locator('#category-options-list .filter-option').first()).toBeVisible({ timeout: 5000 });
+    await page.locator('#category-details').locator('summary').click();
+    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
 
-    await page.locator('#category-options-list .filter-option').first().click();
+    await page.locator('#category-options-list').getByRole('listitem').first().click();
     await page.waitForLoadState('networkidle');
 
     // URL should now contain categories= parameter

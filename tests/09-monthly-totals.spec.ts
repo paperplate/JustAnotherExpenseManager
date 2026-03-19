@@ -3,7 +3,6 @@ import { addTransaction, clearDatabase, parseDollar, scrollToTotals } from './he
 
 // ─── Constants ─────────────────────────────────────────────
 
-const TRANSACTIONS_TABLE: string = '.transactions-table';
 const MONTHLY_TOTALS: string = '.monthly-totals';
 const TOTAL_INCOME: string = '.total-income-value';
 const TOTAL_EXPENSE: string = '.total-expense-value';
@@ -20,13 +19,13 @@ test.describe('Transactions list rendering', () => {
 
   test('empty state is shown when there are no transactions', async ({ page }) => {
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(page.locator(TRANSACTIONS_TABLE)).not.toBeVisible();
+    await expect(page.getByRole('table')).not.toBeVisible();
   });
 
   test('table appears after adding a transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
-    await expect(page.locator(TRANSACTIONS_TABLE)).toBeVisible();
-    await expect(page.locator('text=Coffee')).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByText('Coffee')).toBeVisible();
   });
 
   test('monthly totals bar is visible after adding a transaction', async ({ page }) => {
@@ -36,13 +35,13 @@ test.describe('Transactions list rendering', () => {
 
   test('table disappears and empty state returns after deleting the last transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Solo', amount: 10, type: 'expense', category: 'other' });
-    await expect(page.locator(TRANSACTIONS_TABLE)).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
 
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('button.btn-delete').first().click();
+    await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator(TRANSACTIONS_TABLE)).not.toBeVisible();
+    await expect(page.getByRole('table')).not.toBeVisible();
     await expect(page.locator('.empty-state')).toBeVisible();
   });
 });
@@ -134,7 +133,6 @@ test.describe('Monthly totals — mixed', () => {
   });
 
   test('totals are never $0.00 when transactions exist (regression)', async ({ page }) => {
-    // This is the core regression guard: before the fix every total was $0.00
     await addTransaction(page, { description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await addTransaction(page, { description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
 
@@ -187,11 +185,10 @@ test.describe('Monthly totals update after mutations', () => {
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
-    // Edit the transaction to change the amount
-    await page.click('button.btn-edit:has-text("Edit")');
+    await page.getByRole('button', { name: 'Edit' }).first().click();
     await expect(page.locator('#editModal')).toBeVisible();
-    await page.fill('#edit-amount', '200');
-    await page.click('button:has-text("Save Changes")');
+    await page.locator('#editModal').getByLabel('Amount ($)').fill('200');
+    await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('#editModal')).not.toBeVisible();
     await page.waitForLoadState('networkidle');
 
@@ -209,13 +206,11 @@ test.describe('Monthly totals update after mutations', () => {
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
-    // Delete the second transaction (most recent is listed first, so it's the first row)
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('button.btn-delete').first().click();
+    await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    // After deleting either $20 or $80 transaction, total must be less than $100
     expect(expenseAfter).toBeLessThan(100);
     expect(expenseAfter).toBeGreaterThan(0);
   });
@@ -235,8 +230,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
 
-    const rows = await page.locator('.transactions-table tbody tr').count();
-
+    const rows = await page.getByRole('table').locator('tbody tr').count();
     expect(rows).toEqual(3);
   });
 });

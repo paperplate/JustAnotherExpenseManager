@@ -27,6 +27,7 @@ import {
  * share the same seeded state. This avoids re-seeding 6 transactions before
  * every one of the 36 tests, cutting setup time from O(n_tests) to O(n_blocks).
  */
+
 // ─── Constants ────────────────────────────────────────────────────────────
 const SUMMARY_EXPENSE_VALUE: string = '.summary-card.expense .summary-value';
 const SUMMARY_INCOME_VALUE: string = '.summary-card.income .summary-value';
@@ -39,59 +40,12 @@ async function seedData(page: Page): Promise<void> {
   await page.goto('/transactions');
   await page.waitForLoadState('networkidle');
 
-  await addTransaction(page, {
-    description: 'Groceries',
-    amount: 120,
-    type: 'expense',
-    category: 'food',
-    tags: 'recurring',
-    date: TODAY
-  });
-
-  await addTransaction(page, {
-    description: 'Pizza',
-    amount: 40,
-    type: 'expense',
-    category: 'food',
-    tags: 'dining',
-    date: TODAY
-  });
-
-  await addTransaction(page, {
-    description: 'Snacks',
-    amount: 15,
-    type: 'expense',
-    category: 'food',
-    tags: '',
-    date: TODAY
-  });
-
-  await addTransaction(page, {
-    description: 'Bus Pass',
-    amount: 60,
-    type: 'expense',
-    category: 'transport',
-    tags: 'recurring,commute',
-    date: TODAY
-  });
-
-  await addTransaction(page, {
-    description: 'Salary',
-    amount: 3000,
-    type: 'income',
-    category: 'salary',
-    tags: 'recurring',
-    date: TODAY
-  });
-
-  await addTransaction(page, {
-    description: 'Cinema',
-    amount: 30,
-    type: 'expense',
-    category: 'entertainment',
-    tags: 'leisure',
-    date: TODAY
-  });
+  await addTransaction(page, { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring', date: TODAY });
+  await addTransaction(page, { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining', date: TODAY });
+  await addTransaction(page, { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '', date: TODAY });
+  await addTransaction(page, { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute', date: TODAY });
+  await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary', tags: 'recurring', date: TODAY });
+  await addTransaction(page, { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY });
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
@@ -99,14 +53,13 @@ async function seedData(page: Page): Promise<void> {
 test.describe.serial('Summary page — filter combinations', () => {
   test.beforeAll(async ({ browser, workerBaseURL }) => {
     const ctx = await browser.newContext({ baseURL: workerBaseURL });
-    const page = await browser.newPage();
+    const page = await ctx.newPage();
     await seedData(page);
     await page.close();
     await ctx.close();
   });
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to a clean summary view before each test; data is already seeded.
     await page.goto('/summary');
     await page.waitForLoadState('networkidle');
   });
@@ -119,7 +72,6 @@ test.describe.serial('Summary page — filter combinations', () => {
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     // food expenses: 120 + 40 + 15 = $175.00
     expect(expenseValue!.trim()).toBe('$175.00');
-    // income should be zero (no food income)
     const incomeValue = await page.locator(SUMMARY_INCOME_VALUE).textContent();
     expect(incomeValue!.trim()).toBe('$0.00');
   });
@@ -202,7 +154,6 @@ test.describe.serial('Summary page — filter combinations', () => {
     await selectCategory(page, 'food');
     await selectTag(page, 'recurring');
 
-    // Only Groceries is both food AND recurring
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$120.00');
   });
@@ -242,7 +193,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   // ── Time range only ────────────────────────────────────────────────────────
 
   test('time range: current_month — includes all seeded transactions', async ({ page }) => {
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     // All transactions are dated today so they fall in current month
@@ -252,11 +203,11 @@ test.describe.serial('Summary page — filter combinations', () => {
   });
 
   test('time range: custom (today only) — includes all seeded transactions', async ({ page }) => {
-    await page.selectOption('#time-range', 'custom');
+    await page.getByLabel('Time Range:').selectOption('custom');
     await expect(page.locator('#custom-range-picker')).toBeVisible();
-    await page.fill('#start-date', TODAY);
-    await page.fill('#end-date', TODAY);
-    await page.click('button:has-text("Apply")');
+    await page.getByLabel('Start Date:').fill(TODAY);
+    await page.getByLabel('End Date:').fill(TODAY);
+    await page.getByRole('button', { name: 'Apply' }).click();
     await page.waitForLoadState('networkidle');
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -267,7 +218,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('category:food + current_month — food expenses within current month', async ({ page }) => {
     await selectCategory(page, 'food');
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -278,7 +229,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring + current_month — recurring within current month', async ({ page }) => {
     await selectTag(page, 'recurring');
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -321,7 +272,6 @@ test.describe.serial('Transactions page — filter combinations', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Navigate to a clean transactions view before each test; data is already seeded.
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
   });
@@ -422,18 +372,17 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await selectCategory(page, 'entertainment');
     await selectTag(page, 'recurring');
 
-    // No transaction is both entertainment AND recurring
     await expect(page.getByText('Cinema')).not.toBeVisible();
     await expect(page.getByText('Groceries')).not.toBeVisible();
     // Should show empty state rather than a broken page
     const listText = await page.locator('#transactions-list').textContent();
-    expect(listText!.trim().length).toBeGreaterThan(0); // not blank
+    expect(listText!.trim().length).toBeGreaterThan(0);
   });
 
   // ── Time range only ────────────────────────────────────────────────────────
 
   test('time range: current_month — all seeded transactions visible', async ({ page }) => {
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText('Groceries')).toBeVisible();
@@ -443,11 +392,11 @@ test.describe.serial('Transactions page — filter combinations', () => {
 
   test('time range: custom (yesterday to yesterday) — no seeded transactions', async ({ page }) => {
     const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-    await page.selectOption('#time-range', 'custom');
+    await page.getByLabel('Time Range:').selectOption('custom');
     await expect(page.locator('#custom-range-picker')).toBeVisible();
-    await page.fill('#start-date', yesterday);
-    await page.fill('#end-date', yesterday);
-    await page.click('button:has-text("Apply")');
+    await page.getByLabel('Start Date:').fill(yesterday);
+    await page.getByLabel('End Date:').fill(yesterday);
+    await page.getByRole('button', { name: 'Apply' }).click();
     await page.waitForLoadState('networkidle');
 
     // All transactions are dated TODAY, none should appear for yesterday
@@ -459,7 +408,7 @@ test.describe.serial('Transactions page — filter combinations', () => {
 
   test('category:food + current_month — food transactions in current month', async ({ page }) => {
     await selectCategory(page, 'food');
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText('Groceries')).toBeVisible();
@@ -472,7 +421,7 @@ test.describe.serial('Transactions page — filter combinations', () => {
 
   test('tag:recurring + current_month — recurring transactions in current month', async ({ page }) => {
     await selectTag(page, 'recurring');
-    await page.selectOption('#time-range', 'current_month');
+    await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByText('Groceries')).toBeVisible();

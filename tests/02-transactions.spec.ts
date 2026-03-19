@@ -22,8 +22,8 @@ test.describe('Transactions', () => {
       tags: 'test,automated'
     });
 
-    await expect(page.locator('text=Test Grocery Shopping')).toBeVisible();
-    await expect(page.locator('text=-$45.50')).toBeVisible();
+    await expect(page.getByText('Test Grocery Shopping')).toBeVisible();
+    await expect(page.getByText('-$45.50')).toBeVisible();
     await expect(page.locator('.type-badge.type-expense')).toContainText('Expense');
   });
 
@@ -35,15 +35,15 @@ test.describe('Transactions', () => {
       category: 'salary'
     });
 
-    await expect(page.locator('text=Freelance Payment')).toBeVisible();
-    await expect(page.locator('text=+$1500.00')).toBeVisible();
+    await expect(page.getByText('Freelance Payment')).toBeVisible();
+    await expect(page.getByText('+$1500.00')).toBeVisible();
     await expect(page.locator('.type-badge.type-income')).toContainText('Income');
   });
 
   test('should validate required fields', async ({ page }) => {
-    await page.click('button[type="submit"]:has-text("Add Transaction")');
+    await page.getByRole('button', { name: 'Add Transaction' }).click();
 
-    const descriptionInput = page.locator('#description');
+    const descriptionInput = page.getByLabel('Description');
     const isInvalid = await descriptionInput.evaluate(el => !el.validity.valid);
     expect(isInvalid).toBe(true);
   });
@@ -56,7 +56,7 @@ test.describe('Transactions', () => {
       category: 'food'
     });
 
-    await expect(page.locator("text=O'Malley's Irish Pub")).toBeVisible();
+    await expect(page.getByText("O'Malley's Irish Pub")).toBeVisible();
   });
 
   test('should edit a transaction', async ({ page }) => {
@@ -67,18 +67,18 @@ test.describe('Transactions', () => {
       category: 'other'
     });
 
-    await page.click('button.btn-edit:has-text("Edit")');
+    await page.getByRole('button', { name: 'Edit' }).first().click();
     await expect(page.locator('#editModal')).toBeVisible();
 
-    await page.fill('#edit-description', 'Updated Description');
-    await page.fill('#edit-amount', '30.00');
+    await page.locator('#editModal').getByLabel('Description').fill('Updated Description');
+    await page.locator('#editModal').getByLabel('Amount ($)').fill('30.00');
 
-    await page.getByRole('button').filter({ hasText: 'Save Changes' }).click();
+    await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(page.locator('#editModal')).not.toBeVisible();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('text=Updated Description')).toBeVisible();
-    await expect(page.locator('text=-$30.00')).toBeVisible();
+    await expect(page.getByText('Updated Description')).toBeVisible();
+    await expect(page.getByText('-$30.00')).toBeVisible();
   });
 
   test('should pre-select current category in edit modal', async ({ page }) => {
@@ -89,11 +89,11 @@ test.describe('Transactions', () => {
       category: 'food'
     });
 
-    await page.click('button.btn-edit:has-text("Edit")');
+    await page.getByRole('button', { name: 'Edit' }).first().click();
     await expect(page.locator('#editModal')).toBeVisible();
 
     // Category dropdown in modal should pre-select 'food', not show 'category:food'
-    const selectedCategory = await page.locator('#edit-category').inputValue();
+    const selectedCategory = await page.locator('#editModal').getByLabel('Category').inputValue();
     expect(selectedCategory).toBe('food');
     expect(selectedCategory).not.toContain('category:');
   });
@@ -108,10 +108,10 @@ test.describe('Transactions', () => {
 
     page.on('dialog', dialog => dialog.accept());
 
-    await page.click('button.btn-delete:has-text("Delete")');
+    await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('text=To Be Deleted')).not.toBeVisible();
+    await expect(page.getByText('To Be Deleted')).not.toBeVisible();
   });
 
   test('should handle tags correctly', async ({ page }) => {
@@ -123,14 +123,14 @@ test.describe('Transactions', () => {
       tags: 'urgent important, business'
     });
 
-    await expect(page.locator('.tag-badge:has-text("urgent")')).toBeVisible();
-    await expect(page.locator('.tag-badge:has-text("important")')).toBeVisible();
-    await expect(page.locator('.tag-badge:has-text("business")')).toBeVisible();
+    await expect(page.locator('.tag-badge', { hasText: 'urgent' })).toBeVisible();
+    await expect(page.locator('.tag-badge', { hasText: 'important' })).toBeVisible();
+    await expect(page.locator('.tag-badge', { hasText: 'business' })).toBeVisible();
   });
 
   test('category dropdown should not show category: prefix', async ({ page }) => {
     // The add-transaction category select should show clean names
-    const options = await page.locator('#category option').allTextContents();
+    const options = await page.getByLabel('Category').locator('option').allTextContents();
     const hasPrefix = options.some(o => o.startsWith('category:'));
     expect(hasPrefix).toBe(false);
   });

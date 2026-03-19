@@ -25,8 +25,8 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.locator('#csv_file').setInputFiles(csvPath);
-      await page.click('button:has-text("Import CSV")');
+      await page.getByLabel('CSV File').setInputFiles(csvPath);
+      await page.getByRole('button', { name: 'Import CSV' }).click();
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#import-result')).toContainText('Successfully imported 3 transaction(s)');
@@ -48,8 +48,8 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.locator('#csv_file').setInputFiles(csvPath);
-      await page.click('button:has-text("Import CSV")');
+      await page.getByLabel('CSV File').setInputFiles(csvPath);
+      await page.getByRole('button', { name: 'Import CSV' }).click();
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');
@@ -64,8 +64,8 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(txtPath, 'This is not a CSV file');
 
     try {
-      await page.locator('#csv_file').setInputFiles(txtPath);
-      await page.click('button:has-text("Import CSV")');
+      await page.getByLabel('CSV File').setInputFiles(txtPath);
+      await page.getByRole('button', { name: 'Import CSV' }).click();
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#import-result')).toContainText('must be a CSV');
@@ -80,8 +80,8 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.locator('#csv_file').setInputFiles(csvPath);
-      await page.click('button:has-text("Import CSV")');
+      await page.getByLabel('CSV File').setInputFiles(csvPath);
+      await page.getByRole('button', { name: 'Import CSV' }).click();
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#import-result')).toContainText('Successfully imported 0 transaction(s)');
@@ -100,8 +100,8 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.locator('#csv_file').setInputFiles(csvPath);
-      await page.click('button:has-text("Import CSV")');
+      await page.getByLabel('CSV File').setInputFiles(csvPath);
+      await page.getByRole('button', { name: 'Import CSV' }).click();
       await page.waitForLoadState('networkidle');
 
       await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');

@@ -20,15 +20,15 @@ interface TransactionOptions {
 
 async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
   const { description, amount, type, category, tags = '', date = TODAY } = opts;
-  await page.fill('#description', description);
-  await page.fill('#amount', String(amount));
-  await page.selectOption('#type', type);
-  await page.fill('#date', date);
-  await page.selectOption('select#category', { value: category });
-  if (tags) await page.fill('#tags', tags);
-  await page.click('button[type="submit"]:has-text("Add Transaction")');
+  await page.getByLabel('Description').fill(description);
+  await page.getByLabel('Amount ($)').fill(String(amount));
+  await page.getByLabel('Type').selectOption(type);
+  await page.getByLabel('Date').fill(date);
+  await page.getByLabel('Category').selectOption({ value: category });
+  if (tags) await page.getByLabel('Tags (comma-separated, optional)').fill(tags);
+  await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  if (tags) await page.fill('#tags', '');
+  if (tags) await page.getByLabel('Tags (comma-separated, optional)').fill('');
 }
 
 /**
@@ -39,65 +39,75 @@ function parseDollar(text: string | null): number {
 }
 
 async function addCategory(page: Page, name: string): Promise<void> {
-  await page.fill('#new-category', name);
-  await page.click('button:has-text("Add Category")');
+  await page.getByPlaceholder('Enter category name').fill(name);
+  await page.getByRole('button', { name: 'Add Category' }).click();
   await page.waitForLoadState('networkidle');
 }
 
 async function openEditModal(page: Page, categoryName: string): Promise<void> {
-  const categoryItem = page.locator('.category-item', { hasText: categoryName });
-  const editBtn = categoryItem.getByRole('button').filter({ hasText: 'Edit' });
-  await editBtn.click();
+  await page.locator('.category-item', { hasText: categoryName })
+    .getByRole('button', { name: 'Edit' })
+    .click();
 }
 
 async function submitRename(page: Page, newName: string): Promise<void> {
-  await page.fill('#edit-category-name', newName);
-  await page.getByRole('button').filter({ hasText: 'Save Changes' }).click();
+  await page.getByLabel('Category Name').fill(newName);
+  await page.getByRole('button', { name: 'Save Changes' }).click();
   await page.waitForLoadState('networkidle');
 }
 
 async function openCategoryFilter(page: Page): Promise<void> {
   const details = page.locator('#category-details');
   if (!(await details.getAttribute('open'))) {
-    await page.click('#category-summary');
+    await details.locator('summary').click();
   }
 }
 
 async function openTagFilter(page: Page): Promise<void> {
   const details = page.locator('#tag-details');
   if (!(await details.getAttribute('open'))) {
-    await page.click('#tag-summary');
+    await details.locator('summary').click();
   }
 }
 
 async function selectCategory(page: Page, name: string): Promise<void> {
   await openCategoryFilter(page);
   const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#category-options-list .filter-option', { hasText: regexp }).click();
+  await page.locator('#category-options-list')
+    .getByRole('listitem')
+    .filter({ hasText: regexp })
+    .click();
   await page.waitForLoadState('networkidle');
 }
 
 async function selectTag(page: Page, name: string): Promise<void> {
   await openTagFilter(page);
   const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#tag-options-list .filter-option', { hasText: regexp }).click();
+  await page.locator('#tag-options-list')
+    .getByRole('listitem')
+    .filter({ hasText: regexp })
+    .click();
   await page.waitForLoadState('networkidle');
 }
 
 async function resetCategoryFilter(page: Page): Promise<void> {
   await openCategoryFilter(page);
-  await page.locator('#category-summary .filter-option[data-value=""]').click();
+  await page.locator('#category-details')
+    .getByRole('listitem', { name: 'All Categories' })
+    .click();
   await page.waitForLoadState('networkidle');
 }
 
 async function resetTagFilter(page: Page): Promise<void> {
   await openTagFilter(page);
-  await page.locator('#tag-summary .filter-option[data-value=""]').click();
+  await page.locator('#tag-details')
+    .getByRole('listitem', { name: 'All Tags' })
+    .click();
   await page.waitForLoadState('networkidle');
 }
 
 async function scrollToTotals(page: Page): Promise<void> {
-  await page.locator('div.monthly-totals').scrollIntoViewIfNeeded();
+  await page.locator('.monthly-totals').scrollIntoViewIfNeeded();
 }
 
 export {
