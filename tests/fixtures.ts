@@ -127,8 +127,8 @@ export const test = base.extend<{ context: BrowserContext }, WorkerFixtures>({
    * Test-scoped: creates a fresh browser context pointed at this worker's
    * server URL so that page.goto('/') always resolves correctly.
    */
-  context: async ({ browser, workerBaseURL }, use) => {
-    const ctx = await browser.newContext({ baseURL: workerBaseURL });
+  context: async ({ browser, workerBaseURL, contextOptions }, use) => {
+    const ctx = await browser.newContext({ ...contextOptions, baseURL: workerBaseURL });
     await use(ctx);
     await ctx.close();
   },

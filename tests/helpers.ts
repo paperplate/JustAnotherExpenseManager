@@ -45,14 +45,14 @@ async function addCategory(page: Page, name: string): Promise<void> {
 }
 
 async function openEditModal(page: Page, categoryName: string): Promise<void> {
-  const editBtn = page.locator('.category-item', { hasText: categoryName })
-    .locator('button:has-text("Edit")');
+  const categoryItem = page.locator('.category-item', { hasText: categoryName });
+  const editBtn = categoryItem.getByRole('button').filter({ hasText: 'Edit' });
   await editBtn.click();
 }
 
 async function submitRename(page: Page, newName: string): Promise<void> {
   await page.fill('#edit-category-name', newName);
-  await page.click('#editCategoryModal button:has-text("Save Changes")');
+  await page.getByRole('button').filter({ hasText: 'Save Changes' }).click();
   await page.waitForLoadState('networkidle');
 }
 
