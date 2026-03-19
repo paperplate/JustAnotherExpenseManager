@@ -20,7 +20,7 @@ interface TransactionOptions {
 
 async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
   const { description, amount, type, category, tags = '', date = TODAY } = opts;
-  await page.getByLabel('Description').fill(description);
+  await page.getByRole('textbox', { name: 'Description' }).fill(description);
   await page.getByLabel('Amount ($)').fill(String(amount));
   await page.getByLabel('Type').selectOption(type);
   await page.getByLabel('Date').fill(date);
