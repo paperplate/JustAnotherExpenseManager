@@ -118,6 +118,8 @@ test.describe('Category Management', () => {
       .click();
     await page.waitForLoadState('networkidle');
 
+    await page.waitForTimeout(500); // flaky test try delay
+
     await expect(page.getByText(categoryName)).not.toBeAttached();
   });
 

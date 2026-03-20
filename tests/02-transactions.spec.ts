@@ -43,7 +43,7 @@ test.describe('Transactions', () => {
   test('should validate required fields', async ({ page }) => {
     await page.getByRole('button', { name: 'Add Transaction' }).click();
 
-    const descriptionInput = page.getByLabel('Description');
+    const descriptionInput = page.getByRole('textbox', { name: 'Description' });
     const isInvalid = await descriptionInput.evaluate(el => !el.validity.valid);
     expect(isInvalid).toBe(true);
   });

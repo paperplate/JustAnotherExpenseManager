@@ -1,5 +1,5 @@
 import { test, expect, Page } from '@playwright/test';
-import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename, scrollToTotals } from './helpers'
+import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename, scrollToTotals, openCategoryFilter } from './helpers'
 
 /**
  * Unicode Category Management Tests
@@ -91,6 +91,8 @@ test.describe('Unicode category — rename', () => {
 
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
+    await scrollToTotals(page); // can't see in video
+    await openCategoryFilter(page);
 
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: renamed })).toBeAttached();
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: original })).not.toBeAttached();
@@ -153,6 +155,7 @@ test.describe('Unicode category — merge', () => {
 
     await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
+    await scrollToTotals(page); // can't see in video
     await expect(page.getByText('Chinese cat transaction')).toBeVisible();
   });
 

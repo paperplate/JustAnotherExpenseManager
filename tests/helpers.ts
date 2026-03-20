@@ -93,7 +93,7 @@ async function selectTag(page: Page, name: string): Promise<void> {
 async function resetCategoryFilter(page: Page): Promise<void> {
   await openCategoryFilter(page);
   await page.locator('#category-details')
-    .getByRole('listitem', { name: 'All Categories' })
+    .getByRole('listitem').filter({ hasText: 'All Categories' })
     .click();
   await page.waitForLoadState('networkidle');
 }
@@ -101,7 +101,7 @@ async function resetCategoryFilter(page: Page): Promise<void> {
 async function resetTagFilter(page: Page): Promise<void> {
   await openTagFilter(page);
   await page.locator('#tag-details')
-    .getByRole('listitem', { name: 'All Tags' })
+    .getByRole('listitem').filter({ hasText: 'All Tags' })
     .click();
   await page.waitForLoadState('networkidle');
 }

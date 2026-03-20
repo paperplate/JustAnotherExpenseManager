@@ -74,7 +74,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('category:food — expense total reflects only food transactions', async ({ page }) => {
     await selectCategory(page, 'food');
-
+    await page.waitForTimeout(500); // flaky test. Try adding delay
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     // food expenses: 120 + 40 + 15 = $175.00
     expect(expenseValue!.trim()).toBe('$175.00');
@@ -100,7 +100,9 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('multiple categories — totals are combined', async ({ page }) => {
     await selectCategory(page, 'food');
+    await page.waitForTimeout(500);
     await selectCategory(page, 'transport');
+    await page.waitForTimeout(500);
 
     // food ($175) + transport ($60) = $235 expenses
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -285,13 +287,23 @@ test.describe.serial('Transactions page — filter combinations', () => {
   // ── Category only ─────────────────────────────────────────────────────────
 
   test('category:food — shows all three food transactions', async ({ page }) => {
+    await scrollToTotals(page);
+    const locators = [
+      page.getByText('Groceries'),
+      page.getByText('Pizza'),
+      page.getByText('Snacks'),
+      page.getByText('Bus Pass'),
+      page.getByText('Salary'),
+      page.getByText('Cinema'),
+    ];
+
     await selectCategory(page, 'food');
-    await expect(page.getByText('Groceries')).toBeAttached();
-    await expect(page.getByText('Pizza')).toBeAttached();
-    await expect(page.getByText('Snacks')).toBeAttached();
-    await expect(page.getByText('Bus Pass')).not.toBeAttached();
-    await expect(page.getByText('Salary')).not.toBeAttached();
-    await expect(page.getByText('Cinema')).not.toBeAttached();
+    await expect(locators[0]).toBeAttached();
+    await expect(locators[1]).toBeAttached();
+    await expect(locators[2]).toBeAttached();
+    await expect(locators[3]).not.toBeAttached();
+    await expect(locators[4]).not.toBeAttached();
+    await expect(locators[5]).not.toBeAttached();
   });
 
   test('category:transport — shows only Bus Pass', async ({ page }) => {
