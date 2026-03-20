@@ -123,9 +123,9 @@ test.describe('Monthly totals — mixed', () => {
     await openCategoryFilter(page);
 
     const categoryList: string = '.category-options-list .filter-option';
-    await expect(page.locator(categoryList, { hasText: 'Groceries' })).toBeVisible();
     await expect(page.locator(categoryList, { hasText: 'Salary' })).toBeVisible();
     await expect(page.locator(categoryList, { hasText: 'Rent' })).toBeVisible();
+    await expect(page.locator(categoryList, { hasText: 'Groceries' })).toBeVisible();
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());

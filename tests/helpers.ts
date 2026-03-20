@@ -73,9 +73,7 @@ async function openTagFilter(page: Page): Promise<void> {
 async function selectCategory(page: Page, name: string): Promise<void> {
   await openCategoryFilter(page);
   const regexp = new RegExp(`^${name}$`, 'i');
-  //await page.locator('#category-options-list')
-  await page.locator('.filter-option')
-    .getByRole('listitem')
+  await page.locator('#category-options-list .filter-option')
     .filter({ hasText: regexp })
     .click();
   await page.waitForLoadState('networkidle');
@@ -84,8 +82,7 @@ async function selectCategory(page: Page, name: string): Promise<void> {
 async function selectTag(page: Page, name: string): Promise<void> {
   await openTagFilter(page);
   const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#tag-options-list')
-    .getByRole('listitem')
+  await page.locator('#tag-options-list .filter-option')
     .filter({ hasText: regexp })
     .click();
   await page.waitForLoadState('networkidle');

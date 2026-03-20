@@ -101,9 +101,9 @@ test.describe('Filters and Statistics', () => {
     await page.locator('#category-details').locator('summary').click();
 
     // Wait for options to load (they are fetched async)
-    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
 
-    const optionTexts = await page.locator('#category-options-list').getByRole('listitem').allTextContents();
+    const optionTexts = await page.locator('#category-options-list').allTextContents();
     const hasPrefix = optionTexts.some(t => t.trim().startsWith('category:'));
     expect(hasPrefix).toBe(false);
   });
@@ -120,9 +120,9 @@ test.describe('Filters and Statistics', () => {
 
   test('should select multiple categories and update summary text', async ({ page }) => {
     await page.locator('#category-details').locator('summary').click();
-    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
 
-    const options = page.locator('#category-options-list').getByRole('listitem');
+    const options = page.locator('#category-options-list');
     const count = await options.count();
 
     if (count >= 2) {
@@ -169,15 +169,15 @@ test.describe('Filters and Statistics', () => {
     await expect(page.locator('#tag-details')).toHaveAttribute('open', '');
 
     await expect(
-      page.locator('#tag-options-list').getByRole('listitem').filter({ hasText: 'playwrighttest' })
+      page.locator('#tag-options-list').filter({ hasText: 'playwrighttest' })
     ).toBeVisible({ timeout: 5000 });
   });
 
   test('filter state is reflected in URL', async ({ page }) => {
     await page.locator('#category-details').locator('summary').click();
-    await expect(page.locator('#category-options-list').getByRole('listitem').first()).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
 
-    await page.locator('#category-options-list').getByRole('listitem').first().click();
+    await page.locator('#category-options-list').first().click();
     await page.waitForLoadState('networkidle');
 
     // URL should now contain categories= parameter
