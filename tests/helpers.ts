@@ -73,7 +73,8 @@ async function openTagFilter(page: Page): Promise<void> {
 async function selectCategory(page: Page, name: string): Promise<void> {
   await openCategoryFilter(page);
   const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#category-options-list')
+  //await page.locator('#category-options-list')
+  await page.locator('.filter-option')
     .getByRole('listitem')
     .filter({ hasText: regexp })
     .click();
@@ -107,7 +108,7 @@ async function resetTagFilter(page: Page): Promise<void> {
 }
 
 async function scrollToTotals(page: Page): Promise<void> {
-  await page.locator('.monthly-totals').scrollIntoViewIfNeeded({ timeout: 1000 });
+  await page.locator('.monthly-totals').scrollIntoViewIfNeeded({ timeout: 3000 });
 }
 
 export {
