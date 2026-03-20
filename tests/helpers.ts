@@ -58,14 +58,14 @@ async function submitRename(page: Page, newName: string): Promise<void> {
 
 async function openCategoryFilter(page: Page): Promise<void> {
   const details = page.locator('#category-details');
-  if (!(await details.getAttribute('open'))) {
+  if ((await details.getAttribute('open')) === null) {
     await details.locator('summary').click();
   }
 }
 
 async function openTagFilter(page: Page): Promise<void> {
   const details = page.locator('#tag-details');
-  if (!(await details.getAttribute('open'))) {
+  if ((await details.getAttribute('open')) === null) {
     await details.locator('summary').click();
   }
 }
@@ -90,17 +90,13 @@ async function selectTag(page: Page, name: string): Promise<void> {
 
 async function resetCategoryFilter(page: Page): Promise<void> {
   await openCategoryFilter(page);
-  await page.locator('#category-details')
-    .getByRole('listitem').filter({ hasText: 'All Categories' })
-    .click();
+  await page.locator('#category-details .filter-option[data-value=""]').click();
   await page.waitForLoadState('networkidle');
 }
 
 async function resetTagFilter(page: Page): Promise<void> {
   await openTagFilter(page);
-  await page.locator('#tag-details')
-    .getByRole('listitem').filter({ hasText: 'All Tags' })
-    .click();
+  await page.locator('#tag-details .filter-option[data-value=""]').click();
   await page.waitForLoadState('networkidle');
 }
 
