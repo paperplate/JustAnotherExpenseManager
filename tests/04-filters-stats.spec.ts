@@ -137,7 +137,8 @@ test.describe('Filters and Statistics', () => {
   test('Transactions page selecting "All Categories" deselects individual categories', async ({ page }) => {
     await page.goto('/transactions');
     await selectCategory(page, 'food');
-    await resetCategoryFilter(page);
+    await selectCategory(page, 'All Categories');
+    //await resetCategoryFilter(page);
 
     await expect(page.locator('#category-summary')).toContainText('All Categories');
   });

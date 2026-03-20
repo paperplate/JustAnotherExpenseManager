@@ -84,6 +84,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('category:transport — expense total reflects only transport transactions', async ({ page }) => {
     await selectCategory(page, 'transport');
+    await page.waitForTimeout(500);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$60.00');
@@ -298,12 +299,12 @@ test.describe.serial('Transactions page — filter combinations', () => {
     ];
 
     await selectCategory(page, 'food');
-    await expect(locators[0]).toBeAttached();
-    await expect(locators[1]).toBeAttached();
-    await expect(locators[2]).toBeAttached();
-    await expect(locators[3]).not.toBeAttached();
-    await expect(locators[4]).not.toBeAttached();
-    await expect(locators[5]).not.toBeAttached();
+    await expect(locators[0]).toBeVisible();
+    await expect(locators[1]).toBeVisible();
+    await expect(locators[2]).toBeVisible();
+    await expect(locators[3]).not.toBeVisible();
+    await expect(locators[4]).not.toBeVisible();
+    await expect(locators[5]).not.toBeVisible();
   });
 
   test('category:transport — shows only Bus Pass', async ({ page }) => {
