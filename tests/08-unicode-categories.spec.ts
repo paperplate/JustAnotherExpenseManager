@@ -86,13 +86,11 @@ test.describe('Unicode category — rename', () => {
 
   test('renamed Chinese category appears in transaction form dropdown', async ({ page }) => {
     const original: string = '交通';
-    const renamed: string = 'transport';
+    const renamed: string = 'transport2';
     await renameCategory(page, original, renamed);
 
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
-    //await scrollToTotals(page); // can't see in video // fails here why?
-    await openCategoryFilter(page);
 
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: renamed })).toBeAttached();
     await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: original })).not.toBeAttached();
@@ -138,7 +136,10 @@ test.describe('Unicode category — merge', () => {
 
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
-    await addTransaction(page, { description: 'Chinese cat transaction', amount: 50, type: 'expense', category: '食物' });
+    await addTransaction(page, {
+      description: 'Chinese cat transaction', amount: 50, type: 'expense', category: '食物'
+    });
+    await expect(page.getByText('Chinese cat transaction')).toBeVisible();
 
     await page.goto('/settings');
     await page.waitForLoadState('networkidle');
@@ -146,16 +147,19 @@ test.describe('Unicode category — merge', () => {
     await expect(page.locator('#add-category-result')).toContainText('added successfully');
 
     await openEditModal(page, '食物');
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
+    const editCategoryModal = page.locator('#editCategoryModal');
+    await expect(editCategoryModal).toBeVisible();
     await page.getByLabel('Category Name').fill('food2');
 
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
-    await page.waitForLoadState('networkidle');
+    await editCategoryModal.getByRole('button', { name: 'Save Changes' }).click();
+    //await page.waitForLoadState('networkidle');
+    await expect(editCategoryModal).not.toBeVisible();
+    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
+
 
     await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
-    //await scrollToTotals(page); // can't see in video // fails here why?
     await expect(page.getByText('Chinese cat transaction')).toBeVisible();
   });
 
