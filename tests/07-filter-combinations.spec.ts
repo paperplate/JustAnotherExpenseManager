@@ -53,7 +53,6 @@ async function seedData(page: Page): Promise<void> {
   const tableRows = page.getByRole('table').locator('tbody tr');
   for (const t of transactions) {
     await addTransaction(page, t);
-    expect(tableRows.filter({ hasText: t.description }));
   }
 
   await scrollToTotals(page);
