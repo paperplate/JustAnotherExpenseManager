@@ -28,7 +28,7 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
   if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill(tags);
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill('');
+  //if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill('');
 }
 
 /**
@@ -106,6 +106,12 @@ async function scrollToTotals(page: Page): Promise<void> {
   await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
 }
 
+async function scrollToSummary(page: Page): Promise<void> {
+  const totals = page.locator('.summary-grid');
+  await totals.waitFor({ state: 'attached' });
+  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
+}
+
 export {
   clearDatabase,
   addTransaction,
@@ -120,5 +126,6 @@ export {
   resetCategoryFilter,
   resetTagFilter,
   scrollToTotals,
-  TransactionOptions
+  TransactionOptions,
+  scrollToSummary
 };

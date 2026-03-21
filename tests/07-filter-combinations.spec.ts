@@ -8,7 +8,8 @@ import {
   resetCategoryFilter,
   resetTagFilter,
   scrollToTotals,
-  TransactionOptions
+  TransactionOptions,
+  scrollToSummary
 } from './helpers';
 
 /**
@@ -127,6 +128,8 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring — expense total is Groceries + Bus Pass, income is Salary', async ({ page }) => {
     await selectTag(page, 'recurring');
+
+    await scrollToSummary(page);
 
     // recurring expenses: Groceries $120 + Bus Pass $60 = $180
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();

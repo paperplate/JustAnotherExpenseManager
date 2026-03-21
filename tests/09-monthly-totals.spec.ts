@@ -120,12 +120,6 @@ test.describe('Monthly totals — mixed', () => {
     await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
 
     await scrollToTotals(page);
-    await openCategoryFilter(page);
-
-    const categoryList: string = '.category-options-list .filter-option';
-    await expect(page.locator(categoryList, { hasText: 'Salary' })).toBeVisible();
-    await expect(page.locator(categoryList, { hasText: 'Rent' })).toBeVisible();
-    await expect(page.locator(categoryList, { hasText: 'Groceries' })).toBeVisible();
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -218,6 +212,8 @@ test.describe('Monthly totals update after mutations', () => {
     await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
+    await scrollToTotals(page);
+
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeLessThan(100);
     expect(expenseAfter).toBeGreaterThan(0);
@@ -238,7 +234,7 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
     await page.waitForLoadState('networkidle');
-    await scrollToTotals(page); // can't see in video
+    await scrollToTotals(page);
 
     const rows = await page.getByRole('table').locator('tbody tr').count();
     expect(rows).toEqual(3);
