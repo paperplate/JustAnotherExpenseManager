@@ -101,7 +101,9 @@ async function resetTagFilter(page: Page): Promise<void> {
 }
 
 async function scrollToTotals(page: Page): Promise<void> {
-  await page.locator('.monthly-totals').scrollIntoViewIfNeeded({ timeout: 3000 });
+  const totals = page.locator('.monthly-totals');
+  await totals.waitFor({ state: 'attached' });
+  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
 }
 
 export {

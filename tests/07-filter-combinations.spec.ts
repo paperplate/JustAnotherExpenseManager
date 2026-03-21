@@ -49,14 +49,14 @@ async function seedData(page: Page): Promise<void> {
     { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY }
   ];
 
+  const tableRows = page.getByRole('table').locator('tbody tr');
   for (const t of transactions) {
     await addTransaction(page, t);
-    expect(page.getByRole('table').locator('tbody tr').filter({ hasText: t.description }));
+    expect(tableRows.filter({ hasText: t.description }));
   }
 
   await scrollToTotals(page);
-  const rows = page.getByRole('table').locator('tbody tr').count();
-  expect(rows).toEqual(transactions.length);
+  await expect(tableRows).toHaveCount(transactions.length);
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
