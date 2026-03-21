@@ -28,8 +28,7 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
   if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill(tags);
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  //await page.getByRole('table').locator('tbody tr').filter({ hasText: description }).isVisible();
-  await page.getByRole('row', { name: description }).isVisible();
+  await page.getByRole('row').filter({ hasText: description }).isVisible();
 }
 
 /**

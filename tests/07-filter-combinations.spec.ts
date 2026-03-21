@@ -50,13 +50,13 @@ async function seedData(page: Page): Promise<void> {
     { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY }
   ];
 
-  const tableRows = page.getByRole('table').locator('tbody tr');
   for (const t of transactions) {
     await addTransaction(page, t);
   }
 
   await scrollToTotals(page);
-  await expect(tableRows).toHaveCount(transactions.length);
+  const tableRows = page.getByRole('row');
+  await expect(tableRows).toHaveCount(transactions.length + 1); // Add 1 for header row
 }
 
 // ─── Summary page filter combinations ────────────────────────────────────────
@@ -169,6 +169,8 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:recurring — only Groceries matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'recurring');
+
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$120.00');
@@ -301,7 +303,7 @@ test.describe.serial('Transactions page — filter combinations', () => {
       page.getByText('Pizza'),
       page.getByText('Snacks'),
       page.getByText('Bus Pass'),
-      page.getByText('Salary'),
+      page.getByText('Paycheck'),
       page.getByText('Cinema'),
     ];
 

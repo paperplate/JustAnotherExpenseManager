@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { addTransaction, selectCategory, openCategoryFilter, resetCategoryFilter } from './helpers'
+import {
+  addTransaction,
+  selectCategory,
+  openCategoryFilter,
+  resetCategoryFilter,
+  scrollToTotals,
+  TransactionOptions
+} from './helpers'
 
 /**
  * Filters and Statistics Tests
@@ -13,37 +20,53 @@ import { addTransaction, selectCategory, openCategoryFilter, resetCategoryFilter
  *  - Stats and charts are loaded via plain fetch(), not HTMX
  */
 
+// ─── Constants ────────────────────────────────────────────────────────────
+const SUMMARY_EXPENSE_VALUE: string = '.summary-card.expense .summary-value';
+const SUMMARY_INCOME_VALUE: string = '.summary-card.income .summary-value';
+const INCOME_CARD: string = '.summary-card.income';
+const EXPENSE_CARD: string = '.summary-card.expense';
+const NET_CARD: string = '.summary-card.net'
+
 test.describe('Filters and Statistics', () => {
   // Add two transactions (one expense, one income) before each test
   test.beforeEach(async ({ page }) => {
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    await addTransaction(page, {
-      description: 'Filter Test Expense',
-      amount: 100,
-      type: 'expense',
-      category: 'food'
-    });
+    let transactions: TransactionOptions[] = [
+      {
+        description: 'Filter Test Expense',
+        amount: 100,
+        type: 'expense',
+        category: 'food'
+      },
+      {
+        description: 'Filter Test Income',
+        amount: 500,
+        type: 'income',
+        category: 'salary'
+      }
+    ];
 
-    await addTransaction(page, {
-      description: 'Filter Test Income',
-      amount: 500,
-      type: 'income',
-      category: 'salary'
-    });
+    for (const t of transactions) {
+      await addTransaction(page, t);
+    }
+
+    await scrollToTotals(page);
+    const tableRows = page.getByRole('row');
+    await expect(tableRows).toHaveCount(transactions.length + 1); // Add 1 for header row
 
     await page.getByRole('link', { name: 'Summary' }).click();
     await page.waitForLoadState('networkidle');
   });
 
   test('should display summary statistics', async ({ page }) => {
-    await expect(page.locator('.summary-card.income')).toBeVisible();
-    await expect(page.locator('.summary-card.expense')).toBeVisible();
-    await expect(page.locator('.summary-card.net')).toBeVisible();
+    await expect(page.locator(INCOME_CARD)).toBeVisible();
+    await expect(page.locator(EXPENSE_CARD)).toBeVisible();
+    await expect(page.locator(NET_CARD)).toBeVisible();
 
-    await expect(page.locator('.summary-card.income .summary-value')).toContainText('$');
-    await expect(page.locator('.summary-card.expense .summary-value')).toContainText('$');
+    await expect(page.locator(SUMMARY_INCOME_VALUE)).toContainText('$');
+    await expect(page.locator(SUMMARY_EXPENSE_VALUE)).toContainText('$');
   });
 
   test('should display charts after page load', async ({ page }) => {
@@ -57,12 +80,12 @@ test.describe('Filters and Statistics', () => {
     await page.getByLabel('Time Range:').selectOption('3_months');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.summary-card.income')).toBeVisible();
+    await expect(page.locator(INCOME_CARD)).toBeVisible();
 
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.summary-card.income')).toBeVisible();
+    await expect(page.locator(INCOME_CARD)).toBeVisible();
   });
 
   test('should show custom date range picker when "custom" is selected', async ({ page }) => {
@@ -85,14 +108,13 @@ test.describe('Filters and Statistics', () => {
     await page.getByRole('button', { name: 'Apply' }).click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator('.summary-card.income')).toBeVisible();
+    await expect(page.locator(INCOME_CARD)).toBeVisible();
   });
 
   test('category filter dropdown opens on summary click', async ({ page }) => {
     const details = page.locator('#category-details');
     await expect(details).toBeVisible();
 
-    // Click the <summary> to open the <details>
     await details.locator('summary').click();
     await expect(details).toHaveAttribute('open', '');
   });
@@ -100,7 +122,6 @@ test.describe('Filters and Statistics', () => {
   test('category filter options are loaded without category: prefix', async ({ page }) => {
     await page.locator('#category-details').locator('summary').click();
 
-    // Wait for options to load (they are fetched async)
     await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
 
     const optionTexts = await page.locator('#category-options-list').allTextContents();
@@ -111,10 +132,8 @@ test.describe('Filters and Statistics', () => {
   test('should filter stats by category', async ({ page }) => {
     await selectCategory(page, 'food');
 
-    // Summary should update and still be visible
     await expect(page.locator('.summary-card.expense')).toBeVisible();
 
-    // The summary text should now reflect "food" filter
     await expect(page.locator('#category-summary')).toContainText('food');
   });
 
@@ -151,7 +170,6 @@ test.describe('Filters and Statistics', () => {
   });
 
   test('tag filter dropdown opens and shows options', async ({ page }) => {
-    // First add a transaction with a tag so there is something to show
     await page.goto('/transactions');
     await addTransaction(page, {
       description: 'Tagged',

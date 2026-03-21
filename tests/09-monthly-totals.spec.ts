@@ -72,6 +72,8 @@ test.describe('Monthly totals — expense only', () => {
     await addTransaction(page, { description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
     await addTransaction(page, { description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
 
+    await scrollToTotals(page);
+
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     const net = parseDollar(await page.locator(TOTAL_NET).textContent());
 
@@ -91,6 +93,8 @@ test.describe('Monthly totals — income only', () => {
 
   test('single income: income=amount, expense=$0, net positive', async ({ page }) => {
     await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary' });
+
+    await scrollToTotals(page);
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -131,7 +135,7 @@ test.describe('Monthly totals — mixed', () => {
     await addTransaction(page, { description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await addTransaction(page, { description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
 
-    //await page.waitForTimeout(500);
+    await scrollToTotals(page);
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -169,6 +173,8 @@ test.describe('Monthly totals update after mutations', () => {
 
     await addTransaction(page, { description: 'Second', amount: 50, type: 'expense', category: 'food' });
 
+    await scrollToTotals(page);
+
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeCloseTo(150, 2);
   });
@@ -176,20 +182,19 @@ test.describe('Monthly totals update after mutations', () => {
   test('totals update correctly after editing a transaction amount', async ({ page }) => {
     await addTransaction(page, { description: 'Editable', amount: 100, type: 'expense', category: 'food' });
 
+    await scrollToTotals(page);
+
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
     const row = page.getByRole('row', { name: 'Editable' });
     await row.getByRole('button', { name: 'Edit' }).click();
-    //await page.getByRole('button', { name: 'Edit' }).first().click();
     const editModal = page.locator('#editModal');
     await expect(editModal).toBeVisible();
     await editModal.getByLabel('Amount ($)').fill('200');
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(editModal).not.toBeVisible();
     await page.waitForLoadState('networkidle');
-
-    await scrollToTotals(page);
 
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeCloseTo(200, 2);
