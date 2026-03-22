@@ -1,12 +1,12 @@
 services:
   expense-manager:
-    build: .
+    build: 
+      target: debug
     ports:
       - "5000:5000"
     volumes:
       - expense-data:/app/data
     environment:
-      - JAEM_CONFIG=production
       - DATABASE_TYPE=sqlite
       - SQLITE_PATH=/app/data/expenses.db
     restart: unless-stopped

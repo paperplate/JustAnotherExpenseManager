@@ -9,7 +9,6 @@ This application follows SOLID principles with separation of concerns:
 - Database:  Flask-SQLAlchemy extension and helpers (utils/database.py)
 """
 
-import os
 import sys
 import click
 from flask import Flask, g
@@ -65,7 +64,7 @@ def create_app(
     # Warn loudly if the insecure default secret key is still in place in
     # a non-testing environment so operators notice it immediately.
     _insecure_defaults = {'dev-insecure-default-change-me', 'debug-secret-key-change-me'}
-    if not app.testing and app.config.get('SECRET_KEY') in _insecure_defaults:
+    if not app.config['TESTING'] and app.config.get('SECRET_KEY') in _insecure_defaults:
         app.logger.warning(
             'SECRET_KEY is not set or uses an insecure default. '
             'Set the SECRET_KEY environment variable before deploying.'

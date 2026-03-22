@@ -74,7 +74,7 @@ module.exports = defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'JAEM_CONFIG=testing JustAnotherExpenseManager',
+    command: 'JAEM_CONFIG=testing FLASK_RUN_PORT=5005 FLASK_APP=JustAnotherExpenseManager flask run',
     url: 'http://localhost:5005',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

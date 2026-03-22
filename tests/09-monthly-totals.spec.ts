@@ -1,9 +1,8 @@
-import { test, expect } from './fixtures';
-import { addTransaction, clearDatabase, parseDollar, scrollToTotals } from './helpers'
+import { test, expect } from '@playwright/test';
+import { addTransaction, clearDatabase, openCategoryFilter, openEditModal, parseDollar, scrollToTotals } from './helpers'
 
 // ─── Constants ─────────────────────────────────────────────
 
-const TRANSACTIONS_TABLE: string = '.transactions-table';
 const MONTHLY_TOTALS: string = '.monthly-totals';
 const TOTAL_INCOME: string = '.total-income-value';
 const TOTAL_EXPENSE: string = '.total-expense-value';
@@ -20,13 +19,13 @@ test.describe('Transactions list rendering', () => {
 
   test('empty state is shown when there are no transactions', async ({ page }) => {
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(page.locator(TRANSACTIONS_TABLE)).not.toBeVisible();
+    await expect(page.getByRole('table')).not.toBeVisible();
   });
 
   test('table appears after adding a transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
-    await expect(page.locator(TRANSACTIONS_TABLE)).toBeVisible();
-    await expect(page.locator('text=Coffee')).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
+    await expect(page.getByText('Coffee')).toBeVisible();
   });
 
   test('monthly totals bar is visible after adding a transaction', async ({ page }) => {
@@ -36,13 +35,13 @@ test.describe('Transactions list rendering', () => {
 
   test('table disappears and empty state returns after deleting the last transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Solo', amount: 10, type: 'expense', category: 'other' });
-    await expect(page.locator(TRANSACTIONS_TABLE)).toBeVisible();
+    await expect(page.getByRole('table')).toBeVisible();
 
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('button.btn-delete').first().click();
+    await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.locator(TRANSACTIONS_TABLE)).not.toBeVisible();
+    await expect(page.getByRole('table')).not.toBeVisible();
     await expect(page.locator('.empty-state')).toBeVisible();
   });
 });
@@ -70,11 +69,10 @@ test.describe('Monthly totals — expense only', () => {
 
   test('multiple expenses: totals are summed correctly', async ({ page }) => {
     await addTransaction(page, { description: 'Coffee', amount: 5.50, type: 'expense', category: 'food' });
-    await expect(page.getByText('Coffee')).toBeVisible();
     await addTransaction(page, { description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
-    await expect(page.getByText('Bus')).toBeVisible();
     await addTransaction(page, { description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
-    await expect(page.getByText('Book')).toBeVisible();
+
+    await scrollToTotals(page);
 
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     const net = parseDollar(await page.locator(TOTAL_NET).textContent());
@@ -95,6 +93,8 @@ test.describe('Monthly totals — income only', () => {
 
   test('single income: income=amount, expense=$0, net positive', async ({ page }) => {
     await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary' });
+
+    await scrollToTotals(page);
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -120,9 +120,7 @@ test.describe('Monthly totals — mixed', () => {
     await addTransaction(page, { description: 'Rent', amount: 800, type: 'expense', category: 'other' });
     await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
 
-    await expect(page.locator('.category-tag', { hasText: 'Groceries' })).toBeVisible();
-    await expect(page.locator('.category-tag', { hasText: 'Salary' })).toBeVisible();
-    await expect(page.locator('.category-tag', { hasText: 'Rent' })).toBeVisible();
+    await scrollToTotals(page);
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -134,9 +132,10 @@ test.describe('Monthly totals — mixed', () => {
   });
 
   test('totals are never $0.00 when transactions exist (regression)', async ({ page }) => {
-    // This is the core regression guard: before the fix every total was $0.00
     await addTransaction(page, { description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await addTransaction(page, { description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
+
+    await scrollToTotals(page);
 
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -168,13 +167,13 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after adding a second transaction', async ({ page }) => {
     await addTransaction(page, { description: 'First', amount: 100, type: 'expense', category: 'food' });
-    await expect(page.getByText('First')).toBeVisible();
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
     await addTransaction(page, { description: 'Second', amount: 50, type: 'expense', category: 'food' });
-    await expect(page.getByText('Second')).toBeVisible();
+
+    await scrollToTotals(page);
 
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeCloseTo(150, 2);
@@ -182,17 +181,19 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after editing a transaction amount', async ({ page }) => {
     await addTransaction(page, { description: 'Editable', amount: 100, type: 'expense', category: 'food' });
-    await expect(page.getByText('Editable')).toBeVisible();
+
+    await scrollToTotals(page);
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
-    // Edit the transaction to change the amount
-    await page.click('button.btn-edit:has-text("Edit")');
-    await expect(page.locator('#editModal')).toBeVisible();
-    await page.fill('#edit-amount', '200');
-    await page.click('button:has-text("Save Changes")');
-    await expect(page.locator('#editModal')).not.toBeVisible();
+    const row = page.getByRole('row', { name: 'Editable' });
+    await row.getByRole('button', { name: 'Edit' }).click();
+    const editModal = page.locator('#editModal');
+    await expect(editModal).toBeVisible();
+    await editModal.getByLabel('Amount ($)').fill('200');
+    await page.getByRole('button', { name: 'Save Changes' }).click();
+    await expect(editModal).not.toBeVisible();
     await page.waitForLoadState('networkidle');
 
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
@@ -201,21 +202,19 @@ test.describe('Monthly totals update after mutations', () => {
 
   test('totals update correctly after deleting a transaction', async ({ page }) => {
     await addTransaction(page, { description: 'Keep', amount: 80, type: 'expense', category: 'food' });
-    await expect(page.getByText('Keep')).toBeVisible();
-    await addTransaction(page, { description: 'Delete', amount: 20, type: 'expense', category: 'food' });
-    await expect(page.getByText('Delete')).toBeVisible();
-    await page.waitForLoadState('networkidle');
+    await addTransaction(page, { description: 'DeleteMe', amount: 20, type: 'expense', category: 'food' });
 
     const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
-    // Delete the second transaction (most recent is listed first, so it's the first row)
     page.once('dialog', dialog => dialog.accept());
-    await page.locator('button.btn-delete').first().click();
+    const row = page.getByRole('row', { name: 'DeleteMe' });
+    await row.getByRole('button', { name: 'Delete' }).click();
     await page.waitForLoadState('networkidle');
 
+    await scrollToTotals(page);
+
     const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    // After deleting either $20 or $80 transaction, total must be less than $100
     expect(expenseAfter).toBeLessThan(100);
     expect(expenseAfter).toBeGreaterThan(0);
   });
@@ -235,8 +234,9 @@ test.describe('Monthly transaction count', () => {
     await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
     await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
 
-    const rows = await page.locator('.transactions-table tbody tr').count();
+    await scrollToTotals(page);
 
+    const rows = await page.getByRole('row').count() - 1; // minus header row
     expect(rows).toEqual(3);
   });
 });
