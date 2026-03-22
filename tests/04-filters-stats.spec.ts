@@ -3,6 +3,7 @@ import {
   addTransaction,
   selectCategory,
   openCategoryFilter,
+  clearDatabase,
   resetCategoryFilter,
   scrollToTotals,
   TransactionOptions
@@ -30,6 +31,7 @@ const NET_CARD: string = '.summary-card.net'
 test.describe('Filters and Statistics', () => {
   // Add two transactions (one expense, one income) before each test
   test.beforeEach(async ({ page }) => {
+    await clearDatabase(page);
     await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 

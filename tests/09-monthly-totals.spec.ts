@@ -210,7 +210,6 @@ test.describe('Monthly totals update after mutations', () => {
     page.once('dialog', dialog => dialog.accept());
     const row = page.getByRole('row', { name: 'DeleteMe' });
     await row.getByRole('button', { name: 'Delete' }).click();
-    //await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
     await scrollToTotals(page);
@@ -237,8 +236,7 @@ test.describe('Monthly transaction count', () => {
 
     await scrollToTotals(page);
 
-    //const rows = await page.getByRole('table').locator('tbody tr').count();
-    const rows = await page.getByRole('row').count();
+    const rows = await page.getByRole('row').count() - 1; // minus header row
     expect(rows).toEqual(3);
   });
 });
