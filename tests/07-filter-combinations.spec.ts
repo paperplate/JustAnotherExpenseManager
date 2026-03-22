@@ -33,6 +33,24 @@ import {
 const SUMMARY_EXPENSE_VALUE: string = '.summary-card.expense .summary-value';
 const SUMMARY_INCOME_VALUE: string = '.summary-card.income .summary-value';
 
+const groceries: TransactionOptions = {
+  description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring'
+};
+const pizza: TransactionOptions = {
+  description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining'
+};
+const snacks: TransactionOptions = {
+  description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: ''
+};
+const busPass: TransactionOptions = {
+  description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute'
+};
+const salary: TransactionOptions = {
+  description: 'Paycheck', amount: 3000, type: 'income', category: 'salary', tags: 'recurring'
+};
+const cinema: TransactionOptions = {
+  description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure'
+};
 // ─── shared setup ────────────────────────────────────────────────────────────
 
 async function seedData(page: Page): Promise<void> {
@@ -42,16 +60,17 @@ async function seedData(page: Page): Promise<void> {
   await page.waitForLoadState('networkidle');
 
   let transactions: TransactionOptions[] = [
-    { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring', date: TODAY },
-    { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining', date: TODAY },
-    { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '', date: TODAY },
-    { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute', date: TODAY },
-    { description: 'Salary', amount: 3000, type: 'income', category: 'salary', tags: 'recurring', date: TODAY },
-    { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure', date: TODAY }
+    groceries,
+    pizza,
+    snacks,
+    busPass,
+    salary,
+    cinema
   ];
 
   for (const t of transactions) {
     await addTransaction(page, t);
+    await page.waitForTimeout(250);
   }
 
   await scrollToTotals(page);
@@ -125,7 +144,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   // ── Tag only ──────────────────────────────────────────────────────────────
 
-  test('tag:recurring — expense total is Groceries + Bus Pass, income is Salary', async ({ page }) => {
+  test('tag:recurring — expense total is Groceries + Bus Pass, income is Paycheck', async ({ page }) => {
     await selectTag(page, 'recurring');
 
     await scrollToSummary(page);
@@ -133,7 +152,7 @@ test.describe.serial('Summary page — filter combinations', () => {
     // recurring expenses: Groceries $120 + Bus Pass $60 = $180
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$180.00');
-    // recurring income: Salary $3000
+    // recurring income: Paycheck $3000
     const incomeValue = await page.locator(SUMMARY_INCOME_VALUE).textContent();
     expect(incomeValue!.trim()).toBe('$3000.00');
   });
@@ -299,12 +318,12 @@ test.describe.serial('Transactions page — filter combinations', () => {
   test('category:food — shows all three food transactions', async ({ page }) => {
     await scrollToTotals(page);
     const locators = [
-      page.getByText('Groceries'),
-      page.getByText('Pizza'),
-      page.getByText('Snacks'),
-      page.getByText('Bus Pass'),
-      page.getByText('Paycheck'),
-      page.getByText('Cinema'),
+      page.getByText(groceries.description),
+      page.getByText(pizza.description),
+      page.getByText(snacks.description),
+      page.getByText(busPass.description),
+      page.getByText(salary.description),
+      page.getByText(cinema.description),
     ];
 
     await selectCategory(page, 'food');
@@ -319,26 +338,26 @@ test.describe.serial('Transactions page — filter combinations', () => {
   test('category:transport — shows only Bus Pass', async ({ page }) => {
     await selectCategory(page, 'transport');
 
-    await expect(page.getByText('Bus Pass')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
+    await expect(page.getByText(busPass.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
   });
 
-  test('category:salary — shows only Salary', async ({ page }) => {
+  test('category:salary — shows only Paycheck', async ({ page }) => {
     await selectCategory(page, 'salary');
 
-    await expect(page.getByText('Salary')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
-    await expect(page.getByText('Cinema')).not.toBeVisible();
+    await expect(page.getByText(salary.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
+    await expect(page.getByText(cinema.description)).not.toBeVisible();
   });
 
   test('multiple categories — shows union of matching transactions', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectCategory(page, 'transport');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Pizza')).toBeVisible();
-    await expect(page.getByText('Bus Pass')).toBeVisible();
-    await expect(page.getByText('Salary')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(pizza.description)).toBeVisible();
+    await expect(page.getByText(busPass.description)).toBeVisible();
+    await expect(page.getByText(salary.description)).not.toBeVisible();
   });
 
   // ── Tag only ──────────────────────────────────────────────────────────────
@@ -346,33 +365,33 @@ test.describe.serial('Transactions page — filter combinations', () => {
   test('tag:recurring — shows Groceries, Bus Pass, and Salary', async ({ page }) => {
     await selectTag(page, 'recurring');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Bus Pass')).toBeVisible();
-    await expect(page.getByText('Salary')).toBeVisible();
-    await expect(page.getByText('Pizza')).not.toBeVisible();
-    await expect(page.getByText('Cinema')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(busPass.description)).toBeVisible();
+    await expect(page.getByText(salary.description)).toBeVisible();
+    await expect(page.getByText(pizza.description)).not.toBeVisible();
+    await expect(page.getByText(cinema.description)).not.toBeVisible();
   });
 
   test('tag:dining — shows only Pizza', async ({ page }) => {
     await selectTag(page, 'dining');
 
-    await expect(page.getByText('Pizza')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
-    await expect(page.getByText('Bus Pass')).not.toBeVisible();
+    await expect(page.getByText(pizza.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
+    await expect(page.getByText(busPass.description)).not.toBeVisible();
   });
 
   test('tag:commute — shows only Bus Pass', async ({ page }) => {
     await selectTag(page, 'commute');
 
-    await expect(page.getByText('Bus Pass')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
+    await expect(page.getByText(busPass.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
   });
 
   test('tag:leisure — shows only Cinema', async ({ page }) => {
     await selectTag(page, 'leisure');
 
-    await expect(page.getByText('Cinema')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
+    await expect(page.getByText(cinema.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
   });
 
   // ── Category + Tag ────────────────────────────────────────────────────────
@@ -381,27 +400,27 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await selectCategory(page, 'food');
     await selectTag(page, 'recurring');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Pizza')).not.toBeVisible();
-    await expect(page.getByText('Snacks')).not.toBeVisible();
-    await expect(page.getByText('Bus Pass')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(pizza.description)).not.toBeVisible();
+    await expect(page.getByText(snacks.description)).not.toBeVisible();
+    await expect(page.getByText(busPass.description)).not.toBeVisible();
   });
 
   test('category:food + tag:dining — only Pizza matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'dining');
 
-    await expect(page.getByText('Pizza')).toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
-    await expect(page.getByText('Snacks')).not.toBeVisible();
+    await expect(page.getByText(pizza.description)).toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
+    await expect(page.getByText(snacks.description)).not.toBeVisible();
   });
 
   test('category:entertainment + tag:recurring — no matches, shows empty state', async ({ page }) => {
     await selectCategory(page, 'entertainment');
     await selectTag(page, 'recurring');
 
-    await expect(page.getByText('Cinema')).not.toBeVisible();
-    await expect(page.getByText('Groceries')).not.toBeVisible();
+    await expect(page.getByText(cinema.description)).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
     // Should show empty state rather than a broken page
     const listText = await page.locator('#transactions-list').textContent();
     expect(listText!.trim().length).toBeGreaterThan(0);
@@ -413,9 +432,9 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Salary')).toBeVisible();
-    await expect(page.getByText('Cinema')).toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(salary.description)).toBeVisible();
+    await expect(page.getByText(cinema.description)).toBeVisible();
   });
 
   test('time range: custom (yesterday to yesterday) — no seeded transactions', async ({ page }) => {
@@ -428,8 +447,8 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await page.waitForLoadState('networkidle');
 
     // All transactions are dated TODAY, none should appear for yesterday
-    await expect(page.getByText('Groceries')).not.toBeVisible();
-    await expect(page.getByText('Salary')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).not.toBeVisible();
+    await expect(page.getByText(salary.description)).not.toBeVisible();
   });
 
   // ── Category + Time range ─────────────────────────────────────────────────
@@ -439,10 +458,10 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Pizza')).toBeVisible();
-    await expect(page.getByText('Snacks')).toBeVisible();
-    await expect(page.getByText('Bus Pass')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(pizza.description)).toBeVisible();
+    await expect(page.getByText(snacks.description)).toBeVisible();
+    await expect(page.getByText(busPass.description)).not.toBeVisible();
   });
 
   // ── Tag + Time range ──────────────────────────────────────────────────────
@@ -452,9 +471,9 @@ test.describe.serial('Transactions page — filter combinations', () => {
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByText('Groceries')).toBeVisible();
-    await expect(page.getByText('Bus Pass')).toBeVisible();
-    await expect(page.getByText('Salary')).toBeVisible();
-    await expect(page.getByText('Pizza')).not.toBeVisible();
+    await expect(page.getByText(groceries.description)).toBeVisible();
+    await expect(page.getByText(busPass.description)).toBeVisible();
+    await expect(page.getByText(salary.description)).toBeVisible();
+    await expect(page.getByText(pizza.description)).not.toBeVisible();
   });
 });
