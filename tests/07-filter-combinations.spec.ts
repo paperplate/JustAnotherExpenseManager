@@ -174,6 +174,8 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('tag:leisure — only Cinema shown in expense total', async ({ page }) => {
     await selectTag(page, 'leisure');
 
+    scrollToSummary(page);
+
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$30.00');
   });

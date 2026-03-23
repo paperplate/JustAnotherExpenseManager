@@ -25,10 +25,19 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
   await page.getByRole('combobox', { name: 'Type' }).selectOption(type);
   await page.getByRole('textbox', { name: 'Date' }).fill(date);
   await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: category });
-  if (tags) await page.getByRole('textbox', { name: 'Tags (comma-separated, optional)' }).fill(tags);
+  if (tags) {
+    // Tagify replaces the plain <input> with a contenteditable div.
+    // Type each tag followed by Enter so Tagify converts it to a pill.
+    const tagifyInput = page.locator('[data-testid="tags-input"] .tagify__input');
+    for (const tag of tags.split(',').map(t => t.trim()).filter(Boolean)) {
+      await tagifyInput.click();
+      await tagifyInput.type(tag);
+      await page.keyboard.press('Enter');
+    }
+  }
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  await page.getByRole('cell', { name: description, exact: true }).isVisible();
+  await page.getByRole('row').filter({ hasText: description }).isVisible();
 }
 
 /**
