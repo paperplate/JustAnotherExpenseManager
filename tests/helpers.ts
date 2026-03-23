@@ -37,7 +37,7 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
   }
   await page.getByRole('button', { name: 'Add Transaction' }).click();
   await page.waitForLoadState('networkidle');
-  await page.getByRole('row').filter({ hasText: description }).isVisible();
+  await page.getByRole('cell', { name: description, exact: true }).isVisible();
 }
 
 /**
