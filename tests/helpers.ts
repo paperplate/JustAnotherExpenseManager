@@ -28,11 +28,10 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
   if (tags) {
     // Tagify replaces the plain <input> with a contenteditable div.
     // Type each tag followed by Enter so Tagify converts it to a pill.
-    const tagifyInput = page.locator('[data-testid="tags-input"] .tagify__input');
+    const tagifyInput = page.locator('.tagify__input');
+    await tagifyInput.click();
     for (const tag of tags.split(',').map(t => t.trim()).filter(Boolean)) {
-      await tagifyInput.click();
-      await tagifyInput.type(tag);
-      await page.keyboard.press('Enter');
+      await tagifyInput.fill(tag + ',');
     }
   }
   await page.getByRole('button', { name: 'Add Transaction' }).click();
