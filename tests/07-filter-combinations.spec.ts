@@ -160,6 +160,8 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('tag:recurring — category chart is still visible', async ({ page }) => {
     await selectTag(page, 'recurring');
 
+    await scrollToSummary(page);
+
     await expect(page.locator('#charts-container')).toBeVisible();
     await expect(page.locator('#categoryChart')).toBeVisible();
   });
@@ -167,12 +169,16 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('tag:dining — only Pizza shown in expense total', async ({ page }) => {
     await selectTag(page, 'dining');
 
+    await scrollToSummary(page);
+
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$40.00');
   });
 
   test('tag:leisure — only Cinema shown in expense total', async ({ page }) => {
     await selectTag(page, 'leisure');
+
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$30.00');

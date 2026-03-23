@@ -1,10 +1,15 @@
 /**
  * Transactions Page JavaScript
  * Handles transaction management, CSV import, and editing.
+ * Uses Tagify for tag autocomplete on both the add form and edit modal.
  */
 
 // Current filter query string, kept in sync with filter_component.js via URL
 let currentFilterParams = '';
+
+// Tagify instances — created once in initTagify(), reused across open/close cycles
+let addTagify = null;
+let editTagify = null;
 
 // Set today's date as default when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -14,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   loadCategorySelect();
+  initTagify();
 
   const addForm = document.getElementById('add-transaction-form');
   if (addForm) {
@@ -29,6 +35,55 @@ document.addEventListener('DOMContentLoaded', function() {
   currentFilterParams = window.location.search.slice(1);
   loadTransactions(1);
 });
+
+/**
+ * Initialise Tagify on both the add-form and edit-modal tag inputs.
+ * Fetches existing tags from /api/tags to populate the autocomplete whitelist.
+ * Called once on DOMContentLoaded; Tagify instances are reused after that.
+ */
+async function initTagify() {
+  let whitelist = [];
+  try {
+    const response = await fetch('/api/tags');
+    whitelist = await response.json();
+  } catch (error) {
+    console.error('Error fetching tags for Tagify whitelist:', error);
+  }
+
+  const sharedSettings = {
+    whitelist,
+    // Allow the user to create tags that don't exist in the whitelist yet
+    enforceWhitelist: false,
+    // Keep the original <input> value as a plain comma-separated string so
+    // FormData and manual .value reads work without any extra parsing
+    originalInputValueFormat: values => values.map(v => v.value).join(','),
+    dropdown: {
+      maxItems: 10,
+      enabled: 1,         // show suggestions after 1 character
+      closeOnSelect: false,
+    },
+  };
+
+  const addInput = document.getElementById('tags');
+  if (addInput) {
+    addTagify = new Tagify(addInput, sharedSettings);
+    // Set data-testid on the Tagify wrapper so Playwright can locate the
+    // inner contenteditable without relying on the now-hidden <input>
+    setTimeout(() => {
+      const wrapper = addInput.closest('.tagify');
+      if (wrapper) wrapper.setAttribute('data-testid', 'tags-input');
+    }, 0);
+  }
+
+  const editInput = document.getElementById('edit-tags');
+  if (editInput) {
+    editTagify = new Tagify(editInput, sharedSettings);
+    setTimeout(() => {
+      const wrapper = editInput.closest('.tagify');
+      if (wrapper) wrapper.setAttribute('data-testid', 'edit-tags-input');
+    }, 0);
+  }
+}
 
 /**
  * Fetch and render the transactions list for the given page.
@@ -78,6 +133,8 @@ async function loadCategorySelect() {
 
 /**
  * Handle add-transaction form submission.
+ * Tagify writes the comma-separated tag string back to the original <input>
+ * via originalInputValueFormat, so FormData picks it up automatically.
  */
 async function handleAddTransaction(e) {
   e.preventDefault();
@@ -93,6 +150,9 @@ async function handleAddTransaction(e) {
     if (response.ok) {
       e.target.reset();
       e.target.querySelector('#date').valueAsDate = new Date();
+      // form.reset() clears the underlying <input> but leaves Tagify's rendered
+      // pills intact — remove them explicitly so the UI stays in sync
+      if (addTagify) addTagify.removeAllTags();
       await loadTransactions(1);
       notifyTransactionsChanged();
     } else {
@@ -171,6 +231,7 @@ async function deleteTransaction(id) {
 
 /**
  * Open the edit modal and populate it with data from the clicked button.
+ * Loads the transaction's existing tags into the Tagify instance.
  */
 async function editTransaction(button) {
   const id = button.dataset.transactionId;
@@ -179,7 +240,7 @@ async function editTransaction(button) {
   const type = button.dataset.type;
   const date = button.dataset.date;
   const category = button.dataset.category;
-  const tags = button.dataset.tags;
+  const tags = button.dataset.tags;  // comma-separated string, may be empty
 
   // Load categories into the edit modal dropdown
   try {
@@ -205,7 +266,21 @@ async function editTransaction(button) {
   document.getElementById('edit-amount').value = amount;
   document.getElementById('edit-type').value = type;
   document.getElementById('edit-date').value = date;
-  document.getElementById('edit-tags').value = tags || '';
+
+  // Populate the Tagify instance with the transaction's existing tags.
+  // removeAllTags() clears current pills; addTags() renders the new ones and
+  // writes their CSV representation back to the original <input> via
+  // originalInputValueFormat so saveEditTransaction() can read it directly.
+  if (editTagify) {
+    editTagify.removeAllTags({ withoutChangeEvent: true });
+    if (tags) {
+      const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+      editTagify.addTags(tagList);
+    }
+  } else {
+    // Tagify not yet initialised (e.g. CDN load race) — fall back gracefully
+    document.getElementById('edit-tags').value = tags || '';
+  }
 
   document.getElementById('editModal').style.display = 'block';
 }
@@ -219,6 +294,8 @@ function closeEditModal() {
 
 /**
  * Save changes from the edit modal.
+ * Reads tags from the original <input> which Tagify keeps in sync as a
+ * comma-separated string via originalInputValueFormat.
  */
 async function saveEditTransaction() {
   const id = document.getElementById('edit-id').value;
@@ -228,6 +305,7 @@ async function saveEditTransaction() {
   formData.append('type', document.getElementById('edit-type').value);
   formData.append('date', document.getElementById('edit-date').value);
   formData.append('category', document.getElementById('edit-category').value);
+  // Tagify keeps the original <input> in sync — .value is the plain CSV string
   formData.append('tags', document.getElementById('edit-tags').value);
 
   try {

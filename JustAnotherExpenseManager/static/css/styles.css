@@ -574,11 +574,15 @@ input:focus, select:focus, textarea:focus {
 
 .modal-content {
     background-color: white;
-    margin: 10% auto;
+    margin: 5% auto;
     padding: 30px;
     border-radius: 12px;
     width: 90%;
     max-width: 500px;
+    /* Cap height so tall content (e.g. Tagify) never pushes the footer
+       off-screen; the modal body scrolls independently. */
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
     animation: slideDown 0.3s;
 }
