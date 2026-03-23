@@ -4,7 +4,7 @@
  * The <canvas> elements live in the stable page shell (summary.html), not in the
  * fetched partial, so they are never torn down between filter changes.
  */
-import { ChartInstance, ChartApiData } from "./types";
+import type { ChartInstance, ChartApiData } from "./types";
 
 let categoryChartInstance: ChartInstance | null = null;
 let monthlyChartInstance: ChartInstance | null = null;

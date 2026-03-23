@@ -236,43 +236,43 @@ class TestCategoryAPI:
         response = client.post('/api/categories', json={'name': 'bad name!'})
         assert response.status_code == 400
 
-    def test_update_category_no_json_returns_error(self, client, sample_transactions):
+    def test_update_category_no_json_body_returns_error(self, client, sample_transactions):
         response = client.put(
-            '/api/categories/food',
+            '/api/categories',
             data='not-json',
             content_type='text/plain',
         )
         assert response.status_code in (400, 415)
 
     def test_update_category_missing_new_name_returns_400(self, client, sample_transactions):
-        response = client.put('/api/categories/food', json={})
+        # Provide old name but omit new_name
+        response = client.put('/api/categories', json={'name': 'food'})
         assert response.status_code == 400
 
     def test_update_nonexistent_category_returns_error(self, client):
         response = client.put(
-            '/api/categories/does-not-exist',
-            json={'new_name': 'something'},
+            '/api/categories',
+            json={'name': 'does-not-exist', 'new_name': 'something'},
         )
         assert response.status_code in (400, 404)
 
     def test_delete_nonexistent_category_returns_error(self, client):
-        response = client.delete('/api/categories/does-not-exist')
+        response = client.delete('/api/categories', json={'name': 'does-not-exist'})
         assert response.status_code in (400, 404)
         assert 'error' in response.get_json()
 
     def test_update_tag_no_json_returns_error(self, client):
         response = client.put(
-            '/api/tags/sometag',
+            '/api/tags',
             data='not-json',
             content_type='text/plain',
         )
         assert response.status_code in (400, 415)
 
     def test_delete_nonexistent_tag_returns_error(self, client):
-        response = client.delete('/api/tags/does-not-exist')
+        response = client.delete('/api/tags', json={'name': 'does-not-exist'})
         assert response.status_code in (400, 404)
         assert 'error' in response.get_json()
-
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +444,6 @@ class TestCSVImport:
         assert len(result['errors']) == 1
 
 
-
 # ---------------------------------------------------------------------------
 # Settings API
 # ---------------------------------------------------------------------------
@@ -507,7 +506,7 @@ class TestCategoryMerge:
 
     def test_rename_to_new_name_succeeds(self, client):
         self._setup(client)
-        response = client.put('/api/categories/groceries', json={'name': 'supermarket'})
+        response = client.put('/api/categories', json={'name': 'groceries', 'new_name': 'supermarket'})
         data = response.get_json()
         assert response.status_code == 200
         assert data['success'] is True
@@ -515,14 +514,14 @@ class TestCategoryMerge:
 
     def test_rename_to_self_is_noop(self, client):
         self._setup(client)
-        response = client.put('/api/categories/food', json={'name': 'food'})
+        response = client.put('/api/categories', json={'name': 'food', 'new_name': 'food'})
         assert response.status_code == 200
         names = [c['category_name'] for c in client.get('/api/categories').get_json()]
         assert 'food' in names
 
     def test_merge_reassigns_transactions(self, client):
         self._setup(client)
-        response = client.post('/api/categories/groceries/merge', json={'target': 'food'})
+        response = client.post('/api/categories/merge', json={'source': 'groceries', 'target': 'food'})
         assert response.status_code == 200
         assert response.get_json()['success'] is True
         # Both transactions now under food
@@ -530,18 +529,18 @@ class TestCategoryMerge:
 
     def test_merge_removes_source_category(self, client):
         self._setup(client)
-        client.post('/api/categories/groceries/merge', json={'target': 'food'})
+        client.post('/api/categories/merge', json={'source': 'groceries', 'target': 'food'})
         names = [c['category_name'] for c in client.get('/api/categories').get_json()]
         assert 'groceries' not in names
         assert 'food' in names
 
     def test_merge_missing_target_body_returns_400(self, client):
         self._setup(client)
-        assert client.post('/api/categories/groceries/merge', json={}).status_code == 400
+        assert client.post('/api/categories/merge', json={'source': 'groceries'}).status_code == 400
 
     def test_rename_to_existing_returns_409_with_conflict(self, client):
         self._setup(client)
-        response = client.put('/api/categories/groceries', json={'name': 'food'})
+        response = client.put('/api/categories', json={'name': 'groceries', 'new_name': 'food'})
         data = response.get_json()
         assert response.status_code == 409
         assert data['conflict'] is True
@@ -549,20 +548,20 @@ class TestCategoryMerge:
 
     def test_rename_to_existing_does_not_auto_merge(self, client):
         self._setup(client)
-        client.put('/api/categories/groceries', json={'name': 'food'})
+        client.put('/api/categories', json={'name': 'groceries', 'new_name': 'food'})
         names = [c['category_name'] for c in client.get('/api/categories').get_json()]
         assert 'groceries' in names
         assert 'food' in names
 
     def test_merge_nonexistent_source_returns_400(self, client):
         self._setup(client)
-        response = client.post('/api/categories/doesnotexist/merge', json={'target': 'food'})
+        response = client.post('/api/categories/merge', json={'source': 'doesnotexist', 'target': 'food'})
         assert response.status_code == 400
         assert 'not found' in response.get_json()['error'].lower()
 
     def test_merge_nonexistent_target_returns_400(self, client):
         self._setup(client)
-        response = client.post('/api/categories/groceries/merge', json={'target': 'doesnotexist'})
+        response = client.post('/api/categories/merge', json={'source': 'groceries', 'target': 'doesnotexist'})
         assert response.status_code == 400
         assert 'not found' in response.get_json()['error'].lower()
 
@@ -586,7 +585,7 @@ class TestTagMerge:
 
     def test_rename_to_new_name_succeeds(self, client):
         self._setup(client)
-        response = client.put('/api/tags/important', json={'name': 'priority'})
+        response = client.put('/api/tags', json={'name': 'important', 'new_name': 'priority'})
         data = response.get_json()
         assert response.status_code == 200
         assert data['success'] is True
@@ -597,17 +596,17 @@ class TestTagMerge:
 
     def test_rename_to_self_is_noop(self, client):
         self._setup(client)
-        response = client.put('/api/tags/urgent', json={'name': 'urgent'})
+        response = client.put('/api/tags', json={'name': 'urgent', 'new_name': 'urgent'})
         assert response.status_code == 200
         assert 'urgent' in client.get('/api/tags').get_json()
 
     def test_rename_to_category_prefix_rejected(self, client):
         self._setup(client)
-        assert client.put('/api/tags/urgent', json={'name': 'category:food'}).status_code == 400
+        assert client.put('/api/tags', json={'name': 'urgent', 'new_name': 'category:food'}).status_code == 400
 
     def test_merge_removes_source_tag(self, client):
         self._setup(client)
-        response = client.post('/api/tags/important/merge', json={'target': 'urgent'})
+        response = client.post('/api/tags/merge', json={'source': 'important', 'target': 'urgent'})
         assert response.status_code == 200
         tags = client.get('/api/tags').get_json()
         assert 'important' not in tags
@@ -615,7 +614,7 @@ class TestTagMerge:
 
     def test_merge_transactions_gain_target_tag(self, client):
         self._setup(client)
-        client.post('/api/tags/important/merge', json={'target': 'urgent'})
+        client.post('/api/tags/merge', json={'source': 'important', 'target': 'urgent'})
         # Filtering by urgent should now cover both transactions
         assert client.get('/api/stats?tags=urgent').status_code == 200
 
@@ -624,24 +623,24 @@ class TestTagMerge:
             'description': 'Both tags', 'amount': '50.00', 'type': 'expense',
             'date': '2026-03-01', 'category': 'other', 'tags': 'urgent,important',
         })
-        client.post('/api/tags/important/merge', json={'target': 'urgent'})
+        client.post('/api/tags/merge', json={'source': 'important', 'target': 'urgent'})
         tags = client.get('/api/tags').get_json()
         assert 'important' not in tags
         assert 'urgent' in tags
 
     def test_merge_nonexistent_source_returns_400(self, client):
         self._setup(client)
-        response = client.post('/api/tags/doesnotexist/merge', json={'target': 'urgent'})
+        response = client.post('/api/tags/merge', json={'source': 'doesnotexist', 'target': 'urgent'})
         assert response.status_code == 400
         assert 'not found' in response.get_json()['error'].lower()
 
     def test_merge_missing_target_body_returns_400(self, client):
         self._setup(client)
-        assert client.post('/api/tags/important/merge', json={}).status_code == 400
+        assert client.post('/api/tags/merge', json={'source': 'important'}).status_code == 400
 
     def test_rename_to_existing_returns_409_with_conflict(self, client):
         self._setup(client)
-        response = client.put('/api/tags/important', json={'name': 'urgent'})
+        response = client.put('/api/tags', json={'name': 'important', 'new_name': 'urgent'})
         data = response.get_json()
         assert response.status_code == 409
         assert data['conflict'] is True
@@ -649,13 +648,13 @@ class TestTagMerge:
 
     def test_rename_to_existing_does_not_auto_merge(self, client):
         self._setup(client)
-        client.put('/api/tags/important', json={'name': 'urgent'})
+        client.put('/api/tags', json={'name': 'important', 'new_name': 'urgent'})
         tags = client.get('/api/tags').get_json()
         assert 'important' in tags
         assert 'urgent' in tags
 
     def test_merge_nonexistent_target_returns_400(self, client):
         self._setup(client)
-        response = client.post('/api/tags/important/merge', json={'target': 'doesnotexist'})
+        response = client.post('/api/tags/merge', json={'source': 'important', 'target': 'doesnotexist'})
         assert response.status_code == 400
         assert 'not found' in response.get_json()['error'].lower()

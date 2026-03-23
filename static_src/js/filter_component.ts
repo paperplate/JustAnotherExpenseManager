@@ -4,7 +4,7 @@
  * Works with both the Summary and Transactions pages.
  */
 
-import { Category } from "./types";
+import type { Category } from "./types";
 
 function selectCategory(li: HTMLLIElement): void {
   const isAll = li.dataset.value === '';

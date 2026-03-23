@@ -30,9 +30,11 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
-<script>
-    // Load stats on page load, and re-load when transactions change
+<script type="module" src="{{ url_for('static', filename='js/stats.js') }}"></script>
+<script type="module">
+    // stats.js is a module and runs before this sibling module script
+    // because it appears first in document order — window.loadStats is
+    // therefore defined by the time this script executes.
     loadStats();
     document.addEventListener('transactionsChanged', loadStats);
 </script>

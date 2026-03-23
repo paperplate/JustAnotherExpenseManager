@@ -2,7 +2,7 @@
  * Transactions Page
  * Handles transaction management, CSV import, and editing.
  */
-import { Category, ApiResult, ApiError } from "./types";
+import type { Category, ApiResult, ApiError } from "./types";
 
 let currentFilterParams = '';
 

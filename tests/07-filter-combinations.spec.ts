@@ -159,7 +159,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring — category chart is still visible', async ({ page }) => {
     await selectTag(page, 'recurring');
-
     await scrollToSummary(page);
 
     await expect(page.locator('#charts-container')).toBeVisible();
@@ -168,7 +167,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:dining — only Pizza shown in expense total', async ({ page }) => {
     await selectTag(page, 'dining');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -177,7 +175,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:leisure — only Cinema shown in expense total', async ({ page }) => {
     await selectTag(page, 'leisure');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -194,7 +191,6 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:recurring — only Groceries matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'recurring');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -204,6 +200,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:dining — only Pizza matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'dining');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$40.00');
@@ -212,6 +209,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:transport + tag:recurring — only Bus Pass matches both', async ({ page }) => {
     await selectCategory(page, 'transport');
     await selectTag(page, 'recurring');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$60.00');
@@ -220,6 +218,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:entertainment + tag:recurring — no overlap, shows $0', async ({ page }) => {
     await selectCategory(page, 'entertainment');
     await selectTag(page, 'recurring');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$0.00');

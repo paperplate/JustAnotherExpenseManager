@@ -3,7 +3,7 @@
  * Handles category management, tag management, and test data generation.
  */
 
-import { Category, ApiResult, ApiError } from "./types";
+import type { Category, ApiResult, ApiError } from "./types";
 
 async function loadCategories(): Promise<void> {
   try {
@@ -103,6 +103,11 @@ function closeEditCategoryModal(): void {
   if (modal) modal.style.display = 'none';
 }
 
+/**
+ * Save edited category.
+ * Names are sent in the request body to avoid URL-encoding issues with
+ * characters such as '/', which Flask's router decodes before matching.
+ */
 async function saveEditCategory(): Promise<void> {
   const oldName = (document.getElementById('edit-category-old') as HTMLInputElement).value;
   const newName = (document.getElementById('edit-category-name') as HTMLInputElement).value.trim().toLowerCase();
@@ -113,10 +118,10 @@ async function saveEditCategory(): Promise<void> {
   }
 
   try {
-    const response = await fetch(`/api/categories/${encodeURIComponent(oldName)}`, {
+    const response = await fetch('/api/categories', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
+      body: JSON.stringify({ name: oldName, new_name: newName }),
     });
     const result: ApiResult = await response.json();
 
@@ -131,10 +136,10 @@ async function saveEditCategory(): Promise<void> {
       );
       if (!confirmed) return;
 
-      const mergeResponse = await fetch(`/api/categories/${encodeURIComponent(oldName)}/merge`, {
+      const mergeResponse = await fetch('/api/categories/merge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: newName }),
+        body: JSON.stringify({ source: oldName, target: newName }),
       });
       const mergeResult: ApiResult = await mergeResponse.json();
 
@@ -152,6 +157,10 @@ async function saveEditCategory(): Promise<void> {
   }
 }
 
+/**
+ * Delete a category.
+ * The name is sent in the request body to avoid URL-encoding issues.
+ */
 async function deleteCategory(name: string): Promise<void> {
   if (!confirm(
     `Are you sure you want to delete the category "${name}"? ` +
@@ -159,7 +168,11 @@ async function deleteCategory(name: string): Promise<void> {
   )) return;
 
   try {
-    const response = await fetch(`/api/categories/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const response = await fetch('/api/categories', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
     const result: ApiResult = await response.json();
 
     if (result.success) {
@@ -258,6 +271,10 @@ function closeEditTagModal(): void {
   if (modal) modal.style.display = 'none';
 }
 
+/**
+ * Save renamed tag.
+ * Names are sent in the request body to avoid URL-encoding issues.
+ */
 async function saveEditTag(): Promise<void> {
   const oldName = (document.getElementById('edit-tag-old') as HTMLInputElement).value;
   const newName = (document.getElementById('edit-tag-name') as HTMLInputElement).value.trim();
@@ -268,10 +285,10 @@ async function saveEditTag(): Promise<void> {
   }
 
   try {
-    const response = await fetch(`/api/tags/${encodeURIComponent(oldName)}`, {
+    const response = await fetch('/api/tags', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
+      body: JSON.stringify({ name: oldName, new_name: newName }),
     });
     const result: ApiResult = await response.json();
 
@@ -286,10 +303,10 @@ async function saveEditTag(): Promise<void> {
       );
       if (!confirmed) return;
 
-      const mergeResponse = await fetch(`/api/tags/${encodeURIComponent(oldName)}/merge`, {
+      const mergeResponse = await fetch('/api/tags/merge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ target: newName }),
+        body: JSON.stringify({ source: oldName, target: newName }),
       });
       const mergeResult: ApiResult = await mergeResponse.json();
 
@@ -307,6 +324,10 @@ async function saveEditTag(): Promise<void> {
   }
 }
 
+/**
+ * Delete a tag.
+ * The name is sent in the request body to avoid URL-encoding issues.
+ */
 async function deleteTag(name: string): Promise<void> {
   if (!confirm(
     `Are you sure you want to delete the tag "${name}"? ` +
@@ -314,7 +335,11 @@ async function deleteTag(name: string): Promise<void> {
   )) return;
 
   try {
-    const response = await fetch(`/api/tags/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    const response = await fetch('/api/tags', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
     const result: ApiResult = await response.json();
 
     if (result.success) {
