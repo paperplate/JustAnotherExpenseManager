@@ -117,6 +117,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:salary — income total reflects only salary transactions', async ({ page }) => {
     await selectCategory(page, 'salary');
 
+    await scrollToSummary(page);
     const incomeValue = await page.locator(SUMMARY_INCOME_VALUE).textContent();
     expect(incomeValue!.trim()).toBe('$3000.00');
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -290,6 +291,7 @@ test.describe.serial('Summary page — filter combinations', () => {
     expect(filteredExpense!.trim()).toBe('$175.00');
 
     await resetCategoryFilter(page);
+    await scrollToSummary(page);
     const totalExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     // Should now show all expenses: 120+40+15+60+30 = $265
     expect(totalExpense!.trim()).toBe('$265.00');

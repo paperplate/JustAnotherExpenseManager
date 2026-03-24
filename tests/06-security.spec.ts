@@ -121,13 +121,13 @@ test.describe('Security', () => {
     });
 
     test('should reject non-numeric amounts via HTML5 validation', async ({ page }) => {
-      await addTransaction(page, {
+      /*await addTransaction(page, {
         description: 'Invalid Amount',
         amount: 'abc' as unknown as number,
         type: 'expense',
         category: 'other',
-      });
-
+      });*/
+      await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill('abc');
       // HTML5 number input should prevent submission with non-numeric value
       const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => !el.validity.valid);
       expect(isInvalid).toBe(true);
