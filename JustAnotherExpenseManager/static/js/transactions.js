@@ -1,9 +1,13 @@
+import Tagify from '@yaireo/tagify';
 let currentFilterParams = '';
+let addTagify = null;
+let editTagify = null;
 document.addEventListener('DOMContentLoaded', () => {
     const dateInput = document.getElementById('date');
     if (dateInput)
         dateInput.valueAsDate = new Date();
     loadCategorySelect();
+    initTagify();
     const addForm = document.getElementById('add-transaction-form');
     addForm?.addEventListener('submit', handleAddTransaction);
     const importForm = document.getElementById('import-form');
@@ -11,6 +15,46 @@ document.addEventListener('DOMContentLoaded', () => {
     currentFilterParams = window.location.search.slice(1);
     loadTransactions(1);
 });
+async function initTagify() {
+    let whitelist = [];
+    try {
+        const response = await fetch('/api/tags');
+        whitelist = await response.json();
+    }
+    catch (error) {
+        console.error('Error fetching tags for Tagify whitelist:', error);
+    }
+    const sharedSettings = {
+        whitelist,
+        enforceWhitelist: false,
+        originalInputValueFormat: (values) => values.map(v => v.value).join(','),
+        dropdown: {
+            maxItems: 10,
+            enbled: 1,
+            closeOnSelect: false,
+        },
+    };
+    const addInput = document.getElementById('tags');
+    if (addInput) {
+        addTagify = new Tagify(addInput, sharedSettings);
+        setTimeout(() => {
+            const wrapper = addInput.closest('.tagify');
+            if (wrapper) {
+                wrapper.setAttribute('data-testid', 'tags-input');
+            }
+        }, 0);
+    }
+    const editInput = document.getElementById('edit-tags');
+    if (editInput) {
+        editTagify = new Tagify(editInput, sharedSettings);
+        setTimeout(() => {
+            const wrapper = editInput.closest('.tagify');
+            if (wrapper) {
+                wrapper.setAttribute('data-testid', 'edit-tags-input');
+            }
+        }, 0);
+    }
+}
 async function loadTransactions(page) {
     page = page || 1;
     const params = new URLSearchParams(window.location.search);
@@ -59,6 +103,9 @@ async function handleAddTransaction(e) {
             const dateInput = form.querySelector('#date');
             if (dateInput)
                 dateInput.valueAsDate = new Date();
+            if (addTagify) {
+                addTagify.removeAllTags();
+            }
             await loadTransactions(1);
             notifyTransactionsChanged();
         }
@@ -156,7 +203,19 @@ async function editTransaction(button) {
     document.getElementById('edit-amount').value = amount;
     document.getElementById('edit-type').value = type;
     document.getElementById('edit-date').value = date;
-    document.getElementById('edit-tags').value = tags;
+    if (editTagify) {
+        editTagify.removeAllTags({ withoutChangeEvent: true });
+        if (tags) {
+            const tagList = tags.split(',').map(t => t.trim()).filter(Boolean);
+            editTagify.addTags(tagList);
+        }
+    }
+    else {
+        const editTagsElement = document.getElementById('edit-tags');
+        if (editTagsElement) {
+            editTagsElement.value = tags || '';
+        }
+    }
     const modal = document.getElementById('editModal');
     if (modal)
         modal.style.display = 'block';
@@ -198,4 +257,3 @@ window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;
 window.closeEditModal = closeEditModal;
 window.saveEditTransaction = saveEditTransaction;
-export {};
