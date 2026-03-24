@@ -1,4 +1,3 @@
-import Tagify from '@yaireo/tagify';
 let currentFilterParams = '';
 let addTagify = null;
 let editTagify = null;
@@ -257,3 +256,4 @@ window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;
 window.closeEditModal = closeEditModal;
 window.saveEditTransaction = saveEditTransaction;
+export {};

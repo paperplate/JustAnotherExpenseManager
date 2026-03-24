@@ -4,7 +4,7 @@
  */
 import type { Category, ApiResult, ApiError } from "./types";
 
-import Tagify from '@yaireo/tagify'
+declare const Tagify: typeof import('@yaireo/tagify');
 
 let currentFilterParams = '';
 
