@@ -287,6 +287,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('resetting category to "All" restores unfiltered totals', async ({ page }) => {
     await selectCategory(page, 'food');
+    await scrollToSummary(page);
     const filteredExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(filteredExpense!.trim()).toBe('$175.00');
 
