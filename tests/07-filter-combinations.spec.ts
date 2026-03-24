@@ -274,6 +274,8 @@ test.describe.serial('Summary page — filter combinations', () => {
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
+    await scrollToSummary(page);
+
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$180.00');
     // Charts must remain visible (regression guard)

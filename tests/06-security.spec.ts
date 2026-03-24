@@ -84,16 +84,16 @@ test.describe('Security', () => {
     });
 
     test('should reject negative amounts via server', async ({ page }) => {
-      await page.getByLabel('Description').fill('Negative Test');
+      await page.getByRole('textbox', { name: 'Description' }).fill('Negative Test');
       // Bypass HTML5 number min validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
         const el = document.getElementById('amount') as HTMLInputElement;
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, '-50.00');
         el.dispatchEvent(new Event('input', { bubbles: true }));
       });
-      await page.getByLabel('Type').selectOption('expense');
-      await page.getByLabel('Date').fill(TODAY);
-      await page.getByLabel('Category').selectOption('other');
+      await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
+      await page.getByRole('textbox', { name: 'Date' }).fill(TODAY);
+      await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
       await page.getByRole('button', { name: 'Add Transaction' }).click();
       await page.waitForTimeout(500);
 
@@ -101,14 +101,14 @@ test.describe('Security', () => {
     });
 
     test('should reject invalid date formats via server', async ({ page }) => {
-      await page.getByLabel('Description').fill('Date Test');
-      await page.getByLabel('Amount ($)').fill('25.00');
-      await page.getByLabel('Type').selectOption('expense');
+      await page.getByRole('textbox', { name: 'Description' }).fill('Date Test');
+      await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(25.0));
+      await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
       // Bypass HTML5 date input validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
         (document.getElementById('date') as HTMLInputElement).value = '2024-13-45';
       });
-      await page.getByLabel('Category').selectOption('other');
+      await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
       await page.getByRole('button', { name: 'Add Transaction' }).click();
       await page.waitForTimeout(500);
 
@@ -116,7 +116,7 @@ test.describe('Security', () => {
     });
 
     test('amount input type should be "number" for browser validation', async ({ page }) => {
-      const type = await page.getByLabel('Amount ($)').getAttribute('type');
+      const type = await page.getByRole('spinbutton', { name: 'Amount ($)' }).getAttribute('type');
       expect(type).toBe('number');
     });
 
@@ -129,7 +129,7 @@ test.describe('Security', () => {
       });
 
       // HTML5 number input should prevent submission with non-numeric value
-      const isInvalid = await page.getByLabel('Amount ($)').evaluate(el => !el.validity.valid);
+      const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => !el.validity.valid);
       expect(isInvalid).toBe(true);
     });
   });
