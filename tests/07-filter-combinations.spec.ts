@@ -117,6 +117,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:salary — income total reflects only salary transactions', async ({ page }) => {
     await selectCategory(page, 'salary');
 
+    await scrollToSummary(page);
     const incomeValue = await page.locator(SUMMARY_INCOME_VALUE).textContent();
     expect(incomeValue!.trim()).toBe('$3000.00');
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -159,7 +160,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring — category chart is still visible', async ({ page }) => {
     await selectTag(page, 'recurring');
-
     await scrollToSummary(page);
 
     await expect(page.locator('#charts-container')).toBeVisible();
@@ -168,7 +168,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:dining — only Pizza shown in expense total', async ({ page }) => {
     await selectTag(page, 'dining');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -177,7 +176,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:leisure — only Cinema shown in expense total', async ({ page }) => {
     await selectTag(page, 'leisure');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -194,7 +192,6 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:recurring — only Groceries matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'recurring');
-
     await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -204,6 +201,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:dining — only Pizza matches both', async ({ page }) => {
     await selectCategory(page, 'food');
     await selectTag(page, 'dining');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$40.00');
@@ -212,6 +210,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:transport + tag:recurring — only Bus Pass matches both', async ({ page }) => {
     await selectCategory(page, 'transport');
     await selectTag(page, 'recurring');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$60.00');
@@ -220,6 +219,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:entertainment + tag:recurring — no overlap, shows $0', async ({ page }) => {
     await selectCategory(page, 'entertainment');
     await selectTag(page, 'recurring');
+    await scrollToSummary(page);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$0.00');
@@ -275,6 +275,8 @@ test.describe.serial('Summary page — filter combinations', () => {
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 
+    await scrollToSummary(page);
+
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$180.00');
     // Charts must remain visible (regression guard)
@@ -285,10 +287,12 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('resetting category to "All" restores unfiltered totals', async ({ page }) => {
     await selectCategory(page, 'food');
+    await scrollToSummary(page);
     const filteredExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(filteredExpense!.trim()).toBe('$175.00');
 
     await resetCategoryFilter(page);
+    await scrollToSummary(page);
     const totalExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     // Should now show all expenses: 120+40+15+60+30 = $265
     expect(totalExpense!.trim()).toBe('$265.00');
@@ -296,10 +300,12 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('resetting tag to "All Tags" restores unfiltered totals', async ({ page }) => {
     await selectTag(page, 'dining');
+    await scrollToSummary(page);
     const filteredExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(filteredExpense!.trim()).toBe('$40.00');
 
     await resetTagFilter(page);
+    await scrollToSummary(page);
     const totalExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(totalExpense!.trim()).toBe('$265.00');
   });

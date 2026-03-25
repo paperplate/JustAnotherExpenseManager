@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "CommonJS",
+    "module": "ES2022",
     "lib": [
       "ES2022",
       "DOM"
@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "JustAnotherExpenseManager/static/js",
-    "rootDir": "static_src",
+    "rootDir": "static_src/js",
     "removeComments": false,
     "noEmitOnError": true
   },

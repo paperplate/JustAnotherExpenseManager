@@ -25,7 +25,7 @@
     </div>
     
     <!-- Common JavaScript files -->
-    <script src="{{ url_for('static', filename='js/filter_component.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/filter_component.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

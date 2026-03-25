@@ -26,6 +26,10 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@types/node": "^25.0.0",
+    "@types/yaireo__tagify": "^4.27.0",
     "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@yaireo/tagify": "^4.36.0"
   }
 }
