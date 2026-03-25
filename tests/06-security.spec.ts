@@ -70,10 +70,8 @@ test.describe('Security', () => {
     });
 
     test('should handle SQL injection in time range filter gracefully', async ({ page }) => {
-      await page.goto("/api/stats?range='; DROP TABLE transactions; --");
-
-      const response = await page.waitForResponse(resp => resp.url().includes('/api/stats'));
-      expect(response.status()).toBe(200);
+      const response = await page.goto("/api/stats?range='; DROP TABLE transactions; --");
+      expect(response!.status()).toBe(200);
     });
   });
 
