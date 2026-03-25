@@ -64,6 +64,7 @@ declare global {
     saveEditTag: () => Promise<void>;
     deleteTag: (name: string) => Promise<void>;
     populateTestData: () => Promise<void>;
+    exportTransactions: () => Promise<void>;
   }
 
   // Chart.js loaded via CDN <script> tag

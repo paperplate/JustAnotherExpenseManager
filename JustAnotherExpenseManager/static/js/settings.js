@@ -324,7 +324,49 @@ async function deleteTag(name) {
         alert('❌ Error: ' + error.message);
     }
 }
+async function exportTransactions() {
+    const startDate = document.getElementById('export-start-date').value;
+    const endDate = document.getElementById('export-end-date').value;
+    const resultDiv = document.getElementById('export-result');
+    if (startDate && endDate && startDate > endDate) {
+        if (resultDiv)
+            resultDiv.innerHTML = '<p style="color: #d63031;">❌ Start date must be before end date.</p>';
+        return;
+    }
+    const params = new URLSearchParams();
+    if (startDate)
+        params.set('start_date', startDate);
+    if (endDate)
+        params.set('end_date', endDate);
+    const url = '/api/transactions/export' + (params.toString() ? '?' + params.toString() : '');
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            if (resultDiv)
+                resultDiv.innerHTML = '<p style="color: #d63031;">❌ Export failed. Please try again.</p>';
+            return;
+        }
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = 'transactions.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+        if (resultDiv) {
+            resultDiv.innerHTML = '<p style="color: #00b894; font-weight: 600;">✓ Export downloaded successfully!</p>';
+            setTimeout(() => { resultDiv.innerHTML = ''; }, 3000);
+        }
+    }
+    catch (error) {
+        if (resultDiv)
+            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+    }
+}
 window.addCategory = addCategory;
+window.exportTransactions = exportTransactions;
 window.editCategory = editCategory;
 window.closeEditCategoryModal = closeEditCategoryModal;
 window.saveEditCategory = saveEditCategory;

@@ -2,7 +2,7 @@
 Routes for transaction operations with month-based pagination.
 """
 
-from flask import Blueprint, render_template, request, jsonify, g
+from flask import Blueprint, render_template, request, jsonify, g, Response
 import csv
 import itertools
 from io import StringIO
@@ -163,6 +163,72 @@ def delete_transaction(transaction_id):
 
     result = service.get_all_transactions(page=1)
     return _render_transactions_list(result)
+
+
+@transaction_bp.route('/api/transactions/export', methods=['GET'])
+def export_transactions() -> Response:
+    """Export transactions as a CSV file.
+
+    Accepts the same filter query parameters as GET /api/transactions so the
+    user can export a filtered subset or the full history.
+
+    Query parameters
+    ----------------
+    categories : comma-separated category names (optional)
+    tags       : comma-separated tag names (optional)
+    range      : time-range preset (optional)
+    start_date : YYYY-MM-DD inclusive lower bound (optional)
+    end_date   : YYYY-MM-DD inclusive upper bound (optional)
+    """
+    categories_param: Optional[str] = request.args.get('categories', None)
+    tags_param: Optional[str] = request.args.get('tags', None)
+    time_range: Optional[str] = request.args.get('range', None)
+    start_date: Optional[str] = request.args.get('start_date', None)
+    end_date: Optional[str] = request.args.get('end_date', None)
+
+    service = TransactionService(g.db)
+    result = service.get_all_transactions(
+        page=1,
+        categories=categories_param,
+        tags=tags_param,
+        time_range=time_range,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    # Collect transactions across all pages so a filtered export is complete.
+    all_transactions = []
+    for page_num in range(1, result['total_pages'] + 1):
+        page_result = service.get_all_transactions(
+            page=page_num,
+            categories=categories_param,
+            tags=tags_param,
+            time_range=time_range,
+            start_date=start_date,
+            end_date=end_date,
+        )
+        all_transactions.extend(page_result['transactions'])
+
+    output = StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['description', 'amount', 'type', 'category', 'date', 'tags'])
+
+    for trans in all_transactions:
+        writer.writerow([
+            trans.description,
+            f'{trans.amount_dollars:.2f}',
+            trans.type.value,
+            trans.category or '',
+            trans.date,
+            ','.join(trans.non_category_tags),
+        ])
+
+    filename = 'transactions.csv'
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'},
+    )
 
 
 # Source - https://stackoverflow.com/a/16939441
