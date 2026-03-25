@@ -16,6 +16,7 @@ A modern, dockerized expense tracking application built with Flask, SQLAlchemy, 
 - 🐳 **Dockerized**: Easy deployment with Docker and Docker Compose
 - 💾 **Multiple Database Backends**: SQLite, PostgreSQL, or MySQL
 - 📤 **CSV Import**: Bulk import transactions from a CSV file
+- 📥 **CSV Export**: Download your full transaction history (or a filtered date range) as a CSV file
 - 🧪 **Test Data Generator**: Populate with sample data (debug mode only)
 - 🏗️ **SOLID Architecture**: Clean separation of concerns across models, services, and routes
 - 📱 **Mobile Responsive**: Works on all device sizes
@@ -124,7 +125,7 @@ The application has three pages:
 
 - **Summary**: Financial overview, charts, and multi-select category/tag/time filtering
 - **Transactions**: Add, edit, delete, and filter individual transactions; CSV import
-- **Settings**: Manage categories and tags; test data generator (debug mode only)
+- **Settings**: Manage categories and tags; export transactions as CSV; test data generator (debug mode only)
 
 ### Adding Transactions
 
@@ -169,6 +170,16 @@ Go to **Settings → Tag Management** to:
 - Merge one tag into another
 - Delete a tag from all transactions
 
+### CSV Export
+
+Go to **Settings → Export Transactions** to download your transaction history as a CSV file.
+
+- Leave both date fields blank to export **all transactions**
+- Fill in **Start Date** and/or **End Date** to export a specific date range
+- The exported file uses the same column format as CSV import, so it can be edited and re-imported
+
+The export endpoint (`GET /api/transactions/export`) also accepts `categories`, `tags`, `range`, `start_date`, and `end_date` query parameters, matching the filter interface on the Transactions and Summary pages.
+
 ### CSV Import
 
 1. Prepare a CSV file with these columns:
@@ -201,7 +212,7 @@ JustAnotherExpenseManager/         # Main Python package
 ├── models/
 │   └── __init__.py                # SQLAlchemy models: Transaction, Tag
 ├── routes/
-│   ├── transactions.py            # Transaction CRUD and CSV import endpoints
+│   ├── transactions.py            # Transaction CRUD, CSV import, and CSV export endpoints
 │   ├── stats.py                   # Summary page and /api/stats, /api/chart-data
 │   ├── categories.py              # Category and tag management endpoints
 │   └── settings.py                # Settings page and test data endpoints
@@ -221,7 +232,7 @@ JustAnotherExpenseManager/         # Main Python package
         ├── filter_component.js    # Multi-select category/tag filter UI
         ├── stats.js               # Chart initialisation and stats refresh
         ├── transactions.js        # Transaction form, edit modal, delete
-        └── settings.js            # Category/tag management UI
+        └── settings.js            # Category/tag management and CSV export UI
 
 pyproject.toml                     # Package metadata and dependencies (flit)
 .flaskenv                          # Local dev environment variables
