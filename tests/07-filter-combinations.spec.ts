@@ -300,10 +300,12 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('resetting tag to "All Tags" restores unfiltered totals', async ({ page }) => {
     await selectTag(page, 'dining');
+    await scrollToSummary(page);
     const filteredExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(filteredExpense!.trim()).toBe('$40.00');
 
     await resetTagFilter(page);
+    await scrollToSummary(page);
     const totalExpense = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(totalExpense!.trim()).toBe('$265.00');
   });
