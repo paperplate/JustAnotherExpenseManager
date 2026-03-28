@@ -12,7 +12,7 @@ categories_bp = Blueprint('categories', __name__)
 @categories_bp.route('/api/categories', methods=['GET'])
 def get_categories() -> Response:
     """
-    Get all categories.
+    Get all categories, ordered by sort_order then name.
 
     Returns:
         Response: JSON response with list of categories
@@ -94,6 +94,36 @@ def update_category() -> Union[Response, Tuple[Response, int]]:
     return jsonify({'success': True, 'category': new_name})
 
 
+@categories_bp.route('/api/categories/order', methods=['PATCH'])
+def update_categories_order() -> Union[Response, Tuple[Response, int]]:
+    """
+    Persist a new display order for categories.
+
+    Body: {"order": ["food", "transport", "entertainment", ...]}
+
+    The list should contain bare category names (no ``category:`` prefix) in
+    the desired display order.  Each name's ``sort_order`` is set to its
+    index in the list.
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    order = request.json.get('order', [])
+    if not isinstance(order, list):
+        return jsonify({'error': "'order' must be a list of category names"}), 400
+
+    service = CategoryService(g.db)
+    success, error = service.update_categories_order(order)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True})
+
+
 @categories_bp.route('/api/categories/merge', methods=['POST'])
 def merge_category() -> Union[Response, Tuple[Response, int]]:
     """
@@ -154,7 +184,7 @@ def delete_category() -> Union[Response, Tuple[Response, int]]:
 @categories_bp.route('/api/tags', methods=['GET'])
 def get_tags() -> Response:
     """
-    Get all non-category tags.
+    Get all non-category tags, ordered by sort_order then name.
 
     Returns:
         Response: JSON response with list of tags
@@ -162,6 +192,34 @@ def get_tags() -> Response:
     service = CategoryService(g.db)
     tags = service.get_all_tags()
     return jsonify(tags)
+
+
+@categories_bp.route('/api/tags/order', methods=['PATCH'])
+def update_tags_order() -> Union[Response, Tuple[Response, int]]:
+    """
+    Persist a new display order for non-category tags.
+
+    Body: {"order": ["recurring", "urgent", "planned", ...]}
+
+    Each tag's ``sort_order`` is set to its index in the list.
+
+    Returns:
+        Union[Response, Tuple[Response, int]]: JSON response with success or error
+    """
+    if not request.json:
+        return jsonify({'error': 'Invalid request'}), 400
+
+    order = request.json.get('order', [])
+    if not isinstance(order, list):
+        return jsonify({'error': "'order' must be a list of tag names"}), 400
+
+    service = CategoryService(g.db)
+    success, error = service.update_tags_order(order)
+
+    if error:
+        return jsonify({'error': error}), 400
+
+    return jsonify({'success': True})
 
 
 @categories_bp.route('/api/tags', methods=['PUT'])

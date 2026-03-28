@@ -42,6 +42,7 @@ class Tag(db.Model):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
+    sort_order = Column(Integer, nullable=False, default=0, server_default='0')
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     transactions = relationship(
@@ -75,6 +76,7 @@ class Tag(db.Model):
             'name': self.name,
             'is_category': self.is_category,
             'category_name': self.category_name,
+            'sort_order': self.sort_order,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
 

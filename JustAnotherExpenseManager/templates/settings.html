@@ -30,13 +30,15 @@
         <div class="setting-item">
             <div class="setting-label">Existing Categories</div>
             <div class="setting-description">
-                Manage your existing categories. Click edit to rename or delete to remove.
+                Manage your existing categories. Drag to reorder — the order is reflected in
+                all filter dropdowns. Click edit to rename or delete to remove.
             </div>
             <div id="categories-list" style="margin-top: 15px;">
                 {% if categories %}
                     <div class="category-list">
                         {% for cat in categories %}
-                        <div class="category-item">
+                        <div class="category-item" data-name="{{ cat.category_name }}">
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
                             <span class="category-name">{{ cat.category_name }}</span>
                             <div class="category-actions">
                                 <button class="btn btn-edit btn-small"
@@ -63,14 +65,16 @@
         <div class="setting-item">
             <div class="setting-label">Existing Tags</div>
             <div class="setting-description">
-                Manage tags that have been applied to transactions. Renaming a tag updates it
-                on all associated transactions. Deleting a tag removes it from all transactions.
+                Manage tags that have been applied to transactions. Drag to reorder — the order
+                is reflected in all filter dropdowns. Renaming a tag updates it on all associated
+                transactions. Deleting a tag removes it from all transactions.
             </div>
             <div id="tags-list" style="margin-top: 15px;">
                 {% if tags %}
                     <div class="category-list">
                         {% for tag in tags %}
-                        <div class="category-item">
+                        <div class="category-item" data-name="{{ tag }}">
+                            <span class="drag-handle" title="Drag to reorder">⠿</span>
                             <span class="category-name">{{ tag }}</span>
                             <div class="category-actions">
                                 <button class="btn btn-edit btn-small"
@@ -242,5 +246,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 <script type="module" src="{{ url_for('static', filename='js/settings.js') }}"></script>
 {% endblock %}

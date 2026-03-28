@@ -212,7 +212,11 @@ class TransactionService:
             select(Tag).where(Tag.name == tag_name)
         ).first()
         if not tag:
-            tag = Tag(name=tag_name)
+            # Place new auto-created tags at the end of any existing ordering
+            max_order = self.db.scalars(
+                select(func.max(Tag.sort_order))
+            ).first() or 0
+            tag = Tag(name=tag_name, sort_order=max_order + 1)
             self.db.add(tag)
             self.db.flush()
         return tag
@@ -339,9 +343,11 @@ class CategoryService:
         self.db = db_session
 
     def get_all_categories(self) -> List[Dict[str, Any]]:
-        """Get all category names (without the 'category:' prefix)."""
+        """Get all category names ordered by sort_order then name."""
         tags = self.db.scalars(
-            select(Tag).where(Tag.name.like('category:%'))
+            select(Tag)
+            .where(Tag.name.like('category:%'))
+            .order_by(Tag.sort_order, Tag.name)
         ).all()
         return [
             {'full_name': tag.name, 'category_name': tag.name[len('category:'):]}
@@ -349,9 +355,11 @@ class CategoryService:
         ]
 
     def get_all_tags(self) -> List[str]:
-        """Get all non-category tag names."""
+        """Get all non-category tag names ordered by sort_order then name."""
         tags = self.db.scalars(
-            select(Tag).where(~Tag.name.like('category:%'))
+            select(Tag)
+            .where(~Tag.name.like('category:%'))
+            .order_by(Tag.sort_order, Tag.name)
         ).all()
         return [tag.name for tag in tags]
 
@@ -362,12 +370,50 @@ class CategoryService:
         ).first()
 
     def add_category(self, category_name: str) -> Tuple[bool, Optional[str]]:
-        """Add a new category."""
+        """Add a new category, placed after all existing categories."""
         tag_name = f'category:{category_name}'
         if self._get_tag(tag_name):
             return False, 'Category already exists'
 
-        self.db.add(Tag(name=tag_name))
+        max_order = self.db.scalars(
+            select(func.max(Tag.sort_order)).where(Tag.name.like('category:%'))
+        ).first() or 0
+
+        self.db.add(Tag(name=tag_name, sort_order=max_order + 1))
+        self.db.commit()
+        return True, None
+
+    def update_categories_order(self, names: List[str]) -> Tuple[bool, Optional[str]]:
+        """
+        Persist a new display order for categories.
+
+        Args:
+            names: Category names (without 'category:' prefix) in the desired order.
+
+        Returns:
+            Tuple of (success, error_message).
+        """
+        for i, name in enumerate(names):
+            tag = self._get_tag(f'category:{name}')
+            if tag:
+                tag.sort_order = i
+        self.db.commit()
+        return True, None
+
+    def update_tags_order(self, names: List[str]) -> Tuple[bool, Optional[str]]:
+        """
+        Persist a new display order for non-category tags.
+
+        Args:
+            names: Tag names in the desired order.
+
+        Returns:
+            Tuple of (success, error_message).
+        """
+        for i, name in enumerate(names):
+            tag = self._get_tag(name)
+            if tag:
+                tag.sort_order = i
         self.db.commit()
         return True, None
 
