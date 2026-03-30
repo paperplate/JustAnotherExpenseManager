@@ -30,6 +30,7 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
-    "@yaireo/tagify": "^4.36.0"
+    "@yaireo/tagify": "^4.36.0",
+    "sortablejs": "^1.15.7"
   }
 }

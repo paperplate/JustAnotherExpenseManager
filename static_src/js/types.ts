@@ -53,10 +53,6 @@ interface SortableInstance {
   destroy(): void;
 }
 
-declare const Sortable: {
-  create(el: HTMLElement, options: SortableOptions): SortableInstance;
-};
-
 // ─── Window extensions ────────────────────────────────────────────────────────
 
 declare global {
