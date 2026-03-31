@@ -86,19 +86,6 @@ declare global {
     populateTestData: () => Promise<void>;
     exportTransactions: () => Promise<void>;
   }
-
-  // Chart.js loaded via CDN <script> tag
-  const Chart: {
-    new(ctx: HTMLCanvasElement, config: object): ChartInstance;
-  };
-}
-
-interface ChartInstance {
-  data: {
-    labels: string[];
-    datasets: Array<{ data: number[] }>;
-  };
-  update(): void;
 }
 
 export {
@@ -106,7 +93,6 @@ export {
   ApiResult,
   ApiError,
   ApiSuccess,
-  ChartInstance,
   ChartApiData,
   SortableInstance,
   SortableOptions,

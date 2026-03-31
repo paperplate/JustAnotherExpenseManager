@@ -162,6 +162,12 @@ def _seed_default_categories() -> None:
     from sqlalchemy import select  # pylint: disable=import-outside-toplevel
     from JustAnotherExpenseManager.models import Tag  # pylint: disable=import-outside-toplevel
 
+    existing_cats = db.session.scalars(
+        select(Tag).where(Tag.name.like('category:%')).limit(1)
+    ).first()
+    if existing_cats:
+        return # Database already populated
+
     default_categories = [
         'food', 'transport', 'entertainment', 'utilities',
         'shopping', 'healthcare', 'other', 'salary', 'investment',
