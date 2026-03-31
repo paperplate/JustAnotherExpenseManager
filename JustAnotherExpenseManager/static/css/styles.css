@@ -536,6 +536,7 @@ input:focus, select:focus, textarea:focus {
     font-weight: 600;
     color: #333;
     text-transform: capitalize;
+    flex: 1;
 }
 
 .category-actions {
@@ -552,6 +553,46 @@ input:focus, select:focus, textarea:focus {
 .btn-small {
     padding: 6px 12px;
     font-size: 14px;
+}
+
+/* ── Drag-to-reorder (Sortable.js) ───────────────────────────────────────── */
+
+.drag-handle {
+    cursor: grab;
+    padding: 0 10px 0 0;
+    color: #ccc;
+    font-size: 18px;
+    line-height: 1;
+    flex-shrink: 0;
+    user-select: none;
+    transition: color 0.15s;
+}
+
+.drag-handle:hover {
+    color: #667eea;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+/* Placeholder left behind at the original position while dragging */
+.sortable-ghost {
+    opacity: 0.35;
+    background: #f0f2ff;
+    border-color: #667eea !important;
+}
+
+/* The item currently being dragged */
+.sortable-chosen {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+    border-color: #667eea !important;
+    background: #fff;
+}
+
+/* Hide the original element while a drag clone is shown */
+.sortable-drag {
+    opacity: 0;
 }
 
 /* Modal Styles */

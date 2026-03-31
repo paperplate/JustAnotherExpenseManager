@@ -1,7 +1,52 @@
 /**
  * Settings Page
  * Handles category management, tag management, and test data generation.
+ * Categories and tags support drag-to-reorder via Sortable.js, with the
+ * new order persisted to the backend immediately on drop.
  */
+//import Sortable from 'sortablejs';
+// Sortable is imported as an ES module so it is guaranteed to be resolved
+// before any code in this module runs — no <script> tag timing dependency.
+// The CDN's /+esm endpoint serves a proper ESM build.
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore — no bundled type declarations for the CDN ESM path
+import SortableLib from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm';
+const Sortable = SortableLib;
+// Track Sortable instances so we can destroy them before re-rendering the list,
+// preventing duplicate listeners from accumulating across reloads.
+let categorySortable = null;
+let tagSortable = null;
+// ─── Category helpers ─────────────────────────────────────────────────────────
+function buildCategoryItem(cat) {
+    const item = document.createElement('div');
+    item.className = 'category-item';
+    item.dataset.name = cat.category_name;
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.title = 'Drag to reorder';
+    handle.textContent = '⠿';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'category-name';
+    nameSpan.textContent = cat.category_name;
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'category-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-edit btn-small';
+    editBtn.textContent = 'Edit';
+    editBtn.dataset.name = cat.category_name;
+    editBtn.addEventListener('click', () => editCategory(cat.category_name));
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn-delete btn-small';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.dataset.name = cat.category_name;
+    deleteBtn.addEventListener('click', () => deleteCategory(cat.category_name));
+    actionsDiv.appendChild(editBtn);
+    actionsDiv.appendChild(deleteBtn);
+    item.appendChild(handle);
+    item.appendChild(nameSpan);
+    item.appendChild(actionsDiv);
+    return item;
+}
 async function loadCategories() {
     try {
         const response = await fetch('/api/categories');
@@ -9,40 +54,40 @@ async function loadCategories() {
         const list = document.getElementById('categories-list');
         if (!list)
             return;
+        // Tear down any existing Sortable before rebuilding the DOM.
+        if (categorySortable) {
+            categorySortable.destroy();
+            categorySortable = null;
+        }
         if (categories.length === 0) {
             list.innerHTML = '<p style="color: #666; text-align: center;">No categories yet. Add one above!</p>';
             return;
         }
         list.innerHTML = '<div class="category-list"></div>';
         const categoryList = list.querySelector('.category-list');
-        categories.forEach(cat => {
-            const item = document.createElement('div');
-            item.className = 'category-item';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'category-name';
-            nameSpan.textContent = cat.category_name;
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'category-actions';
-            const editBtn = document.createElement('button');
-            editBtn.className = 'btn btn-edit btn-small';
-            editBtn.textContent = 'Edit';
-            editBtn.dataset.name = cat.category_name;
-            editBtn.addEventListener('click', () => editCategory(cat.category_name));
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn btn-delete btn-small';
-            deleteBtn.textContent = 'Delete';
-            deleteBtn.dataset.name = cat.category_name;
-            deleteBtn.addEventListener('click', () => deleteCategory(cat.category_name));
-            actionsDiv.appendChild(editBtn);
-            actionsDiv.appendChild(deleteBtn);
-            item.appendChild(nameSpan);
-            item.appendChild(actionsDiv);
-            categoryList.appendChild(item);
+        categories.forEach(cat => categoryList.appendChild(buildCategoryItem(cat)));
+        categorySortable = Sortable.create(categoryList, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd() {
+                const order = Array.from(categoryList.querySelectorAll('.category-item')).map(el => el.dataset.name ?? '').filter(Boolean);
+                persistCategoryOrder(order);
+            },
         });
     }
     catch (error) {
         console.error('Error loading categories:', error);
     }
+}
+function persistCategoryOrder(order) {
+    fetch('/api/categories/order', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+    }).catch(err => console.error('Failed to persist category order:', err));
 }
 async function addCategory() {
     const input = document.getElementById('new-category');
@@ -169,31 +214,34 @@ async function deleteCategory(name) {
         alert('❌ Error: ' + error.message);
     }
 }
-async function populateTestData() {
-    if (!confirm('This will add approximately 80 sample transactions to your database. Continue?'))
-        return;
-    const resultDiv = document.getElementById('test-data-result');
-    if (resultDiv)
-        resultDiv.innerHTML = '<p style="color: #666;">⏳ Generating test data...</p>';
-    try {
-        const response = await fetch('/api/populate-test-data', { method: 'POST' });
-        const result = await response.json();
-        if (result.success) {
-            if (resultDiv) {
-                resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
-            }
-            setTimeout(() => { window.location.href = '/summary'; }, 2000);
-        }
-        else {
-            if (resultDiv)
-                resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
-        }
-    }
-    catch (error) {
-        if (resultDiv) {
-            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
-        }
-    }
+// ─── Tag helpers ──────────────────────────────────────────────────────────────
+function buildTagItem(tag) {
+    const item = document.createElement('div');
+    item.className = 'category-item';
+    item.dataset.name = tag;
+    const handle = document.createElement('span');
+    handle.className = 'drag-handle';
+    handle.title = 'Drag to reorder';
+    handle.textContent = '⠿';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'category-name';
+    nameSpan.textContent = tag;
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'category-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn btn-edit btn-small';
+    editBtn.textContent = 'Edit';
+    editBtn.addEventListener('click', () => editTag(tag));
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'btn btn-delete btn-small';
+    deleteBtn.textContent = 'Delete';
+    deleteBtn.addEventListener('click', () => deleteTag(tag));
+    actionsDiv.appendChild(editBtn);
+    actionsDiv.appendChild(deleteBtn);
+    item.appendChild(handle);
+    item.appendChild(nameSpan);
+    item.appendChild(actionsDiv);
+    return item;
 }
 async function loadTags() {
     try {
@@ -202,6 +250,11 @@ async function loadTags() {
         const list = document.getElementById('tags-list');
         if (!list)
             return;
+        // Tear down any existing Sortable before rebuilding the DOM.
+        if (tagSortable) {
+            tagSortable.destroy();
+            tagSortable = null;
+        }
         if (tags.length === 0) {
             list.innerHTML =
                 '<p style="color: #666; text-align: center;">No tags yet. Add tags to transactions to see them here.</p>';
@@ -209,32 +262,29 @@ async function loadTags() {
         }
         list.innerHTML = '<div class="category-list"></div>';
         const tagList = list.querySelector('.category-list');
-        tags.forEach(tag => {
-            const item = document.createElement('div');
-            item.className = 'category-item';
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'category-name';
-            nameSpan.textContent = tag;
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'category-actions';
-            const editBtn = document.createElement('button');
-            editBtn.className = 'btn btn-edit btn-small';
-            editBtn.textContent = 'Edit';
-            editBtn.addEventListener('click', () => editTag(tag));
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'btn btn-delete btn-small';
-            deleteBtn.textContent = 'Delete';
-            deleteBtn.addEventListener('click', () => deleteTag(tag));
-            actionsDiv.appendChild(editBtn);
-            actionsDiv.appendChild(deleteBtn);
-            item.appendChild(nameSpan);
-            item.appendChild(actionsDiv);
-            tagList.appendChild(item);
+        tags.forEach(tag => tagList.appendChild(buildTagItem(tag)));
+        tagSortable = Sortable.create(tagList, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            dragClass: 'sortable-drag',
+            onEnd() {
+                const order = Array.from(tagList.querySelectorAll('.category-item')).map(el => el.dataset.name ?? '').filter(Boolean);
+                persistTagOrder(order);
+            },
         });
     }
     catch (error) {
         console.error('Error loading tags:', error);
     }
+}
+function persistTagOrder(order) {
+    fetch('/api/tags/order', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order }),
+    }).catch(err => console.error('Failed to persist tag order:', err));
 }
 function editTag(name) {
     document.getElementById('edit-tag-old').value = name;
@@ -324,6 +374,33 @@ async function deleteTag(name) {
         alert('❌ Error: ' + error.message);
     }
 }
+// ─── Test data & export ───────────────────────────────────────────────────────
+async function populateTestData() {
+    if (!confirm('This will add approximately 80 sample transactions to your database. Continue?'))
+        return;
+    const resultDiv = document.getElementById('test-data-result');
+    if (resultDiv)
+        resultDiv.innerHTML = '<p style="color: #666;">⏳ Generating test data...</p>';
+    try {
+        const response = await fetch('/api/populate-test-data', { method: 'POST' });
+        const result = await response.json();
+        if (result.success) {
+            if (resultDiv) {
+                resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
+            }
+            setTimeout(() => { window.location.href = '/summary'; }, 2000);
+        }
+        else {
+            if (resultDiv)
+                resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
+        }
+    }
+    catch (error) {
+        if (resultDiv) {
+            resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+        }
+    }
+}
 async function exportTransactions() {
     const startDate = document.getElementById('export-start-date').value;
     const endDate = document.getElementById('export-end-date').value;
@@ -365,6 +442,11 @@ async function exportTransactions() {
             resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
     }
 }
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    loadCategories();
+    loadTags();
+});
 window.addCategory = addCategory;
 window.exportTransactions = exportTransactions;
 window.editCategory = editCategory;
@@ -376,4 +458,3 @@ window.closeEditTagModal = closeEditTagModal;
 window.saveEditTag = saveEditTag;
 window.deleteTag = deleteTag;
 window.populateTestData = populateTestData;
-export {};

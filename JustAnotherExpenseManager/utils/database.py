@@ -7,7 +7,7 @@ from typing import Optional
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import text
+from sqlalchemy import text, inspect as sa_inspect
 
 # The single shared Flask-SQLAlchemy extension instance.
 # Import this object in models and wherever a session is needed directly.
@@ -74,6 +74,9 @@ def init_database(app: Flask) -> None:
     For SQLite this also ensures the data directory exists. Must be called
     inside an active application context.
 
+    Runs a lightweight migration to add the ``sort_order`` column to the
+    ``tags`` table for databases created before this column was introduced.
+
     Args:
         app: The Flask application instance.
     """
@@ -96,6 +99,7 @@ def init_database(app: Flask) -> None:
         print(f"Using database: {db_type}")
 
     db.create_all()
+    _migrate_sort_order()
     _seed_default_categories()
 
     if not db_exists:
@@ -135,6 +139,23 @@ def check_health() -> bool:
         return False
 
 
+def _migrate_sort_order() -> None:
+    """
+    Add the ``sort_order`` column to ``tags`` if it does not already exist.
+
+    Safe to run on every startup — it is a no-op when the column is present.
+    Supports SQLite, PostgreSQL, and MySQL.
+    """
+    inspector = sa_inspect(db.engine)
+    tag_columns = [col['name'] for col in inspector.get_columns('tags')]
+    if 'sort_order' not in tag_columns:
+        db.session.execute(
+            text('ALTER TABLE tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
+        )
+        db.session.commit()
+        print("Migration applied: added sort_order column to tags.")
+
+
 def _seed_default_categories() -> None:
     """Insert default category tags if they do not already exist."""
     # Import here to avoid a circular import at module load time.
@@ -146,13 +167,12 @@ def _seed_default_categories() -> None:
         'shopping', 'healthcare', 'other', 'salary', 'investment',
     ]
 
-    for cat in default_categories:
+    for i, cat in enumerate(default_categories):
         tag_name = f'category:{cat}'
         existing = db.session.scalars(
             select(Tag).where(Tag.name == tag_name)
         ).first()
         if not existing:
-            db.session.add(Tag(name=tag_name))
+            db.session.add(Tag(name=tag_name, sort_order=i))
 
     db.session.commit()
-

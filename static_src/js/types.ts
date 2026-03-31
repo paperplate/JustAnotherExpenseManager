@@ -33,6 +33,26 @@ interface ChartApiData {
   };
 }
 
+// ─── Sortable.js (loaded via CDN <script> tag) ────────────────────────────────
+
+interface SortableOptions {
+  animation?: number;
+  handle?: string;
+  ghostClass?: string;
+  chosenClass?: string;
+  dragClass?: string;
+  onEnd?: (evt: SortableEvent) => void;
+}
+
+interface SortableEvent {
+  oldIndex?: number;
+  newIndex?: number;
+}
+
+interface SortableInstance {
+  destroy(): void;
+}
+
 // ─── Window extensions ────────────────────────────────────────────────────────
 
 declare global {
@@ -87,5 +107,8 @@ export {
   ApiError,
   ApiSuccess,
   ChartInstance,
-  ChartApiData
+  ChartApiData,
+  SortableInstance,
+  SortableOptions,
+  SortableEvent,
 };

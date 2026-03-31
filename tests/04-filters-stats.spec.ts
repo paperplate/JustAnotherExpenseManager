@@ -2,7 +2,6 @@ import { test, expect } from '@playwright/test';
 import {
   addTransaction,
   selectCategory,
-  openCategoryFilter,
   clearDatabase,
   resetCategoryFilter,
   scrollToTotals,
