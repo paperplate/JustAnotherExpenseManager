@@ -6,6 +6,7 @@
  */
 
 import type { Category, ApiResult, ApiError, SortableInstance, SortableOptions } from "./types";
+//import Sortable from 'sortablejs';
 
 // Sortable is imported as an ES module so it is guaranteed to be resolved
 // before any code in this module runs — no <script> tag timing dependency.

@@ -4,6 +4,7 @@
  * Categories and tags support drag-to-reorder via Sortable.js, with the
  * new order persisted to the backend immediately on drop.
  */
+//import Sortable from 'sortablejs';
 // Sortable is imported as an ES module so it is guaranteed to be resolved
 // before any code in this module runs — no <script> tag timing dependency.
 // The CDN's /+esm endpoint serves a proper ESM build.

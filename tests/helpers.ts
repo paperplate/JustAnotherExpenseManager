@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 
 const TODAY = new Date().toISOString().split('T')[0];
 
@@ -113,12 +113,14 @@ async function scrollToTotals(page: Page): Promise<void> {
   const totals = page.locator('.monthly-totals');
   await totals.waitFor({ state: 'attached' });
   await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
+  await expect(totals).toBeInViewport();
 }
 
 async function scrollToSummary(page: Page): Promise<void> {
   const totals = page.locator('.summary-grid');
   await totals.waitFor({ state: 'attached' });
   await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
+  await expect(totals).toBeInViewport();
 }
 
 export {
