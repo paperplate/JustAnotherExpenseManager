@@ -4,10 +4,13 @@
  * The <canvas> elements live in the stable page shell (summary.html), not in the
  * fetched partial, so they are never torn down between filter changes.
  */
-import type { ChartInstance, ChartApiData } from "./types";
+import { Chart, registerables } from 'chart.js'
+import type { ChartApiData } from "./types";
 
-let categoryChartInstance: ChartInstance | null = null;
-let monthlyChartInstance: ChartInstance | null = null;
+Chart.register(...registerables);
+
+let categoryChartInstance: Chart | null = null;
+let monthlyChartInstance: Chart | null = null;
 
 const CATEGORY_COLORS: string[] = [
   '#d63031', '#0984e3', '#d63384', '#e17055',
@@ -103,8 +106,9 @@ function updateCategoryChart(data: CategoryData): void {
         },
         tooltip: {
           callbacks: {
-            label: (context: { label: string; parsed: number }) =>
-              `${context.label}: $${context.parsed.toFixed(2)}`,
+            label: (context) => `${context.label || ''}: $${(context.parsed as number).toFixed(2)}`,
+            //label: (context: { label: string; parsed: number }) =>
+            //  `${context.label}: $${context.parsed.toFixed(2)}`,
           },
         },
       },
@@ -165,8 +169,9 @@ function updateMonthlyChart(data: MonthlyData): void {
         legend: { display: true, position: 'top' },
         tooltip: {
           callbacks: {
-            label: (context: { dataset: { label: string }; parsed: { y: number } }) =>
-              `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`,
+            label: (context) => `${context.dataset.label || ''}: $${context.parsed.y?.toFixed(2)}`,
+            //label: (context: { dataset: { label: string }; parsed: { y: number } }) =>
+            //  `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`,
           },
         },
       },
@@ -190,12 +195,12 @@ function refreshCharts(queryString: string): void {
   fetch(url)
     .then(response => response.json() as Promise<ChartApiData>)
     .then(data => {
-      const categoryBreakdown = data.categories.labels.map((label, i): [string, number, number] => [
+      const categoryBreakdown = data.categories.labels.map((label: string, i: number): [string, number, number] => [
         label,
         data.categories.expenses[i],
         data.categories.income[i],
       ]);
-      const monthly = data.monthly.labels.map((label, i): [string, number, number] => [
+      const monthly = data.monthly.labels.map((label: string, i: number): [string, number, number] => [
         label,
         data.monthly.expenses[i],
         data.monthly.income[i],

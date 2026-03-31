@@ -5,16 +5,8 @@
  * new order persisted to the backend immediately on drop.
  */
 
-import type { Category, ApiResult, ApiError, SortableInstance, SortableOptions } from "./types";
-//import Sortable from 'sortablejs';
-
-// Sortable is imported as an ES module so it is guaranteed to be resolved
-// before any code in this module runs — no <script> tag timing dependency.
-// The CDN's /+esm endpoint serves a proper ESM build.
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore — no bundled type declarations for the CDN ESM path
-import SortableLib from 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/+esm';
-const Sortable = SortableLib as { create(el: HTMLElement, options: SortableOptions): SortableInstance };
+import type { Category, ApiResult, ApiError, SortableInstance } from "./types";
+import Sortable from 'sortablejs';
 
 // Track Sortable instances so we can destroy them before re-rendering the list,
 // preventing duplicate listeners from accumulating across reloads.
