@@ -1,5 +1,8 @@
-import { test, expect, Page } from '@playwright/test';
-import { clearDatabase, addCategory, addTransaction } from './helpers';
+import { test, expect, Page, Locator, request } from '@playwright/test';
+import { clearDatabase, seedTransactionsViaAPI } from './helpers';
+import { SettingsPage } from './pages/SettingsPage';
+import { TransactionsPage } from './pages/TransactionsPage';
+import { SummaryPage } from './pages/SummaryPage';
 
 /**
  * Category & Tag Reorder Tests
@@ -25,13 +28,13 @@ import { clearDatabase, addCategory, addTransaction } from './helpers';
  * Sortable.js has time to compute the new insertion point.
  */
 async function dragItemToIndex(
-  page: Page,
-  listSelector: string,
+  setPage: SettingsPage,
+  listSelector: Locator,
   sourceIndex: number,
   targetIndex: number
 ): Promise<void> {
-  const items = page.locator(`${listSelector} .category-item`);
-  const handle = items.nth(sourceIndex).locator('.drag-handle');
+  const items = listSelector.locator(setPage.categoryItemStr);
+  const handle = items.nth(sourceIndex).locator(setPage.dragHandleStr);
   const target = items.nth(targetIndex);
 
   const handleBox = await handle.boundingBox();
@@ -46,69 +49,84 @@ async function dragItemToIndex(
     ? targetBox.y + targetBox.height * 0.75
     : targetBox.y + targetBox.height * 0.25;
 
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
+  await setPage.page.mouse.move(startX, startY);
+  await setPage.page.mouse.down();
   // Move in multiple steps — Sortable.js needs intermediate mousemove events
   // to track the drag and decide where to insert the ghost placeholder.
-  await page.mouse.move(startX, startY + (endY - startY) * 0.3, { steps: 5 });
-  await page.mouse.move(startX, startY + (endY - startY) * 0.6, { steps: 5 });
-  await page.mouse.move(startX, endY, { steps: 10 });
+  await setPage.page.mouse.move(startX, startY + (endY - startY) * 0.3, { steps: 5 });
+  await setPage.page.mouse.move(startX, startY + (endY - startY) * 0.6, { steps: 5 });
+  await setPage.page.mouse.move(startX, endY, { steps: 10 });
   // Brief pause so Sortable can settle the placeholder before we release.
-  await page.waitForTimeout(100);
-  await page.mouse.up();
-  await page.waitForTimeout(300);
+  await setPage.page.waitForTimeout(100);
+  await setPage.page.mouse.up();
+  await setPage.page.waitForTimeout(300);
 }
 
-/** Return the visible text content of every .category-item in a list. */
-async function getItemNames(page: Page, listSelector: string): Promise<string[]> {
+/*async function getItemNames(page: Page, listSelector: Locator): Promise<string[]> {
   return page.locator(`${listSelector} .category-item .category-name`).allTextContents();
-}
+}*/
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const CAT_LIST = '#categories-list';
+/*const CAT_LIST = '#categories-list';
 const TAG_LIST = '#tags-list';
 const FILTER_CAT_OPTIONS = '#category-options-list .filter-option';
-const FILTER_TAG_OPTIONS = '#tag-options-list .filter-option';
+const FILTER_TAG_OPTIONS = '#tag-options-list .filter-option';*/
 
 // ─── Drag handle visibility ───────────────────────────────────────────────────
 
 test.describe('Drag handle visibility', () => {
+  let setPage: SettingsPage;
+  let txPage: TransactionsPage;
   test.beforeEach(async ({ page }) => {
     await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    setPage = new SettingsPage(page);
+    txPage = new TransactionsPage(page);
+    setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
   });
 
   test('each category item has a visible drag handle', async ({ page }) => {
-    await addCategory(page, 'alpha');
-    await addCategory(page, 'beta');
+    await setPage.addCategory('alpha');
+    await setPage.addCategory('beta');
+    //await addCategory(page, 'alpha');
+    //await addCategory(page, 'beta');
 
-    const handles = page.locator(`${CAT_LIST} .drag-handle`);
+    const handles = setPage.categoriesList.locator(`${setPage.dragHandleStr}`);
+    //const handles = page.locator(`${CAT_LIST} .drag-handle`);
     await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
   });
 
-  test('each tag item has a visible drag handle', async ({ page }) => {
+  test('each tag item has a visible drag handle', async ({ page, request }) => {
     // Tags appear once they have been applied to at least one transaction.
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+    await txPage.goto();
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
+    await seedTransactionsViaAPI(request, [{
+      //await addTransaction(page, {
       description: 'Tagged A', amount: 10, type: 'expense',
       category: 'other', tags: 'urgent,planned',
-    });
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    }]);
+    await setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
 
-    const handles = page.locator(`${TAG_LIST} .drag-handle`);
+    const handles = setPage.tagList.locator(setPage.dragHandleStr);
+    //const handles = setPage.tagList.locator(`.drag-handle`);
     await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
   });
 
   test('drag handle shows grab cursor (CSS)', async ({ page }) => {
-    await addCategory(page, 'alpha');
-    const cursor = await page
-      .locator(`${CAT_LIST} .drag-handle`)
+    await setPage.addCategory('alpha');
+    //await addCategory(page, 'alpha');
+    //const cursor = await page
+    //  .locator(`${CAT_LIST} .drag-handle`)
+    const cursor = await setPage.categoriesList
+      .locator(setPage.dragHandleStr)
+      //.locator(`.drag-handle`)
       .first()
       .evaluate(el => getComputedStyle(el).cursor);
     expect(cursor).toBe('grab');
@@ -118,68 +136,89 @@ test.describe('Drag handle visibility', () => {
 // ─── Category reordering ──────────────────────────────────────────────────────
 
 test.describe.serial('Category reordering', () => {
+  let setPage: SettingsPage;
+  let sumPage: SummaryPage;
+  let txPage: TransactionsPage;
+
   test.beforeAll(async ({ browser }) => {
     const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
     const page = await ctx.newPage();
     await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    setPage = new SettingsPage(page);
+    sumPage = new SummaryPage(page);
+    txPage = new TransactionsPage(page);
+    setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
     for (const name of ['alpha', 'beta', 'gamma', 'delta']) {
-      await addCategory(page, name);
+      //await addCategory(page, name);
+      await setPage.addCategory(name);
     }
     await page.close();
     await ctx.close();
   });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    await setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
   });
 
   test('categories are rendered in insertion order initially', async ({ page }) => {
-    const names = await getItemNames(page, CAT_LIST);
+    const names = await setPage.getListNames(setPage.categoriesList);
+    //const names = await getItemNames(page, CAT_LIST);
     // Default seeded categories arrive first; our four are appended in order.
     const ours = names.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
     expect(ours).toEqual(['alpha', 'beta', 'gamma', 'delta']);
   });
 
   test('dragging a category down reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
     const alphaIdx = before.indexOf('alpha');
 
     // Drag alpha one position down.
-    await dragItemToIndex(page, CAT_LIST, alphaIdx, alphaIdx + 1);
+    await dragItemToIndex(setPage, setPage.categoriesList, alphaIdx, alphaIdx + 1);
+    //await dragItemToIndex(page, CAT_LIST, alphaIdx, alphaIdx + 1);
 
-    const after = await getItemNames(page, CAT_LIST);
+    const after = await setPage.getListNames(setPage.categoriesList);
+    //const after = await getItemNames(page, CAT_LIST);
     const alphaAfter = after.indexOf('alpha');
     const betaAfter = after.indexOf('beta');
     expect(alphaAfter).toBeGreaterThan(betaAfter);
   });
 
   test('dragging a category up reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
     const deltaIdx = before.indexOf('delta');
 
     // Drag delta up one position.
-    await dragItemToIndex(page, CAT_LIST, deltaIdx, deltaIdx - 1);
+    await dragItemToIndex(setPage, setPage.categoriesList, deltaIdx, deltaIdx - 1);
+    //await dragItemToIndex(page, CAT_LIST, deltaIdx, deltaIdx - 1);
 
-    const after = await getItemNames(page, CAT_LIST);
+    const after = await setPage.getListNames(setPage.categoriesList);
+    //const after = await getItemNames(page, CAT_LIST);
     expect(after.indexOf('delta')).toBeLessThan(before.indexOf('delta'));
   });
 
   test('reordered position persists after a full page reload', async ({ page }) => {
     // Move alpha to after gamma on this load.
-    const before = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
     const alphaIdx = before.indexOf('alpha');
     const gammaIdx = before.indexOf('gamma');
 
-    await dragItemToIndex(page, CAT_LIST, alphaIdx, gammaIdx);
-    const afterDrag = await getItemNames(page, CAT_LIST);
+    await dragItemToIndex(setPage, setPage.categoriesList, alphaIdx, gammaIdx);
+    //await dragItemToIndex(page, CAT_LIST, alphaIdx, gammaIdx);
+    const afterDrag = await setPage.getListNames(setPage.categoriesList);
+    //await dragItemToIndex(page, CAT_LIST, alphaIdx, gammaIdx);
+    //const afterDrag = await getItemNames(page, CAT_LIST);
 
     // Reload and confirm the server returned the same order.
     await page.reload();
     await page.waitForLoadState('networkidle');
-    const afterReload = await getItemNames(page, CAT_LIST);
+    const afterReload = await setPage.getListNames(setPage.categoriesList);
 
     expect(afterReload.indexOf('alpha')).toBe(afterDrag.indexOf('alpha'));
     expect(afterReload.indexOf('gamma')).toBe(afterDrag.indexOf('gamma'));
@@ -187,20 +226,25 @@ test.describe.serial('Category reordering', () => {
 
   test('custom order is reflected in the Summary page category filter', async ({ page }) => {
     // Establish a known order by dragging delta to the front of our four.
-    const before = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
     const deltaIdx = before.indexOf('delta');
     const alphaIdx = before.indexOf('alpha');
-    await dragItemToIndex(page, CAT_LIST, deltaIdx, alphaIdx);
+    await dragItemToIndex(setPage, setPage.categoriesList, deltaIdx, alphaIdx);
+    //await dragItemToIndex(page, CAT_LIST, deltaIdx, alphaIdx);
 
-    const settingsOrder = await getItemNames(page, CAT_LIST);
+    //const settingsOrder = await getItemNames(page, CAT_LIST);
 
-    await page.goto('/summary');
-    await page.waitForLoadState('networkidle');
+    await sumPage.goto();
+    //await page.goto('/summary');
+    //await page.waitForLoadState('networkidle');
     // Open category filter dropdown.
-    await page.locator('#category-details summary').click();
-    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
+    //await page.locator('#category-details summary').click();
+    //await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
+    await sumPage.filter.openCategoryFilter();
 
-    const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
+    const filterOptions = await sumPage.filter.categoryOptionsList.allTextContents();
+    //const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
     const filterNames = filterOptions.map(t => t.trim().toLowerCase());
 
     // Verify relative order of our four categories matches what we set.
@@ -212,14 +256,18 @@ test.describe.serial('Category reordering', () => {
   });
 
   test('custom order is reflected in the Transactions page category filter', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, CAT_LIST);
+    const settingsOrder = await setPage.getListNames(setPage.categoriesList);
+    //const settingsOrder = await getItemNames(page, CAT_LIST);
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#category-details summary').click();
-    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
+    await txPage.goto();
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
+    await txPage.filter.openCategoryFilter();
+    //await page.locator('#category-details summary').click();
+    //await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
 
-    const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
+    const filterOptions = await txPage.filter.categoryOptionsList.allTextContents();
+    //const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
     const filterNames = filterOptions.map(t => t.trim().toLowerCase());
 
     // The filter list must contain all four custom categories.
@@ -234,13 +282,15 @@ test.describe.serial('Category reordering', () => {
   });
 
   test('custom order is reflected in the add-transaction category <select>', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, CAT_LIST);
+    const settingsOrder = await setPage.getListNames(setPage.categoriesList);
+    //const settingsOrder = await getItemNames(page, CAT_LIST);
     const settingsOurs = settingsOrder.filter(n =>
       ['alpha', 'beta', 'gamma', 'delta'].includes(n)
     );
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+    await txPage.goto();
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
 
     const options = await page.getByLabel('Category').locator('option').allTextContents();
     const selectOurs = options
@@ -251,9 +301,13 @@ test.describe.serial('Category reordering', () => {
   });
 
   test('new category added after reordering lands at the bottom', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
-    await addCategory(page, 'zeta');
-    const after = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    await setPage.addCategory('zeta');
+    //await addCategory(page, 'zeta');
+    const after = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
+    //await addCategory(page, 'zeta');
+    //const after = await getItemNames(page, CAT_LIST);
 
     expect(after[after.length - 1]).toBe('zeta');
     // All previous categories are still present and their relative order is intact.
@@ -263,17 +317,20 @@ test.describe.serial('Category reordering', () => {
   });
 
   test('deleting a category does not disturb the order of the remaining ones', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
     const targetName = 'zeta';
     const expected = before.filter(n => n !== targetName);
 
     page.once('dialog', d => d.accept());
-    await page.locator(`${CAT_LIST} .category-item`, { hasText: targetName })
+    await setPage.categoryItem.filter({ hasText: targetName })
+      //await page.locator(`${CAT_LIST} .category-item`, { hasText: targetName })
       .getByRole('button', { name: 'Delete' })
       .click();
     await page.waitForLoadState('networkidle');
 
-    const after = await getItemNames(page, CAT_LIST);
+    const after = await setPage.getListNames(setPage.categoriesList);
+    //const after = await getItemNames(page, CAT_LIST);
     expect(after).toEqual(expected);
   });
 });
@@ -281,86 +338,114 @@ test.describe.serial('Category reordering', () => {
 // ─── Tag reordering ───────────────────────────────────────────────────────────
 
 test.describe.serial('Tag reordering', () => {
-  test.beforeAll(async ({ browser }) => {
+  let txPage: TransactionsPage;
+  let setPage: SettingsPage;
+  let sumPage: SummaryPage;
+
+  test.beforeAll(async ({ browser, request }) => {
     const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
     const page = await ctx.newPage();
     await clearDatabase(page);
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+    txPage = new TransactionsPage(page);
+    setPage = new SettingsPage(page);
+    sumPage = new SummaryPage(page);
+
+    txPage.goto();
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
     // Create four transactions each carrying a unique tag so all four appear
     // in the tags list.
     const tags = ['urgent', 'planned', 'recurring', 'personal'];
     for (const tag of tags) {
-      await addTransaction(page, {
+      await seedTransactionsViaAPI(request, [{
+        //await addTransaction(page, {
         description: `Trans ${tag}`, amount: 10, type: 'expense',
         category: 'other', tags: tag,
-      });
+      }]);
     }
     await page.close();
     await ctx.close();
   });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
   });
 
   test('tags are rendered in insertion order initially', async ({ page }) => {
-    const names = await getItemNames(page, TAG_LIST);
+    const names = await setPage.getListNames(setPage.tagList);
+    //const names = await getItemNames(page, TAG_LIST);
     expect(names).toEqual(['urgent', 'planned', 'recurring', 'personal']);
   });
 
   test('dragging a tag down reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+    const before = await setPage.getListNames(setPage.tagList);
+    //const before = await getItemNames(page, TAG_LIST);
     const urgentIdx = before.indexOf('urgent');
 
-    await dragItemToIndex(page, TAG_LIST, urgentIdx, urgentIdx + 1);
+    await dragItemToIndex(setPage, setPage.tagList, urgentIdx, urgentIdx + 1);
+    //await dragItemToIndex(page, TAG_LIST, urgentIdx, urgentIdx + 1);
 
-    const after = await getItemNames(page, TAG_LIST);
+    const after = await setPage.getListNames(setPage.tagList);
+    //const after = await getItemNames(page, TAG_LIST);
     expect(after.indexOf('urgent')).toBeGreaterThan(after.indexOf('planned'));
   });
 
   test('dragging a tag up reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+    const before = await setPage.getListNames(setPage.tagList);
+    //const before = await getItemNames(page, TAG_LIST);
     const personalIdx = before.indexOf('personal');
 
-    await dragItemToIndex(page, TAG_LIST, personalIdx, personalIdx - 1);
+    await dragItemToIndex(setPage, setPage.tagList, personalIdx, personalIdx - 1);
+    //await dragItemToIndex(page, TAG_LIST, personalIdx, personalIdx - 1);
 
-    const after = await getItemNames(page, TAG_LIST);
+    const after = await setPage.getListNames(setPage.tagList);
+    //const after = await getItemNames(page, TAG_LIST);
     expect(after.indexOf('personal')).toBeLessThan(before.indexOf('personal'));
   });
 
   test('reordered tag position persists after page reload', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+    const before = await setPage.getListNames(setPage.tagList);
+    //const before = await getItemNames(page, TAG_LIST);
     const recurringIdx = before.indexOf('recurring');
     const urgentIdx = before.indexOf('urgent');
 
-    await dragItemToIndex(page, TAG_LIST, recurringIdx, urgentIdx);
-    const afterDrag = await getItemNames(page, TAG_LIST);
+    await dragItemToIndex(setPage, setPage.tagList, recurringIdx, urgentIdx);
+    const afterDrag = await setPage.getListNames(setPage.tagList);
+    //await dragItemToIndex(page, TAG_LIST, recurringIdx, urgentIdx);
+    //const afterDrag = await getItemNames(page, TAG_LIST);
 
     await page.reload();
     await page.waitForLoadState('networkidle');
-    const afterReload = await getItemNames(page, TAG_LIST);
+    const afterReload = await setPage.getListNames(setPage.tagList);
+    //const afterReload = await getItemNames(page, TAG_LIST);
 
     expect(afterReload.indexOf('recurring')).toBe(afterDrag.indexOf('recurring'));
   });
 
   test('custom tag order is reflected in the Summary page tag filter', async ({ page }) => {
     // Move personal to first position.
-    const before = await getItemNames(page, TAG_LIST);
+    const before = await setPage.getListNames(setPage.tagList);
+    //const before = await getItemNames(page, TAG_LIST);
     const personalIdx = before.indexOf('personal');
-    await dragItemToIndex(page, TAG_LIST, personalIdx, 0);
+    await dragItemToIndex(setPage, setPage.tagList, personalIdx, 0);
+    //await dragItemToIndex(page, TAG_LIST, personalIdx, 0);
 
-    const settingsOrder = await getItemNames(page, TAG_LIST);
+    const settingsOrder = await setPage.getListNames(setPage.tagList);
+    //const settingsOrder = await getItemNames(page, TAG_LIST);
 
-    await page.goto('/summary');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#tag-details summary').click();
+    sumPage.goto();
+    //await page.goto('/summary');
+    //await page.waitForLoadState('networkidle');
+    //await page.locator('#tag-details summary').click();
+    await sumPage.filter.openTagFilter();
     await expect(
       page.locator('#tag-options-list').filter({ hasText: 'personal' })
     ).toBeVisible({ timeout: 5000 });
 
-    const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
+    const filterOptions = await sumPage.filter.tagFilterOption.allTextContents();
+    //const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
     const filterNames = filterOptions.map(t => t.trim());
 
     // personal should now appear before urgent in the filter list.
@@ -374,16 +459,20 @@ test.describe.serial('Tag reordering', () => {
   });
 
   test('custom tag order is reflected in the Transactions page tag filter', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, TAG_LIST);
+    const settingsOrder = await setPage.getListNames(setPage.tagList);
+    //const settingsOrder = await getItemNames(page, TAG_LIST);
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#tag-details summary').click();
+    await txPage.goto();
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
+    await txPage.filter.openTagFilter();
+    //await page.locator('#tag-details summary').click();
     await expect(
       page.locator('#tag-options-list').filter({ hasText: 'urgent' })
     ).toBeVisible({ timeout: 5000 });
 
-    const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
+    const filterOptions = await txPage.filter.tagFilterOption.allTextContents();
+    //const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
     const filterNames = filterOptions.map(t => t.trim());
 
     const tagNames = ['urgent', 'planned', 'recurring', 'personal'];
@@ -393,15 +482,19 @@ test.describe.serial('Tag reordering', () => {
   });
 
   test('deleting a tag does not disturb the order of the remaining ones', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+    const before = await setPage.getListNames(setPage.tagList);
+    //const before = await getItemNames(page, TAG_LIST);
 
-    page.once('dialog', d => d.accept());
-    await page.locator(`${TAG_LIST} .category-item`, { hasText: 'personal' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
+    //page.once('dialog', d => d.accept());
+    await setPage.deleteCategory('personal');
+    //await page.locator(`${TAG_LIST} .category-item`, { hasText: 'personal' })
+    //await page.locator(`${TAG_LIST} .category-item`, { hasText: 'personal' })
+    //  .getByRole('button', { name: 'Delete' })
+    //  .click();
+    //await page.waitForLoadState('networkidle');
 
-    const after = await getItemNames(page, TAG_LIST);
+    const after = await setPage.getListNames(setPage.tagList);
+    //const after = await getItemNames(page, TAG_LIST);
     const expected = before.filter(n => n !== 'personal');
     expect(after).toEqual(expected);
   });
@@ -410,30 +503,44 @@ test.describe.serial('Tag reordering', () => {
 // ─── Rename does not reset sort_order ────────────────────────────────────────
 
 test.describe('Rename preserves sort order', () => {
+  let setPage: SettingsPage;
+
   test.beforeEach(async ({ page }) => {
     await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    setPage = new SettingsPage(page);
+    await setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
     for (const name of ['first', 'second', 'third']) {
-      await addCategory(page, name);
+      await setPage.addCategory(name);
+      //await addCategory(page, name);
     }
   });
 
   test('renaming the middle category keeps it in the middle', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
-    const secondIdx = before.indexOf('second');
+    const before = await setPage.getListNames(setPage.categoriesList);
+    //const before = await getItemNames(page, CAT_LIST);
+    const second: string = 'second'
+    const secondIdx = before.indexOf(second);
 
     // Rename 'second' → 'middle'
-    await page.locator(`${CAT_LIST} .category-item`, { hasText: 'second' })
-      .getByRole('button', { name: 'Edit' })
-      .click();
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.getByLabel('Category Name').fill('middle');
-    await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
-    await page.waitForLoadState('networkidle');
+    //await page.locator(`${CAT_LIST} .category-item`, { hasText: 'second' })
+    await setPage.openEditModal(second)
 
-    const after = await getItemNames(page, CAT_LIST);
-    const middleIdx = after.indexOf('middle');
+    const middle: string = 'middle';
+    await setPage.submitRename(middle);
+    //await page.locator(`${CAT_LIST} .category-item`, { hasText: 'second' })
+    //  .getByRole('button', { name: 'Edit' })
+    //  .click();
+    //await expect(page.locator('#editCategoryModal')).toBeVisible();
+    //await page.getByLabel('Category Name').fill('middle');
+    //await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
+    //await page.waitForLoadState('networkidle');
+
+    const after = await setPage.getListNames(setPage.categoriesList);
+    //const after = await getItemNames(page, CAT_LIST);
+    const middleIdx = after.indexOf(middle);
+    //const middleIdx = after.indexOf('middle');
     expect(middleIdx).toBe(secondIdx);
   });
 });
@@ -441,12 +548,19 @@ test.describe('Rename preserves sort order', () => {
 // ─── API contract ─────────────────────────────────────────────────────────────
 
 test.describe('Order API contract', () => {
+  let setPage: SettingsPage;
+  let txPage: TransactionsPage;
+
   test.beforeEach(async ({ page }) => {
     await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    setPage = new SettingsPage(page);
+    txPage = new TransactionsPage(page);
+    setPage.goto();
+    //await page.goto('/settings');
+    //await page.waitForLoadState('networkidle');
     for (const name of ['cat1', 'cat2', 'cat3']) {
-      await addCategory(page, name);
+      //await addCategory(page, name);
+      await setPage.addCategory(name);
     }
   });
 
@@ -490,9 +604,11 @@ test.describe('Order API contract', () => {
   });
 
   test('PATCH /api/tags/order returns 200 with valid payload', async ({ page }) => {
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
+    await txPage.addTransactionViaUI({
+      //await addTransaction(page, {
+      //await addTransaction(page, {
       description: 'T1', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
 
@@ -504,9 +620,11 @@ test.describe('Order API contract', () => {
   });
 
   test('GET /api/tags returns tags in the order set by PATCH', async ({ page }) => {
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+    //await page.goto('/transactions');
+    //await page.waitForLoadState('networkidle');
+    await txPage.addTransactionViaUI({
+      //await addTransaction(page, {
+      //await addTransaction(page, {
       description: 'T2', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
 

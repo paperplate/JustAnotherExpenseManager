@@ -1,15 +1,15 @@
-import { expect, Page } from '@playwright/test';
+import { APIRequest, APIRequestContext, APIResponse, expect, Page } from '@playwright/test';
 
-const TODAY = new Date().toISOString().split('T')[0];
+export const TODAY = new Date().toISOString().split('T')[0];
 
-async function clearDatabase(page: Page): Promise<void> {
+export async function clearDatabase(page: Page): Promise<void> {
   const response = await page.request.post('/api/transactions/clear-all');
   if (!response.ok()) {
     throw new Error(`clear-all failed: ${response.status()} ${await response.text()}`);
   }
 }
 
-interface TransactionOptions {
+export interface TransactionOptions {
   description: string;
   amount: number;
   type: 'income' | 'expense';
@@ -18,7 +18,7 @@ interface TransactionOptions {
   date?: string;
 }
 
-async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
+/*async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
   const { description, amount, type, category, tags = '', date = TODAY } = opts;
   await page.getByRole('textbox', { name: 'Description' }).fill(description);
   await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(amount));
@@ -35,108 +35,35 @@ async function addTransaction(page: Page, opts: TransactionOptions): Promise<voi
       await tagifyInput.fill(tag + ',');
     }
   }
+  const responsePromise = page.waitForResponse(
+    res => res.url().includes('/api/transactions') && res.status() === 200);
   await page.getByRole('button', { name: 'Add Transaction' }).click();
-  await page.waitForLoadState('networkidle');
+  await responsePromise;
+  //await page.waitForLoadState('networkidle');
   await page.getByRole('cell', { name: description, exact: true }).isVisible();
+}*/
+
+export async function seedTransactionsViaAPI(request: APIRequestContext, opts: TransactionOptions[]): Promise<void> {
+  const formData = new URLSearchParams();
+  for (const o of opts) {
+    formData.append('description', o.description);
+    formData.append('amount', String(o.amount));
+    formData.append('type', o.type);
+    formData.append('date', o.date || TODAY);
+    formData.append('category', o.category);
+    formData.append('tags', o.tags || '');
+
+    const response = await request.post('/api/transactions', {
+      data: formData.toString(),
+      headers: { 'Content-Type': 'application/x-www-form-urlencode' }
+    });
+    expect(response.ok()).toBeTruthy();
+  }
 }
 
 /**
  * Parse a dollar string like "$1,234.56" or "$0.00" to a float.
  */
-function parseDollar(text: string | null): number {
+export function parseDollar(text: string | null): number {
   return parseFloat((text ?? '0').replace(/[$,]/g, ''));
 }
-
-async function addCategory(page: Page, name: string): Promise<void> {
-  await page.getByPlaceholder('Enter category name').fill(name);
-  await page.getByRole('button', { name: 'Add Category' }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function openEditModal(page: Page, categoryName: string): Promise<void> {
-  await page.locator('.category-item', { hasText: categoryName })
-    .getByRole('button', { name: 'Edit' })
-    .click();
-}
-
-async function submitRename(page: Page, newName: string): Promise<void> {
-  await page.getByLabel('Category Name').fill(newName);
-  await page.getByRole('button', { name: 'Save Changes' }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function openCategoryFilter(page: Page): Promise<void> {
-  const details = page.locator('#category-details');
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-}
-
-async function openTagFilter(page: Page): Promise<void> {
-  const details = page.locator('#tag-details');
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-}
-
-async function selectCategory(page: Page, name: string): Promise<void> {
-  await openCategoryFilter(page);
-  const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#category-options-list .filter-option')
-    .filter({ hasText: regexp })
-    .click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function selectTag(page: Page, name: string): Promise<void> {
-  await openTagFilter(page);
-  const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#tag-options-list .filter-option')
-    .filter({ hasText: regexp })
-    .click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetCategoryFilter(page: Page): Promise<void> {
-  await openCategoryFilter(page);
-  await page.locator('#category-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetTagFilter(page: Page): Promise<void> {
-  await openTagFilter(page);
-  await page.locator('#tag-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function scrollToTotals(page: Page): Promise<void> {
-  const totals = page.locator('.monthly-totals');
-  await totals.waitFor({ state: 'attached' });
-  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
-  await expect(totals).toBeInViewport();
-}
-
-async function scrollToSummary(page: Page): Promise<void> {
-  const totals = page.locator('.summary-grid');
-  await totals.waitFor({ state: 'attached' });
-  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
-  await expect(totals).toBeInViewport();
-}
-
-export {
-  clearDatabase,
-  addTransaction,
-  parseDollar,
-  addCategory,
-  openCategoryFilter,
-  openEditModal,
-  submitRename,
-  TODAY,
-  selectCategory,
-  selectTag,
-  resetCategoryFilter,
-  resetTagFilter,
-  scrollToTotals,
-  TransactionOptions,
-  scrollToSummary
-};

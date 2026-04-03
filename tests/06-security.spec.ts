@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
-import { addTransaction, addCategory, TODAY } from './helpers';
+import { seedTransactionsViaAPI, TODAY } from './helpers';
+import { TransactionsPage } from './pages/TransactionsPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 /**
  * Security Tests
@@ -7,19 +9,26 @@ import { addTransaction, addCategory, TODAY } from './helpers';
  */
 
 test.describe('Security', () => {
+  let txPage: TransactionsPage;
+  let setPage: SettingsPage;
+
   test.describe('XSS Protection', () => {
     test.beforeEach(async ({ page }) => {
-      await page.goto('/transactions');
-      await page.waitForLoadState('networkidle');
+      txPage = new TransactionsPage(page);
+      setPage = new SettingsPage(page);
+      txPage.goto();
+      //await page.goto('/transactions');
+      //await page.waitForLoadState('networkidle');
     });
 
-    test('should prevent XSS in transaction description', async ({ page }) => {
-      await addTransaction(page, {
+    test('should prevent XSS in transaction description', async ({ page, request }) => {
+      seedTransactionsViaAPI(request, [{
+        //await addTransaction(page, {
         description: '<script>alert("XSS")</script>',
         amount: 10,
         type: 'expense',
         category: 'other',
-      });
+      }]);
 
       // Table should still be visible (no JS crash)
       await expect(page.getByRole('table')).toBeVisible();
@@ -31,30 +40,36 @@ test.describe('Security', () => {
     });
 
     test('should prevent XSS in category names', async ({ page }) => {
-      await page.goto('/settings');
-      await page.waitForLoadState('networkidle');
+      setPage.goto();
+      //await page.goto('/settings');
+      //await page.waitForLoadState('networkidle');
 
-      await addCategory(page, '<img src=x onerror="alert(1)">');
+      await setPage.addCategory('<img src=x onerror="alert(1)">');
+      //await addCategory(page, '<img src=x onerror="alert(1)">');
 
       // Should be rejected by server-side validation (invalid characters)
-      await expect(page.locator('#add-category-result')).toContainText('can only contain');
+      //await expect(page.locator('#add-category-result')).toContainText('can only contain');
+      await expect(setPage.addCategoryResult).toContainText('can only contain');
     });
 
     test('should handle quotes in transaction description safely', async ({ page }) => {
-      await addTransaction(page, {
+      await txPage.addTransactionViaUI({
+        //await addTransaction(page, {
         description: `O'Malley's "Best" Pub`,
         amount: 25,
         type: 'expense',
         category: 'food',
       });
 
-      await expect(page.getByText(`O'Malley's "Best" Pub`)).toBeVisible();
+      //await expect(page.getByText(`O'Malley's "Best" Pub`)).toBeVisible();
 
       // Edit modal should open without errors and load description correctly
       await page.getByRole('button', { name: 'Edit' }).first().click();
-      await expect(page.locator('#editModal')).toBeVisible();
+      //await expect(page.locator('#editModal')).toBeVisible();
+      await expect(txPage.editModal).toBeVisible();
 
-      const descValue = await page.locator('#editModal').getByLabel('Description').inputValue();
+      const descValue = await txPage.editModal.getByLabel('Description').inputValue();
+      //const descValue = await page.locator('#editModal').getByLabel('Description').inputValue();
       expect(descValue).toBe(`O'Malley's "Best" Pub`);
     });
   });
@@ -76,9 +91,12 @@ test.describe('Security', () => {
   });
 
   test.describe('Input Validation', () => {
+    let txPage: TransactionsPage;
     test.beforeEach(async ({ page }) => {
-      await page.goto('/transactions');
-      await page.waitForLoadState('networkidle');
+      txPage = new TransactionsPage(page);
+      txPage.goto();
+      //await page.goto('/transactions');
+      //await page.waitForLoadState('networkidle');
     });
 
     test('should reject negative amounts via server', async ({ page }) => {
@@ -89,37 +107,48 @@ test.describe('Security', () => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, '-50.00');
         el.dispatchEvent(new Event('input', { bubbles: true }));
       });
-      await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
-      await page.getByRole('textbox', { name: 'Date' }).fill(TODAY);
-      await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
-      await page.getByRole('button', { name: 'Add Transaction' }).click();
-      await page.waitForTimeout(500);
+      await txPage.typeSelect.selectOption('expense');
+      await txPage.dateInput.fill(TODAY);
+      await txPage.categorySelect.selectOption({ value: 'other' });
+      await txPage.addTransactionBtn.click();
+      //await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
+      //await page.getByRole('textbox', { name: 'Date' }).fill(TODAY);
+      //await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
+      //await page.getByRole('button', { name: 'Add Transaction' }).click();
+      //await page.waitForTimeout(500);
 
       await expect(page.getByText('-$-50.00')).not.toBeVisible();
     });
 
     test('should reject invalid date formats via server', async ({ page }) => {
-      await page.getByRole('textbox', { name: 'Description' }).fill('Date Test');
-      await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(25.0));
-      await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
+      await txPage.descriptionInput.fill('Date Test');
+      await txPage.amountInput.fill(String(25.0));
+      await txPage.typeSelect.selectOption('expense');
+      await txPage.categorySelect.selectOption({ value: 'other' });
+      //await page.getByRole('textbox', { name: 'Description' }).fill('Date Test');
+      //await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(25.0));
+      //await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
+      //await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
       // Bypass HTML5 date input validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
         (document.getElementById('date') as HTMLInputElement).value = '2024-13-45';
       });
-      await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
-      await page.getByRole('button', { name: 'Add Transaction' }).click();
+      await txPage.addTransactionBtn.click();
+      //await page.getByRole('button', { name: 'Add Transaction' }).click();
       await page.waitForTimeout(500);
 
       await expect(page.getByText('Date Test')).not.toBeVisible();
     });
 
     test('amount input type should be "number" for browser validation', async ({ page }) => {
-      const type = await page.getByRole('spinbutton', { name: 'Amount ($)' }).getAttribute('type');
+      //const type = await page.getByRole('spinbutton', { name: 'Amount ($)' }).getAttribute('type');
+      const type = await txPage.amountInput.getAttribute('type');
       expect(type).toBe('number');
     });
 
     test('should reject non-numeric amounts via HTML5 validation', async ({ page }) => {
-      const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => {
+      //const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => {
+      const isInvalid = await txPage.amountInput.evaluate(el => {
         const input = el as HTMLInputElement;
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'abc');
         input.dispatchEvent(new Event('input', { bubbles: true }));

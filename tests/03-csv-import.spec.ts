@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
  * CSV Import Tests
@@ -8,9 +9,11 @@ import * as path from 'path';
  */
 
 test.describe('CSV Import', () => {
+  let txPage: TransactionsPage;
+
   test.beforeEach(async ({ page }) => {
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+    txPage = new TransactionsPage(page);
+    await txPage.goto();
   });
 
   test('should import valid CSV file', async ({ page }) => {
@@ -25,11 +28,14 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.getByLabel('CSV File').setInputFiles(csvPath);
-      await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.csvFile.setInputFiles(csvPath);
+      //await page.getByLabel('CSV File').setInputFiles(csvPath);
+      //await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.importCSVBtn.click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('#import-result')).toContainText('Successfully imported 3 transaction(s)');
+      //await expect(page.locator('#import-result')).toContainText('Successfully imported 3 transaction(s)');
+      await expect(txPage.importResult).toContainText('Successfully imported 3 transaction(s)');
     } finally {
       if (fs.existsSync(csvPath)) fs.unlinkSync(csvPath);
     }
@@ -48,12 +54,16 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.getByLabel('CSV File').setInputFiles(csvPath);
-      await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.csvFile.setInputFiles(csvPath);
+      //await page.getByLabel('CSV File').setInputFiles(csvPath);
+      //await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.importCSVBtn.click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');
-      await expect(page.locator('#import-result')).toContainText('3 error(s)');
+      //await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');
+      //await expect(page.locator('#import-result')).toContainText('3 error(s)');
+      await expect(txPage.importResult).toContainText('Successfully imported 1 transaction(s)');
+      await expect(txPage.importResult).toContainText('3 error(s)');
     } finally {
       if (fs.existsSync(csvPath)) fs.unlinkSync(csvPath);
     }
@@ -64,11 +74,14 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(txtPath, 'This is not a CSV file');
 
     try {
-      await page.getByLabel('CSV File').setInputFiles(txtPath);
-      await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.csvFile.setInputFiles(txtPath);
+      //await page.getByLabel('CSV File').setInputFiles(csvPath);
+      //await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.importCSVBtn.click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('#import-result')).toContainText('must be a CSV');
+      //await expect(page.locator('#import-result')).toContainText('must be a CSV');
+      await expect(txPage.importResult).toContainText('must be a CSV');
     } finally {
       if (fs.existsSync(txtPath)) fs.unlinkSync(txtPath);
     }
@@ -80,11 +93,14 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.getByLabel('CSV File').setInputFiles(csvPath);
-      await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.csvFile.setInputFiles(csvPath);
+      //await page.getByLabel('CSV File').setInputFiles(csvPath);
+      //await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.importCSVBtn.click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('#import-result')).toContainText('Successfully imported 0 transaction(s)');
+      //await expect(page.locator('#import-result')).toContainText('Successfully imported 0 transaction(s)');
+      await expect(txPage.importResult).toContainText('Successfully imported 0 transaction(s)');
     } finally {
       if (fs.existsSync(csvPath)) fs.unlinkSync(csvPath);
     }
@@ -100,11 +116,14 @@ test.describe('CSV Import', () => {
     fs.writeFileSync(csvPath, csvContent);
 
     try {
-      await page.getByLabel('CSV File').setInputFiles(csvPath);
-      await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.csvFile.setInputFiles(csvPath);
+      //await page.getByLabel('CSV File').setInputFiles(csvPath);
+      //await page.getByRole('button', { name: 'Import CSV' }).click();
+      await txPage.importCSVBtn.click();
       await page.waitForLoadState('networkidle');
 
-      await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');
+      await expect(txPage.importResult).toContainText('Successfully imported 1 transaction(s)');
+      //await expect(page.locator('#import-result')).toContainText('Successfully imported 1 transaction(s)');
       // The transactions list should update automatically
       await expect(page.locator('#transactions-list')).not.toContainText('Loading');
     } finally {
