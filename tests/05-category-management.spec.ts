@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { SettingsPage } from './pages/SettingsPage';
+import { test, expect } from './fixtures';
+//import { test, expect } from '@playwright/test';
+//import { SettingsPage } from './pages/SettingsPage';
 import { TODAY } from './helpers';
 
 
@@ -15,12 +16,12 @@ import { TODAY } from './helpers';
 
 
 test.describe('Category Management', () => {
-  let setPage: SettingsPage;
+  //let setPage: SettingsPage;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page, settingsPage }) => {
     //await page.goto('/settings');
-    setPage = new SettingsPage(page);
-    await setPage.goto();
+    //setPage = new SettingsPage(page);
+    await settingsPage.goto();
     //await page.waitForLoadState('networkidle');
   });
 
@@ -29,7 +30,8 @@ test.describe('Category Management', () => {
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Settings');
   });
 
-  test('should load existing categories without category: prefix', async ({ page }) => {
+  test('should load existing categories without category: prefix', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     //await expect(page.locator('#categories-list')).toBeVisible();
     //const items = page.locator('#categories-list .category-item');
     await expect(setPage.categoriesList).toBeVisible();
@@ -42,7 +44,8 @@ test.describe('Category Management', () => {
     expect(hasPrefix).toBe(false);
   });
 
-  test('should add a new category', async ({ page }) => {
+  test('should add a new category', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const uniqueName = `testcat${TODAY}`;
     await setPage.categoryNameInput.fill(uniqueName);
     await setPage.addCategoryBtn.click();
@@ -56,7 +59,8 @@ test.describe('Category Management', () => {
     //await expect(page.locator('#categories-list .category-item', { hasText: uniqueName })).toBeVisible();
   });
 
-  test('should display added category without category: prefix', async ({ page }) => {
+  test('should display added category without category: prefix', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const uniqueName = `prefixtest${TODAY}`;
     await setPage.categoryNameInput.fill(uniqueName);
     await setPage.addCategoryBtn.click();
@@ -72,7 +76,8 @@ test.describe('Category Management', () => {
     expect(text).not.toContain('category:');
   });
 
-  test('should reject empty category name', async ({ page }) => {
+  test('should reject empty category name', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     await setPage.categoryNameInput.fill('   ');
     await setPage.addCategoryBtn.click();
     //await page.getByPlaceholder('Enter category name').fill('   ');
@@ -82,7 +87,8 @@ test.describe('Category Management', () => {
     await expect(setPage.addCategoryResult).toContainText('enter a category name');
   });
 
-  test('should reject duplicate category', async ({ page }) => {
+  test('should reject duplicate category', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const categoryName = `duptest${TODAY}`;
 
     await setPage.categoryNameInput.fill(categoryName);
@@ -100,7 +106,8 @@ test.describe('Category Management', () => {
     await expect(page.getByText('already exists')).toBeVisible();
   });
 
-  test('should edit a category', async ({ page }) => {
+  test('should edit a category', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const originalName = `edit${Date.now()}`;
     await setPage.categoryNameInput.fill(originalName);
     await setPage.addCategoryBtn.click();
@@ -135,7 +142,8 @@ test.describe('Category Management', () => {
     await expect(setPage.categoryItem.filter({ hasText: originalName })).not.toBeVisible();
   });
 
-  test('should delete a category', async ({ page }) => {
+  test('should delete a category', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const categoryName = `delete${Date.now()}`;
     await setPage.categoryNameInput.fill(categoryName);
     await setPage.addCategoryBtn.click();
@@ -160,7 +168,8 @@ test.describe('Category Management', () => {
     await expect(page.getByText(categoryName)).not.toBeAttached();
   });
 
-  test('should reject invalid category characters', async ({ page }) => {
+  test('should reject invalid category characters', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     await setPage.categoryNameInput.fill('test@#$%');
     await setPage.addCategoryBtn.click();
     //await page.getByPlaceholder('Enter category name').fill('test@#$%');
@@ -170,7 +179,8 @@ test.describe('Category Management', () => {
     //await expect(page.locator('#add-category-result')).toContainText('can only contain');
   });
 
-  test('should reject very long category name', async ({ page }) => {
+  test('should reject very long category name', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     await setPage.categoryNameInput.fill('a'.repeat(60));
     await setPage.addCategoryBtn.click();
     //await page.getByPlaceholder('Enter category name').fill('a'.repeat(60));
@@ -180,7 +190,8 @@ test.describe('Category Management', () => {
     //await expect(page.locator('#add-category-result')).toContainText('too long');
   });
 
-  test('edited category should appear in transactions category dropdown', async ({ page }) => {
+  test('edited category should appear in transactions category dropdown', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const catName = `dropdtest${Date.now()}`;
     await setPage.categoryNameInput.fill(catName);
     await setPage.addCategoryBtn.click();

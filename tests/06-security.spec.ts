@@ -1,7 +1,8 @@
-import { test, expect } from '@playwright/test';
+//import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { seedTransactionsViaAPI, TODAY } from './helpers';
-import { TransactionsPage } from './pages/TransactionsPage';
-import { SettingsPage } from './pages/SettingsPage';
+//import { TransactionsPage } from './pages/TransactionsPage';
+//import { SettingsPage } from './pages/SettingsPage';
 
 /**
  * Security Tests
@@ -9,13 +10,14 @@ import { SettingsPage } from './pages/SettingsPage';
  */
 
 test.describe('Security', () => {
-  let txPage: TransactionsPage;
-  let setPage: SettingsPage;
+  //let txPage: TransactionsPage;
+  //let setPage: SettingsPage;
 
   test.describe('XSS Protection', () => {
-    test.beforeEach(async ({ page }) => {
-      txPage = new TransactionsPage(page);
-      setPage = new SettingsPage(page);
+    test.beforeEach(async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
+      //txPage = new TransactionsPage(page);
+      //setPage = new SettingsPage(page);
       txPage.goto();
       //await page.goto('/transactions');
       //await page.waitForLoadState('networkidle');
@@ -39,7 +41,8 @@ test.describe('Security', () => {
       expect(text).toContain('<script>');
     });
 
-    test('should prevent XSS in category names', async ({ page }) => {
+    test('should prevent XSS in category names', async ({ page, settingsPage }) => {
+      let setPage = settingsPage;
       setPage.goto();
       //await page.goto('/settings');
       //await page.waitForLoadState('networkidle');
@@ -52,7 +55,8 @@ test.describe('Security', () => {
       await expect(setPage.addCategoryResult).toContainText('can only contain');
     });
 
-    test('should handle quotes in transaction description safely', async ({ page }) => {
+    test('should handle quotes in transaction description safely', async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
       await txPage.addTransactionViaUI({
         //await addTransaction(page, {
         description: `O'Malley's "Best" Pub`,
@@ -91,15 +95,17 @@ test.describe('Security', () => {
   });
 
   test.describe('Input Validation', () => {
-    let txPage: TransactionsPage;
-    test.beforeEach(async ({ page }) => {
-      txPage = new TransactionsPage(page);
+    //let txPage: TransactionsPage;
+    test.beforeEach(async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
+      //txPage = new TransactionsPage(page);
       txPage.goto();
       //await page.goto('/transactions');
       //await page.waitForLoadState('networkidle');
     });
 
-    test('should reject negative amounts via server', async ({ page }) => {
+    test('should reject negative amounts via server', async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
       await page.getByRole('textbox', { name: 'Description' }).fill('Negative Test');
       // Bypass HTML5 number min validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
@@ -120,7 +126,8 @@ test.describe('Security', () => {
       await expect(page.getByText('-$-50.00')).not.toBeVisible();
     });
 
-    test('should reject invalid date formats via server', async ({ page }) => {
+    test('should reject invalid date formats via server', async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
       await txPage.descriptionInput.fill('Date Test');
       await txPage.amountInput.fill(String(25.0));
       await txPage.typeSelect.selectOption('expense');
@@ -140,13 +147,15 @@ test.describe('Security', () => {
       await expect(page.getByText('Date Test')).not.toBeVisible();
     });
 
-    test('amount input type should be "number" for browser validation', async ({ page }) => {
+    test('amount input type should be "number" for browser validation', async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
       //const type = await page.getByRole('spinbutton', { name: 'Amount ($)' }).getAttribute('type');
       const type = await txPage.amountInput.getAttribute('type');
       expect(type).toBe('number');
     });
 
-    test('should reject non-numeric amounts via HTML5 validation', async ({ page }) => {
+    test('should reject non-numeric amounts via HTML5 validation', async ({ page, transactionsPage }) => {
+      let txPage = transactionsPage;
       //const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => {
       const isInvalid = await txPage.amountInput.evaluate(el => {
         const input = el as HTMLInputElement;

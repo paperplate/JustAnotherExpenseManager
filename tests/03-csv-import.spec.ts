@@ -1,7 +1,8 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
+//import { test, expect } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { TransactionsPage } from './pages/TransactionsPage';
+//import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
  * CSV Import Tests
@@ -9,14 +10,16 @@ import { TransactionsPage } from './pages/TransactionsPage';
  */
 
 test.describe('CSV Import', () => {
-  let txPage: TransactionsPage;
+  //let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    txPage = new TransactionsPage(page);
+  test.beforeEach(async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
+    //txPage = new TransactionsPage(page);
     await txPage.goto();
   });
 
-  test('should import valid CSV file', async ({ page }) => {
+  test('should import valid CSV file', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     const csvContent = [
       'description,amount,type,category,date,tags',
       'Grocery Store,45.50,expense,food,2024-01-15,weekly',
@@ -41,7 +44,8 @@ test.describe('CSV Import', () => {
     }
   });
 
-  test('should handle CSV with validation errors', async ({ page }) => {
+  test('should handle CSV with validation errors', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     const csvContent = [
       'description,amount,type,category,date,tags',
       'Valid Transaction,25.00,expense,food,2024-01-15,',
@@ -69,7 +73,8 @@ test.describe('CSV Import', () => {
     }
   });
 
-  test('should reject non-CSV files', async ({ page }) => {
+  test('should reject non-CSV files', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     const txtPath = path.join(__dirname, 'temp-file.txt');
     fs.writeFileSync(txtPath, 'This is not a CSV file');
 
@@ -87,7 +92,8 @@ test.describe('CSV Import', () => {
     }
   });
 
-  test('should handle empty CSV file', async ({ page }) => {
+  test('should handle empty CSV file', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     const csvContent = 'description,amount,type,category,date,tags';
     const csvPath = path.join(__dirname, 'temp-empty.csv');
     fs.writeFileSync(csvPath, csvContent);
@@ -106,7 +112,8 @@ test.describe('CSV Import', () => {
     }
   });
 
-  test('should refresh transaction list after import', async ({ page }) => {
+  test('should refresh transaction list after import', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     const csvContent = [
       'description,amount,type,category,date,tags',
       'Imported Item,99.99,expense,food,2024-02-01,imported',

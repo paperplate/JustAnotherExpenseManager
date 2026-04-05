@@ -1,5 +1,6 @@
-import { test, expect } from '@playwright/test';
-import { TransactionsPage } from './pages/TransactionsPage';
+import { test, expect } from './fixtures';
+//import { test, expect } from '@playwright/test';
+//import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
  * Transaction CRUD Tests
@@ -7,14 +8,16 @@ import { TransactionsPage } from './pages/TransactionsPage';
  */
 
 test.describe('Transactions UI', () => {
-  let txPage: TransactionsPage;
+  //let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    txPage = new TransactionsPage(page);
+  test.beforeEach(async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
+    //txPage = new TransactionsPage(page);
     await txPage.goto();
   });
 
-  test('should add a new expense transaction', async ({ page }) => {
+  test('should add a new expense transaction', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: 'Test Grocery Shopping',
       amount: 45.5,
@@ -28,7 +31,8 @@ test.describe('Transactions UI', () => {
     await expect(page.locator('.type-badge.type-expense')).toContainText('Expense');
   });
 
-  test('should add a new income transaction', async ({ page }) => {
+  test('should add a new income transaction', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: 'Freelance Payment',
       amount: 1500,
@@ -41,7 +45,8 @@ test.describe('Transactions UI', () => {
     await expect(page.locator('.type-badge.type-income')).toContainText('Income');
   });
 
-  test('should validate required fields', async ({ page }) => {
+  test('should validate required fields', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionBtn.click();
 
     const descriptionInput = page.getByRole('textbox', { name: 'Description' });
@@ -49,7 +54,8 @@ test.describe('Transactions UI', () => {
     expect(isInvalid).toBe(true);
   });
 
-  test('should handle transaction with quotes in description', async ({ page }) => {
+  test('should handle transaction with quotes in description', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: "O'Malley's Irish Pub",
       amount: 35.0,
@@ -60,7 +66,8 @@ test.describe('Transactions UI', () => {
     await expect(page.getByText("O'Malley's Irish Pub")).toBeVisible();
   });
 
-  test('should edit a transaction', async ({ page }) => {
+  test('should edit a transaction', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: "Original Description",
       amount: 25.0,
@@ -86,7 +93,8 @@ test.describe('Transactions UI', () => {
     await expect(page.getByText('-$30.00')).toBeVisible();
   });
 
-  test('should pre-select current category in edit modal', async ({ page }) => {
+  test('should pre-select current category in edit modal', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: "Category Check",
       amount: 20.0,
@@ -105,7 +113,8 @@ test.describe('Transactions UI', () => {
     expect(selectedCategory).not.toContain('category:');
   });
 
-  test('should delete a transaction', async ({ page }) => {
+  test('should delete a transaction', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: "To Be Deleted",
       amount: 10.0,
@@ -121,7 +130,8 @@ test.describe('Transactions UI', () => {
     await expect(page.getByText('To Be Deleted')).not.toBeVisible();
   });
 
-  test('should handle tags correctly', async ({ page }) => {
+  test('should handle tags correctly', async ({ page, transactionsPage }) => {
+    let txPage = transactionsPage;
     await txPage.addTransactionViaUI({
       description: "Tagged Transaction",
       amount: 50.0,
