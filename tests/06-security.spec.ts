@@ -1,8 +1,5 @@
-//import { test, expect } from '@playwright/test';
 import { test, expect } from './fixtures';
 import { seedTransactionsViaAPI, TODAY } from './helpers';
-//import { TransactionsPage } from './pages/TransactionsPage';
-//import { SettingsPage } from './pages/SettingsPage';
 
 /**
  * Security Tests
@@ -10,17 +7,10 @@ import { seedTransactionsViaAPI, TODAY } from './helpers';
  */
 
 test.describe('Security', () => {
-  //let txPage: TransactionsPage;
-  //let setPage: SettingsPage;
-
   test.describe('XSS Protection', () => {
-    test.beforeEach(async ({ page, transactionsPage }) => {
+    test.beforeEach(async ({ transactionsPage }) => {
       let txPage = transactionsPage;
-      //txPage = new TransactionsPage(page);
-      //setPage = new SettingsPage(page);
       txPage.goto();
-      //await page.goto('/transactions');
-      //await page.waitForLoadState('networkidle');
     });
 
     test('should prevent XSS in transaction description', async ({ page, request }) => {
@@ -41,39 +31,30 @@ test.describe('Security', () => {
       expect(text).toContain('<script>');
     });
 
-    test('should prevent XSS in category names', async ({ page, settingsPage }) => {
+    test('should prevent XSS in category names', async ({ settingsPage }) => {
       let setPage = settingsPage;
       setPage.goto();
-      //await page.goto('/settings');
-      //await page.waitForLoadState('networkidle');
 
       await setPage.addCategory('<img src=x onerror="alert(1)">');
-      //await addCategory(page, '<img src=x onerror="alert(1)">');
 
       // Should be rejected by server-side validation (invalid characters)
-      //await expect(page.locator('#add-category-result')).toContainText('can only contain');
       await expect(setPage.addCategoryResult).toContainText('can only contain');
     });
 
     test('should handle quotes in transaction description safely', async ({ page, transactionsPage }) => {
       let txPage = transactionsPage;
       await txPage.addTransactionViaUI({
-        //await addTransaction(page, {
         description: `O'Malley's "Best" Pub`,
         amount: 25,
         type: 'expense',
         category: 'food',
       });
 
-      //await expect(page.getByText(`O'Malley's "Best" Pub`)).toBeVisible();
-
       // Edit modal should open without errors and load description correctly
       await page.getByRole('button', { name: 'Edit' }).first().click();
-      //await expect(page.locator('#editModal')).toBeVisible();
       await expect(txPage.editModal).toBeVisible();
 
       const descValue = await txPage.editModal.getByLabel('Description').inputValue();
-      //const descValue = await page.locator('#editModal').getByLabel('Description').inputValue();
       expect(descValue).toBe(`O'Malley's "Best" Pub`);
     });
   });
@@ -96,12 +77,9 @@ test.describe('Security', () => {
 
   test.describe('Input Validation', () => {
     //let txPage: TransactionsPage;
-    test.beforeEach(async ({ page, transactionsPage }) => {
+    test.beforeEach(async ({ transactionsPage }) => {
       let txPage = transactionsPage;
-      //txPage = new TransactionsPage(page);
       txPage.goto();
-      //await page.goto('/transactions');
-      //await page.waitForLoadState('networkidle');
     });
 
     test('should reject negative amounts via server', async ({ page, transactionsPage }) => {
@@ -117,11 +95,6 @@ test.describe('Security', () => {
       await txPage.dateInput.fill(TODAY);
       await txPage.categorySelect.selectOption({ value: 'other' });
       await txPage.addTransactionBtn.click();
-      //await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
-      //await page.getByRole('textbox', { name: 'Date' }).fill(TODAY);
-      //await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
-      //await page.getByRole('button', { name: 'Add Transaction' }).click();
-      //await page.waitForTimeout(500);
 
       await expect(page.getByText('-$-50.00')).not.toBeVisible();
     });
@@ -132,31 +105,23 @@ test.describe('Security', () => {
       await txPage.amountInput.fill(String(25.0));
       await txPage.typeSelect.selectOption('expense');
       await txPage.categorySelect.selectOption({ value: 'other' });
-      //await page.getByRole('textbox', { name: 'Description' }).fill('Date Test');
-      //await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(25.0));
-      //await page.getByRole('combobox', { name: 'Type' }).selectOption('expense');
-      //await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: 'other' });
       // Bypass HTML5 date input validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
         (document.getElementById('date') as HTMLInputElement).value = '2024-13-45';
       });
       await txPage.addTransactionBtn.click();
-      //await page.getByRole('button', { name: 'Add Transaction' }).click();
       await page.waitForTimeout(500);
 
       await expect(page.getByText('Date Test')).not.toBeVisible();
     });
 
-    test('amount input type should be "number" for browser validation', async ({ page, transactionsPage }) => {
-      let txPage = transactionsPage;
-      //const type = await page.getByRole('spinbutton', { name: 'Amount ($)' }).getAttribute('type');
-      const type = await txPage.amountInput.getAttribute('type');
+    test('amount input type should be "number" for browser validation', async ({ transactionsPage }) => {
+      const type = await transactionsPage.amountInput.getAttribute('type');
       expect(type).toBe('number');
     });
 
-    test('should reject non-numeric amounts via HTML5 validation', async ({ page, transactionsPage }) => {
+    test('should reject non-numeric amounts via HTML5 validation', async ({ transactionsPage }) => {
       let txPage = transactionsPage;
-      //const isInvalid = await page.getByRole('spinbutton', { name: 'Amount ($)' }).evaluate(el => {
       const isInvalid = await txPage.amountInput.evaluate(el => {
         const input = el as HTMLInputElement;
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'abc');

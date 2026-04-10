@@ -160,7 +160,7 @@ test.describe('Monthly totals — mixed', () => {
     const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
     const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     const net = parseDollar(await page.locator(TOTAL_NET).textContent());*/
-    await txPage.addTransactionViaUI({ description: 'Salary', amount: 2000, type: 'income', category: 'salary' });
+    await txPage.addTransactionViaUI({ description: 'SalaryPay', amount: 2000, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Rent', amount: 800, type: 'expense', category: 'other' });
     await txPage.addTransactionViaUI({ description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
 

@@ -1,6 +1,4 @@
 import { test, expect } from './fixtures';
-//import { test, expect } from '@playwright/test';
-//import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
  * Transaction CRUD Tests
@@ -8,11 +6,8 @@ import { test, expect } from './fixtures';
  */
 
 test.describe('Transactions UI', () => {
-  //let txPage: TransactionsPage;
-
-  test.beforeEach(async ({ page, transactionsPage }) => {
+  test.beforeEach(async ({ transactionsPage }) => {
     let txPage = transactionsPage;
-    //txPage = new TransactionsPage(page);
     await txPage.goto();
   });
 
@@ -76,18 +71,13 @@ test.describe('Transactions UI', () => {
     });
 
     await page.getByRole('button', { name: 'Edit' }).first().click();
-    //await expect(page.locator('#editModal')).toBeVisible();
     await expect(txPage.editModal).toBeVisible();
 
-    //await page.locator('#editModal').getByLabel('Description').fill('Updated Description');
-    //await page.locator('#editModal').getByLabel('Amount ($)').fill('30.00');
     await txPage.editModal.getByLabel('Description').fill('Updated Description');
     await txPage.editModal.getByLabel('Amount ($)').fill('30.00');
 
     await page.getByRole('button', { name: 'Save Changes' }).click();
     await expect(txPage.editModal).not.toBeVisible();
-    //await expect(page.locator('#editModal')).not.toBeVisible();
-    //await page.waitForLoadState('networkidle');
 
     await expect(page.getByText('Updated Description')).toBeVisible();
     await expect(page.getByText('-$30.00')).toBeVisible();
@@ -104,11 +94,9 @@ test.describe('Transactions UI', () => {
 
     await page.getByRole('button', { name: 'Edit' }).first().click();
     await expect(txPage.editModal).toBeVisible();
-    //await expect(page.locator('#editModal')).toBeVisible();
 
     // Category dropdown in modal should pre-select 'food', not show 'category:food'
     const selectedCategory = await txPage.editModal.getByLabel('Category').inputValue();
-    //const selectedCategory = await page.locator('#editModal').getByLabel('Category').inputValue();
     expect(selectedCategory).toBe('food');
     expect(selectedCategory).not.toContain('category:');
   });

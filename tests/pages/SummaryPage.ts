@@ -17,7 +17,7 @@ export class SummaryPage extends BasePage {
   filter: FilterComponent;
 
   constructor(page: Page) {
-    super(page);
+    super(page, '/summary', 'Summary - Expense Manager');
     this.summaryExpenseValue = page.locator('.summary-card.expense .summary-value');
     this.summaryIncomeValue = page.locator('.summary-card.income .summary-value');
     this.incomeCard = page.locator('.summary-card.income');
@@ -28,11 +28,6 @@ export class SummaryPage extends BasePage {
     this.monthlyChart = page.locator('#monthlyChart');
     this.summaryGrid = page.locator('.summary-grid');
     this.filter = new FilterComponent(page);
-  }
-
-  async goto() {
-    await this.page.goto('/summary');
-    expect(this.page).toHaveTitle('Summary - Expense Manager');
   }
 
   async scrollToSummary(): Promise<void> {

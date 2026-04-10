@@ -1,19 +1,21 @@
-import { Page } from '@playwright/test';
+import { Page, expect } from '@playwright/test';
 
 export class BasePage {
   readonly page: Page;
   readonly url: string;
-  readonly title: Promise<string>;
+  readonly title: string;
 
 
-  constructor(page: Page) {
+  constructor(page: Page, url: string, title: string) {
     this.page = page;
-    this.url = page.url();
-    this.title = page.title();
+    this.url = url;
+    this.title = title;
   }
 
   async goto() {
     await this.page.goto(this.url);
+    await this.page.waitForURL('**' + this.url);
+    expect(this.page).toHaveTitle(this.title);
   }
 }
 

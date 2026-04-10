@@ -16,7 +16,7 @@ export class SettingsPage extends BasePage {
   readonly categoryItemStr: string;
 
   constructor(page: Page) {
-    super(page);
+    super(page, '/settings', 'Settings - Expense Manager');
     this.categoriesList = page.locator('#categories-list');
     this.tagList = page.locator('#tags-list');
     this.categoryItem = page.locator('#categories-list .category-item');
@@ -28,11 +28,6 @@ export class SettingsPage extends BasePage {
     this.editCateogrySave = this.editCategoryModal.getByRole('button', { name: 'Save Changes' });
     this.dragHandleStr = '.drag-handle';
     this.categoryItemStr = '.category-item';
-  }
-
-  async goto() {
-    await this.page.goto('/settings');
-    expect(this.page).toHaveTitle('Settings - Expense Manager');
   }
 
   async addCategory(name: string): Promise<void> {
@@ -52,11 +47,13 @@ export class SettingsPage extends BasePage {
 
   async submitRename(newName: string, accept: Boolean = true): Promise<void> {
     await this.editCategoryName.fill(newName);
-    const responsePromise = this.page.waitForResponse(
-      res => res.url().includes('/api/categories') && res.status() === 200);
-    await this.editCateogrySave.click();
     this.page.once('dialog', dialog => (accept ? dialog.accept() : dialog.dismiss())); // only emitted when dialog appears
-    await responsePromise;
+    await this.editCateogrySave.click();
+    if (accept) {
+      const responsePromise = this.page.waitForResponse(
+        res => res.url().includes('/api/categories') && res.status() === 200);
+      await responsePromise;
+    }
     expect(this.editCategoryModal).not.toBeVisible();
   }
 

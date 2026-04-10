@@ -26,13 +26,13 @@ export class TransactionsPage extends BasePage {
   filter: FilterComponent;
 
   constructor(page: Page) {
-    super(page);
+    super(page, '/transactions', 'Transactions - Expense Manager');
     this.descriptionInput = page.getByRole('textbox', { name: 'Description' });
     this.amountInput = page.getByRole('spinbutton', { name: 'Amount ($)' });
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
     this.dateInput = page.getByRole('textbox', { name: 'Date' });
     this.categorySelect = page.getByRole('combobox', { name: 'Category' });
-    this.tagInput = page.getByRole('textbox', { name: 'Tags input field' });
+    this.tagInput = page.locator('.tagify__input'); // tagify's input element
     this.submitButton = page.getByRole('button', { name: 'Add Transaction' });
 
     this.transactionsList = page.locator('#transactions-list');
@@ -52,11 +52,6 @@ export class TransactionsPage extends BasePage {
     this.table = page.getByRole('table');
 
     this.filter = new FilterComponent(page);
-  }
-
-  async goto() {
-    await this.page.goto('/transactions');
-    expect(this.page).toHaveTitle('Transactions - Expense Manager');
   }
 
   async addTransactionViaUI(opts: TransactionOptions) {
