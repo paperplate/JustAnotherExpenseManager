@@ -1,6 +1,4 @@
 import { test, expect } from './fixtures';
-//import { test, expect } from '@playwright/test';
-//import { SettingsPage } from './pages/SettingsPage';
 import { TODAY } from './helpers';
 
 
@@ -16,59 +14,38 @@ import { TODAY } from './helpers';
 
 
 test.describe('Category Management', () => {
-  //let setPage: SettingsPage;
-
-  test.beforeEach(async ({ page, settingsPage }) => {
-    //await page.goto('/settings');
-    //setPage = new SettingsPage(page);
+  test.beforeEach(async ({ settingsPage }) => {
     await settingsPage.goto();
-    //await page.waitForLoadState('networkidle');
   });
 
   test('should display settings page', async ({ page }) => {
-    //await expect(page).toHaveTitle(/Settings - Expense Manager/);
     await expect(page.getByRole('heading', { level: 1 })).toContainText('Settings');
   });
 
-  test('should load existing categories without category: prefix', async ({ page, settingsPage }) => {
+  test('should load existing categories without category: prefix', async ({ settingsPage }) => {
     let setPage = settingsPage;
-    //await expect(page.locator('#categories-list')).toBeVisible();
-    //const items = page.locator('#categories-list .category-item');
     await expect(setPage.categoriesList).toBeVisible();
     await expect(setPage.categoryItem.first()).toBeVisible({ timeout: 5000 });
-    //await expect(items.first()).toBeVisible({ timeout: 5000 });
 
-    //const texts = await items.allTextContents();
     const texts = await setPage.categoryItem.allTextContents();
     const hasPrefix = texts.some(t => t.includes('category:'));
     expect(hasPrefix).toBe(false);
   });
 
-  test('should add a new category', async ({ page, settingsPage }) => {
+  test('should add a new category', async ({ settingsPage }) => {
     let setPage = settingsPage;
     const uniqueName = `testcat${TODAY}`;
-    await setPage.categoryNameInput.fill(uniqueName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(uniqueName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.addCategory(uniqueName);
 
     await expect(setPage.addCategoryResult).toContainText('added successfully');
     await expect(setPage.categoryItem.filter({ hasText: uniqueName })).toBeVisible();
-    //await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    //await expect(page.locator('#categories-list .category-item', { hasText: uniqueName })).toBeVisible();
   });
 
-  test('should display added category without category: prefix', async ({ page, settingsPage }) => {
+  test('should display added category without category: prefix', async ({ settingsPage }) => {
     let setPage = settingsPage;
     const uniqueName = `prefixtest${TODAY}`;
-    await setPage.categoryNameInput.fill(uniqueName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(uniqueName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.addCategory(uniqueName);
 
-    //const item = page.locator('#categories-list .category-item', { hasText: uniqueName });
     const item = setPage.categoryItem.filter({ hasText: uniqueName });
     await expect(item).toBeVisible();
 
@@ -76,14 +53,10 @@ test.describe('Category Management', () => {
     expect(text).not.toContain('category:');
   });
 
-  test('should reject empty category name', async ({ page, settingsPage }) => {
+  test('should reject empty category name', async ({ settingsPage }) => {
     let setPage = settingsPage;
-    await setPage.categoryNameInput.fill('   ');
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill('   ');
-    //await page.getByRole('button', { name: 'Add Category' }).click();
+    await setPage.addCategory('   ');
 
-    //await expect(page.locator('#add-category-result')).toContainText('enter a category name');
     await expect(setPage.addCategoryResult).toContainText('enter a category name');
   });
 
@@ -91,17 +64,8 @@ test.describe('Category Management', () => {
     let setPage = settingsPage;
     const categoryName = `duptest${TODAY}`;
 
-    await setPage.categoryNameInput.fill(categoryName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(categoryName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
-
-    //await page.getByPlaceholder('Enter category name').fill(categoryName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await setPage.categoryNameInput.fill(categoryName);
-    await setPage.addCategoryBtn.click();
-    await page.waitForTimeout(500);
+    await setPage.addCategory(categoryName);
+    await setPage.addCategory(categoryName);
 
     await expect(page.getByText('already exists')).toBeVisible();
   });
@@ -109,17 +73,9 @@ test.describe('Category Management', () => {
   test('should edit a category', async ({ page, settingsPage }) => {
     let setPage = settingsPage;
     const originalName = `edit${Date.now()}`;
-    await setPage.categoryNameInput.fill(originalName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(originalName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.addCategory(originalName);
 
-    await page.locator('.category-item', { hasText: originalName })
-      .getByRole('button', { name: 'Edit' })
-      .click();
-
-    //await expect(page.locator('#editCategoryModal')).toBeVisible();
+    await setPage.openEditModal(originalName);
     await expect(setPage.editCategoryModal).toBeVisible();
 
     // Modal should pre-fill with bare name, not "category:..."
@@ -128,16 +84,9 @@ test.describe('Category Management', () => {
     expect(prefilled).not.toContain('category:');
 
     const newName = `edited${Date.now()}`;
-    await setPage.editCategoryName.fill(newName);
-    await setPage.editCateogrySave.click();
-    //await page.getByLabel('Category Name').fill(newName);
-    //await page.getByRole('button', { name: 'Save Changes' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.submitRename(newName, true);
 
     await expect(setPage.editCategoryModal).not.toBeVisible();
-    //await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    //await expect(page.getByText(newName)).toBeVisible();
-    //await expect(page.getByText(originalName)).not.toBeVisible();
     await expect(setPage.categoryItem.filter({ hasText: newName })).toBeVisible();
     await expect(setPage.categoryItem.filter({ hasText: originalName })).not.toBeVisible();
   });
@@ -145,65 +94,35 @@ test.describe('Category Management', () => {
   test('should delete a category', async ({ page, settingsPage }) => {
     let setPage = settingsPage;
     const categoryName = `delete${Date.now()}`;
-    await setPage.categoryNameInput.fill(categoryName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(categoryName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.addCategory(categoryName);
 
-    page.on('dialog', dialog => {
-      expect(dialog.message()).toContain('Are you sure');
-      dialog.accept();
-    });
-
-    //await page.locator('.category-item', { hasText: categoryName })
-    await setPage.categoryItem.filter({ hasText: categoryName })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
-
-    await page.waitForTimeout(500); // flaky test try delay
-
-    //await expect(page.getByText(categoryName)).not.toBeAttached();
+    await setPage.deleteCategory(categoryName);
     await expect(page.getByText(categoryName)).not.toBeAttached();
   });
 
-  test('should reject invalid category characters', async ({ page, settingsPage }) => {
+  test('should reject invalid category characters', async ({ settingsPage }) => {
     let setPage = settingsPage;
-    await setPage.categoryNameInput.fill('test@#$%');
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill('test@#$%');
-    //await page.getByRole('button', { name: 'Add Category' }).click();
+    const categoryName = 'test@#$%';
+    await setPage.addCategory(categoryName);
 
     await expect(setPage.addCategoryResult).toContainText('can only contain');
-    //await expect(page.locator('#add-category-result')).toContainText('can only contain');
   });
 
-  test('should reject very long category name', async ({ page, settingsPage }) => {
+  test('should reject very long category name', async ({ settingsPage }) => {
     let setPage = settingsPage;
-    await setPage.categoryNameInput.fill('a'.repeat(60));
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill('a'.repeat(60));
-    //await page.getByRole('button', { name: 'Add Category' }).click();
+    await setPage.addCategory('a'.repeat(60));
 
     await expect(setPage.addCategoryResult).toContainText('too long');
-    //await expect(page.locator('#add-category-result')).toContainText('too long');
   });
 
   test('edited category should appear in transactions category dropdown', async ({ page, settingsPage }) => {
     let setPage = settingsPage;
     const catName = `dropdtest${Date.now()}`;
-    await setPage.categoryNameInput.fill(catName);
-    await setPage.addCategoryBtn.click();
-    //await page.getByPlaceholder('Enter category name').fill(catName);
-    //await page.getByRole('button', { name: 'Add Category' }).click();
-    await page.waitForLoadState('networkidle');
+    await setPage.addCategory(catName);
 
     await page.goto('/transactions');
-    //await page.goto('/transactions');
     await page.waitForLoadState('networkidle');
 
-    // The add-transaction category select should contain the new category
     const option = page.getByLabel('Category').locator(`option[value="${catName}"]`);
     await expect(option).toBeAttached();
 

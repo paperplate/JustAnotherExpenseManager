@@ -125,7 +125,7 @@ test.describe('Transactions UI', () => {
       amount: 50.0,
       type: 'expense',
       category: 'shopping',
-      tags: 'urgent important, business'
+      tags: 'urgent, important, business'
     });
 
     await expect(page.locator('.tag-badge', { hasText: 'urgent' })).toBeVisible();

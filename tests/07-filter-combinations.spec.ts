@@ -76,16 +76,16 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
 // ─── Summary page filter combinations ────────────────────────────────────────
 
 test.describe.serial('Summary page — filter combinations', () => {
-  test.beforeAll(async ({ browser, request, transactionsPage }) => {
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-    const page = await ctx.newPage();
+  /*test.beforeAll(async ({ browser}) => {
+      const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
+      const page = await ctx.newPage();
+      await page.close();
+      await ctx.close();
+    });*/
+
+  test.beforeEach(async ({ summaryPage, transactionsPage, request }) => {
     let txPage = transactionsPage;
     await seedData(txPage, request);
-    await page.close();
-    await ctx.close();
-  });
-
-  test.beforeEach(async ({ summaryPage }) => {
     await summaryPage.goto();
   });
 
@@ -328,16 +328,18 @@ test.describe.serial('Summary page — filter combinations', () => {
 // ─── Transactions page filter combinations ────────────────────────────────────
 
 test.describe.serial('Transactions page — filter combinations', () => {
-  test.beforeAll(async ({ browser, request, transactionsPage }:
+  /*test.beforeAll(async ({ browser, request, transactionsPage }:
     { browser: Browser, request: APIRequestContext, transactionsPage: TransactionsPage }) => {
     const page = await browser.newPage();
     let txPage = transactionsPage;
     await seedData(txPage, request);
     await page.close();
-  });
+  });*/
 
-  test.beforeEach(async ({ transactionsPage }) => {
-    await transactionsPage.goto();
+  test.beforeEach(async ({ request, transactionsPage }) => {
+    let txPage = transactionsPage;
+    await seedData(txPage, request);
+    await txPage.goto();
   });
 
   // ── Category only ─────────────────────────────────────────────────────────

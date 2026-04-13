@@ -11,7 +11,8 @@ export class SettingsPage extends BasePage {
   readonly categoryNameInput: Locator;
   readonly editCategoryModal: Locator;
   readonly editCategoryName: Locator;
-  readonly editCateogrySave: Locator;
+  readonly editCategorySave: Locator;
+  readonly editCategoryCancel: Locator;
   readonly dragHandleStr: string;
   readonly categoryItemStr: string;
 
@@ -25,7 +26,8 @@ export class SettingsPage extends BasePage {
     this.categoryNameInput = page.getByPlaceholder('Enter category name');
     this.editCategoryModal = page.locator('#editCategoryModal');
     this.editCategoryName = this.editCategoryModal.getByLabel('Category Name');
-    this.editCateogrySave = this.editCategoryModal.getByRole('button', { name: 'Save Changes' });
+    this.editCategorySave = this.editCategoryModal.getByRole('button', { name: 'Save Changes' });
+    this.editCategoryCancel = this.editCategoryModal.getByRole('button', { name: 'Cancel' });
     this.dragHandleStr = '.drag-handle';
     this.categoryItemStr = '.category-item';
   }
@@ -48,11 +50,14 @@ export class SettingsPage extends BasePage {
   async submitRename(newName: string, accept: Boolean = true): Promise<void> {
     await this.editCategoryName.fill(newName);
     this.page.once('dialog', dialog => (accept ? dialog.accept() : dialog.dismiss())); // only emitted when dialog appears
-    await this.editCateogrySave.click();
+    await this.editCategorySave.click();
     if (accept) {
       const responsePromise = this.page.waitForResponse(
         res => res.url().includes('/api/categories') && res.status() === 200);
       await responsePromise;
+    }
+    else {
+      await this.editCategoryCancel.click();
     }
     expect(this.editCategoryModal).not.toBeVisible();
   }

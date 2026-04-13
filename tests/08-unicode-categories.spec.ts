@@ -216,7 +216,13 @@ test.describe('Unicode category — delete', () => {
     await setPage.addCategory(original);
     await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
 
+    const deletePromise = page.waitForResponse(res =>
+      res.url().includes('/api/categories') && res.request().method() === 'DELETE'
+    );
+
     await setPage.deleteCategory(original);
+
+    await deletePromise;
 
     await txPage.goto();
     await expect(page.getByLabel('Category').locator('option[value="交通"]')).not.toBeAttached();

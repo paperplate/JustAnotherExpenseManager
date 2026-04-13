@@ -4,6 +4,7 @@ import {
   TransactionOptions,
   seedTransactionsViaAPI
 } from './helpers'
+import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
  * Filters and Statistics Tests
@@ -166,10 +167,11 @@ test.describe('Filters and Statistics', () => {
       await expect(sumPage.filter.categorySummary).toContainText('All Categories');
     });
 
-  test('tag filter dropdown opens and shows options', async ({ transactionsPage, summaryPage }) => {
+  test('tag filter dropdown opens and shows options', async ({ page, transactionsPage, summaryPage }) => {
     let sumPage = summaryPage;
     let txPage = transactionsPage;
     await txPage.goto();
+    txPage = new TransactionsPage(page);
     await txPage.addTransactionViaUI({
       description: 'Tagged',
       amount: 10.0,

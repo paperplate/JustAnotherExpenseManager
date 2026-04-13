@@ -10,7 +10,8 @@ export class TransactionsPage extends BasePage {
   readonly typeSelect: Locator;
   readonly dateInput: Locator;
   readonly categorySelect: Locator;
-  readonly tagInput: Locator;
+  readonly addTagInput: Locator;
+  readonly editTagInput: Locator;
   readonly submitButton: Locator;
   readonly transactionsList: Locator;
   readonly editModal: Locator;
@@ -32,7 +33,9 @@ export class TransactionsPage extends BasePage {
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
     this.dateInput = page.getByRole('textbox', { name: 'Date' });
     this.categorySelect = page.getByRole('combobox', { name: 'Category' });
-    this.tagInput = page.locator('.tagify__input'); // tagify's input element
+    //this.addTagInput = page.getByLabel('Tags input field');
+    this.addTagInput = page.locator('#add-transaction-form .tagify');
+    this.editTagInput = page.locator('#edit-form .tagify');
     this.submitButton = page.getByRole('button', { name: 'Add Transaction' });
 
     this.transactionsList = page.locator('#transactions-list');
@@ -61,9 +64,9 @@ export class TransactionsPage extends BasePage {
     await this.categorySelect.selectOption({ value: opts.category });
 
     if (opts.tags) {
-      await this.tagInput.click();
+      await this.addTagInput.click();
       for (const tag of opts.tags.split(',').map(t => t.trim()).filter(Boolean)) {
-        await this.tagInput.fill(tag + ',');
+        await this.addTagInput.fill(tag + ',');
       }
     }
 

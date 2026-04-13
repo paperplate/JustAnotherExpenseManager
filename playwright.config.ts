@@ -20,7 +20,8 @@ module.exports = defineConfig({
   retries: process.env.CI ? 2 : 1,
 
   /* Reporters: html+list in both CI and locally */
-  reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
+  reporter: [['html', { outputFolder: 'playwright-report' }],
+  ['json', { outputFile: 'results.json' }], ['list']],
 
   /* Workers: 1 in CI (single-threaded for reliability), unlimited locally */
   workers: process.env.CI ? 1 : undefined,
