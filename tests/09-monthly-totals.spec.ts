@@ -12,8 +12,6 @@ test.describe('Transactions list rendering', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
   test('empty state is shown when there are no transactions', async ({ page }) => {
@@ -22,26 +20,19 @@ test.describe('Transactions list rendering', () => {
   });
 
   test('table appears after adding a transaction', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
-    await expect(page.getByRole('table')).toBeVisible();
-    await expect(page.getByText('Coffee')).toBeVisible();*/
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
     await expect(txPage.table).toBeVisible();
     await expect(txPage.table.getByText('Coffee')).toBeVisible();
   });
 
   test('monthly totals bar is visible after adding a transaction', async ({ page }) => {
-    //await addTransaction(page, { description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
     await expect(txPage.monthlyTotals).toBeVisible();
-    //await expect(page.locator(MONTHLY_TOTALS)).toBeVisible();
   });
 
   test('table disappears and empty state returns after deleting the last transaction', async ({ page }) => {
     await txPage.addTransactionViaUI({ description: 'Solo', amount: 10, type: 'expense', category: 'other' });
     await expect(txPage.table).toBeVisible();
-    //await addTransaction(page, { description: 'Solo', amount: 10, type: 'expense', category: 'other' });
-    //await expect(page.getByRole('table')).toBeVisible();
 
     page.once('dialog', dialog => dialog.accept());
     await page.getByRole('button', { name: 'Delete' }).first().click();
@@ -61,17 +52,10 @@ test.describe('Monthly totals — expense only', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     await txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
   test('single expense: income=$0, expense=amount, net negative', async ({ page }) => {
     await txPage.addTransactionViaUI({ description: 'Lunch', amount: 25, type: 'expense', category: 'food' });
-    //await addTransaction(page, { description: 'Lunch', amount: 25, type: 'expense', category: 'food' });
-
-    //const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
-    //const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    //const net = parseDollar(await page.locator(TOTAL_NET).textContent());
     const income = parseDollar(await txPage.income.textContent());
     const expense = parseDollar(await txPage.expenses.textContent());
     const net = parseDollar(await txPage.net.textContent());
@@ -85,17 +69,11 @@ test.describe('Monthly totals — expense only', () => {
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5.50, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
     await txPage.addTransactionViaUI({ description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
-    //await addTransaction(page, { description: 'Coffee', amount: 5.50, type: 'expense', category: 'food' });
-    //await addTransaction(page, { description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
-    //await addTransaction(page, { description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
 
     await txPage.scrollToTotals();
-    //await scrollToTotals(page);
 
     const expense = parseDollar(await txPage.expenses.textContent());
     const net = parseDollar(await txPage.net.textContent());
-    //const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    //const net = parseDollar(await page.locator(TOTAL_NET).textContent());
 
     expect(expense).toBeCloseTo(20.25, 2);
     expect(net).toBeCloseTo(-20.25, 2);
@@ -111,18 +89,9 @@ test.describe('Monthly totals — income only', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
   test('single income: income=amount, expense=$0, net positive', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Salary', amount: 3000, type: 'income', category: 'salary' });
-
-    await scrollToTotals(page);
-
-    const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
-    const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    const net = parseDollar(await page.locator(TOTAL_NET).textContent());*/
     await txPage.addTransactionViaUI({ description: 'Salary', amount: 3000, type: 'income', category: 'salary' });
 
     await txPage.scrollToTotals();
@@ -146,20 +115,9 @@ test.describe('Monthly totals — mixed', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
   test('income and expenses: all three totals are non-zero and correct', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Salary', amount: 2000, type: 'income', category: 'salary' });
-    await addTransaction(page, { description: 'Rent', amount: 800, type: 'expense', category: 'other' });
-    await addTransaction(page, { description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
-
-    await scrollToTotals(page);
-
-    const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
-    const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    const net = parseDollar(await page.locator(TOTAL_NET).textContent());*/
     await txPage.addTransactionViaUI({ description: 'SalaryPay', amount: 2000, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Rent', amount: 800, type: 'expense', category: 'other' });
     await txPage.addTransactionViaUI({ description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
@@ -177,13 +135,6 @@ test.describe('Monthly totals — mixed', () => {
   });
 
   test('totals are never $0.00 when transactions exist (regression)', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
-    await addTransaction(page, { description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
-
-    await scrollToTotals(page);
-
-    const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
-    const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());*/
     await txPage.addTransactionViaUI({ description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
 
@@ -197,12 +148,6 @@ test.describe('Monthly totals — mixed', () => {
   });
 
   test('net = income - expense (mathematical identity)', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Bonus', amount: 1250.50, type: 'income', category: 'salary' });
-    await addTransaction(page, { description: 'Heating', amount: 320.75, type: 'expense', category: 'utilities' });
-
-    const income = parseDollar(await page.locator(TOTAL_INCOME).textContent());
-    const expense = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
-    const net = parseDollar(await page.locator(TOTAL_NET).textContent());*/
     await txPage.addTransactionViaUI({ description: 'Bonus', amount: 1250.50, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Heating', amount: 320.75, type: 'expense', category: 'utilities' });
 
@@ -223,24 +168,14 @@ test.describe('Monthly totals update after mutations', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
-  test('totals update correctly after adding a second transaction', async ({ page }) => {
-    //await addTransaction(page, { description: 'First', amount: 100, type: 'expense', category: 'food' });
-
-    //const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
+  test('totals update correctly after adding a second transaction', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'First', amount: 100, type: 'expense', category: 'food' });
 
     const expenseBefore = parseDollar(await txPage.expenses.textContent());
     expect(expenseBefore).toBeCloseTo(100, 2);
 
-    //await addTransaction(page, { description: 'Second', amount: 50, type: 'expense', category: 'food' });
-
-    //await scrollToTotals(page);
-
-    //const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     await txPage.addTransactionViaUI({ description: 'Second', amount: 50, type: 'expense', category: 'food' });
 
     await txPage.scrollToTotals();
@@ -250,11 +185,6 @@ test.describe('Monthly totals update after mutations', () => {
   });
 
   test('totals update correctly after editing a transaction amount', async ({ page }) => {
-    //await addTransaction(page, { description: 'Editable', amount: 100, type: 'expense', category: 'food' });
-
-    //await scrollToTotals(page);
-
-    //const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     await txPage.addTransactionViaUI({ description: 'Editable', amount: 100, type: 'expense', category: 'food' });
 
     await txPage.scrollToTotals();
@@ -272,15 +202,10 @@ test.describe('Monthly totals update after mutations', () => {
     await page.waitForLoadState('networkidle');
 
     const expenseAfter = parseDollar(await txPage.expenses.textContent());
-    //const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     expect(expenseAfter).toBeCloseTo(200, 2);
   });
 
   test('totals update correctly after deleting a transaction', async ({ page }) => {
-    /*await addTransaction(page, { description: 'Keep', amount: 80, type: 'expense', category: 'food' });
-    await addTransaction(page, { description: 'DeleteMe', amount: 20, type: 'expense', category: 'food' });
-
-    const expenseBefore = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());*/
     await txPage.addTransactionViaUI({ description: 'Keep', amount: 80, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'DeleteMe', amount: 20, type: 'expense', category: 'food' });
 
@@ -292,9 +217,6 @@ test.describe('Monthly totals update after mutations', () => {
     await row.getByRole('button', { name: 'Delete' }).click();
     await page.waitForLoadState('networkidle');
 
-    //await scrollToTotals(page);
-
-    //const expenseAfter = parseDollar(await page.locator(TOTAL_EXPENSE).textContent());
     await txPage.scrollToTotals();
 
     const expenseAfter = parseDollar(await txPage.expenses.textContent());
@@ -312,16 +234,9 @@ test.describe('Monthly transaction count', () => {
     await clearDatabase(page);
     txPage = new TransactionsPage(page);
     txPage.goto();
-    //await page.goto('/transactions');
-    //await page.waitForLoadState('networkidle');
   });
 
   test('transaction count matches the number of rows in the table', async ({ page }) => {
-    /*await addTransaction(page, { description: 'A', amount: 10, type: 'expense', category: 'food' });
-    await addTransaction(page, { description: 'B', amount: 20, type: 'expense', category: 'food' });
-    await addTransaction(page, { description: 'C', amount: 30, type: 'income', category: 'salary' });
-
-    await scrollToTotals(page);*/
     await txPage.addTransactionViaUI({ description: 'A', amount: 10, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'B', amount: 20, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'C', amount: 30, type: 'income', category: 'salary' });

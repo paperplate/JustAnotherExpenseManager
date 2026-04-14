@@ -32,6 +32,7 @@ export async function seedTransactionsViaAPI(request: APIRequestContext, opts: T
     });
     const responseText = await response.text();
     expect(response.ok(), `API Seeding failed: ${response.status()} - ${responseText}`);
+    await new Promise(r => setTimeout(r, 50));
   }
 }
 

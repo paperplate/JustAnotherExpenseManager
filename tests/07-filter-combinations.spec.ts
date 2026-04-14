@@ -54,7 +54,7 @@ const cinema: TransactionOptions = {
 async function seedData(tp: TransactionsPage, request: APIRequestContext): Promise<void> {
   await clearDatabase(tp.page);
 
-  tp.goto();
+  await tp.goto();
 
   let transactions: TransactionOptions[] = [
     groceries,

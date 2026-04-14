@@ -33,7 +33,6 @@ export class TransactionsPage extends BasePage {
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
     this.dateInput = page.getByRole('textbox', { name: 'Date' });
     this.categorySelect = page.getByRole('combobox', { name: 'Category' });
-    //this.addTagInput = page.getByLabel('Tags input field');
     this.addTagInput = page.locator('#add-transaction-form .tagify');
     this.editTagInput = page.locator('#edit-form .tagify');
     this.submitButton = page.getByRole('button', { name: 'Add Transaction' });
@@ -81,6 +80,7 @@ export class TransactionsPage extends BasePage {
   }
 
   async scrollToTotals(): Promise<void> {
+    await this.page.waitForLoadState('networkidle');
     await this.monthlyTotals.waitFor({ state: 'attached' });
     await this.monthlyTotals.scrollIntoViewIfNeeded({ timeout: 3000 });
     await expect(this.monthlyTotals).toBeInViewport();

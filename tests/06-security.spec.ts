@@ -14,8 +14,7 @@ test.describe('Security', () => {
     });
 
     test('should prevent XSS in transaction description', async ({ page, request }) => {
-      seedTransactionsViaAPI(request, [{
-        //await addTransaction(page, {
+      await seedTransactionsViaAPI(request, [{
         description: '<script>alert("XSS")</script>',
         amount: 10,
         type: 'expense',

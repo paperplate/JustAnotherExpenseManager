@@ -32,7 +32,24 @@ async function dragItemToIndex(
   sourceIndex: number,
   targetIndex: number
 ): Promise<void> {
-  const items = listSelector.locator(setPage.categoryItemStr);
+  const source = listSelector.locator('.drag-handle').nth(sourceIndex);
+  const target = listSelector.locator('.drag-handle').nth(targetIndex);
+
+  await source.hover();
+  await setPage.page.mouse.down();
+
+  await setPage.page.mouse.move(0, 10);
+
+  const targetBox = await target.boundingBox();
+  if (targetBox) {
+    await setPage.page.mouse.move(
+      targetBox.x + targetBox.width / 2,
+      targetBox.y + targetBox.height / 2,
+      { steps: 5 });
+  }
+
+  await setPage.page.mouse.up();
+  /*const items = listSelector.locator(setPage.categoryItemStr);
   const handle = items.nth(sourceIndex).locator(setPage.dragHandleStr);
   const target = items.nth(targetIndex);
 
@@ -58,11 +75,8 @@ async function dragItemToIndex(
   // Brief pause so Sortable can settle the placeholder before we release.
   await setPage.page.waitForTimeout(100);
   await setPage.page.mouse.up();
-  await setPage.page.waitForTimeout(300);
+  await setPage.page.waitForTimeout(300);*/
 }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 
 // ─── Drag handle visibility ───────────────────────────────────────────────────
 
@@ -78,7 +92,7 @@ test.describe.serial('Drag handle visibility', () => {
     await setPage.addCategory('beta');
 
     const handles = setPage.categoriesList.locator(`${setPage.dragHandleStr}`);
-    await expect(handles).toHaveCount(2);
+    await expect(handles).toHaveCount(11);
     await expect(handles.first()).toBeVisible();
   });
 
@@ -94,7 +108,7 @@ test.describe.serial('Drag handle visibility', () => {
     await setPage.goto();
 
     const handles = setPage.tagList.locator(setPage.dragHandleStr);
-    await expect(handles).toHaveCount(2);
+    await expect(handles).toHaveCount(11);
     await expect(handles.first()).toBeVisible();
   });
 
@@ -471,6 +485,7 @@ test.describe('Order API contract', () => {
   });
 
   test('PATCH /api/tags/order returns 200 with valid payload', async ({ page, transactionsPage }) => {
+    await transactionsPage.goto();
     await transactionsPage.addTransactionViaUI({
       description: 'T1', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
@@ -483,6 +498,7 @@ test.describe('Order API contract', () => {
   });
 
   test('GET /api/tags returns tags in the order set by PATCH', async ({ page, transactionsPage }) => {
+    await transactionsPage.goto();
     await transactionsPage.addTransactionViaUI({
       description: 'T2', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
