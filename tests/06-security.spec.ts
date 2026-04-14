@@ -21,6 +21,8 @@ test.describe('Security', () => {
         category: 'other',
       }]);
 
+      await page.reload();
+
       // Table should still be visible (no JS crash)
       await expect(page.getByRole('table')).toBeVisible();
 

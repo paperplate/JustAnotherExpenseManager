@@ -66,9 +66,11 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
   ];
 
   await seedTransactionsViaAPI(request, transactions);
-  await tp.page.waitForLoadState('networkidle');
 
+  await tp.page.reload();
+  await tp.page.waitForLoadState('networkidle');
   await tp.scrollToTotals();
+
   const tableRows = tp.page.getByRole('row');
   await expect(tableRows).toHaveCount(transactions.length + 1); // Add 1 for header row
 }
@@ -117,6 +119,8 @@ test.describe.serial('Summary page — filter combinations', () => {
     let sumPage = summaryPage;
     await sumPage.filter.selectCategory('food');
     await sumPage.filter.selectCategory('transport');
+
+    await sumPage.scrollToSummary();
 
     // food ($175) + transport ($60) = $235 expenses
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();

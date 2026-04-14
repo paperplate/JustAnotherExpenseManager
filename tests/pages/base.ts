@@ -15,7 +15,7 @@ export class BasePage {
   async goto() {
     await this.page.goto(this.url);
     await this.page.waitForURL('**' + this.url);
-    expect(this.page).toHaveTitle(this.title);
+    await expect(this.page).toHaveTitle(this.title);
   }
 }
 

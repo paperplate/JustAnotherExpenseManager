@@ -75,6 +75,12 @@ export class SettingsPage extends BasePage {
     expect(item).not.toBeVisible();
   }
 
+  async deleteTag(name: string): Promise<void> {
+    this.page.once('dialog', dialog => dialog.accept());
+    const item = this.tagList.locator('.category-item').filter({ hasText: name });
+    item.getByRole('button', { name: "Delete" }).click();
+    expect(item).not.toBeVisible();
+  }
   /** Return the visible text content of every .category-item in a list. */
   async getListNames(list: Locator): Promise<string[]> {
     return list.locator(`.category-item .category-name`).allTextContents();

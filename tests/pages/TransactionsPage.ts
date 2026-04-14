@@ -80,7 +80,7 @@ export class TransactionsPage extends BasePage {
   }
 
   async scrollToTotals(): Promise<void> {
-    await this.page.waitForLoadState('networkidle');
+    await this.monthlyTotals.waitFor({ state: 'visible' });
     await this.monthlyTotals.scrollIntoViewIfNeeded({ timeout: 3000 });
     await expect(this.monthlyTotals).toBeInViewport();
   }

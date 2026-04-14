@@ -56,7 +56,7 @@ async function dragItemToIndex(
 test.describe.serial('Drag handle visibility', () => {
   test.beforeEach(async ({ page, settingsPage }) => {
     await clearDatabase(page);
-    settingsPage.goto();
+    await settingsPage.goto();
     await settingsPage.page.waitForLoadState('networkidle');
   });
 
@@ -66,7 +66,7 @@ test.describe.serial('Drag handle visibility', () => {
     await setPage.addCategory('beta');
 
     const handles = setPage.categoriesList.locator(`${setPage.dragHandleStr}`);
-    await expect(handles).toHaveCount(11);
+    await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
   });
 
@@ -84,7 +84,7 @@ test.describe.serial('Drag handle visibility', () => {
     await setPage.page.waitForLoadState('networkidle');
 
     const handles = setPage.tagList.locator(setPage.dragHandleStr);
-    await expect(handles).toHaveCount(11);
+    await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
   });
 
@@ -218,7 +218,7 @@ test.describe.serial('Category reordering', () => {
 
     await txPage.goto();
 
-    //const options = await page.getByLabel('Category').locator('option').allTextContents();
+    await txPage.filter.openCategoryFilter();
     const options = await txPage.categorySelect.allTextContents();
     const selectOurs = options
       .map(t => t.trim().toLowerCase())
@@ -373,7 +373,7 @@ test.describe.serial('Tag reordering', () => {
     let setPage = settingsPage;
     const before = await setPage.getListNames(setPage.tagList);
 
-    await setPage.deleteCategory('personal');
+    await setPage.deleteTag('personal');
 
     const after = await setPage.getListNames(setPage.tagList);
     const expected = before.filter(n => n !== 'personal');
