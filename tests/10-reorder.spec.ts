@@ -49,33 +49,6 @@ async function dragItemToIndex(
   }
 
   await setPage.page.mouse.up();
-  /*const items = listSelector.locator(setPage.categoryItemStr);
-  const handle = items.nth(sourceIndex).locator(setPage.dragHandleStr);
-  const target = items.nth(targetIndex);
-
-  const handleBox = await handle.boundingBox();
-  const targetBox = await target.boundingBox();
-  if (!handleBox || !targetBox) throw new Error('Could not get bounding boxes for drag');
-
-  const startX = handleBox.x + handleBox.width / 2;
-  const startY = handleBox.y + handleBox.height / 2;
-  // Drop slightly past the mid-point of the target so Sortable registers it
-  // as "after" that element when dragging downward, or "before" when upward.
-  const endY = targetIndex > sourceIndex
-    ? targetBox.y + targetBox.height * 0.75
-    : targetBox.y + targetBox.height * 0.25;
-
-  await setPage.page.mouse.move(startX, startY);
-  await setPage.page.mouse.down();
-  // Move in multiple steps — Sortable.js needs intermediate mousemove events
-  // to track the drag and decide where to insert the ghost placeholder.
-  await setPage.page.mouse.move(startX, startY + (endY - startY) * 0.3, { steps: 5 });
-  await setPage.page.mouse.move(startX, startY + (endY - startY) * 0.6, { steps: 5 });
-  await setPage.page.mouse.move(startX, endY, { steps: 10 });
-  // Brief pause so Sortable can settle the placeholder before we release.
-  await setPage.page.waitForTimeout(100);
-  await setPage.page.mouse.up();
-  await setPage.page.waitForTimeout(300);*/
 }
 
 // ─── Drag handle visibility ───────────────────────────────────────────────────
@@ -84,6 +57,7 @@ test.describe.serial('Drag handle visibility', () => {
   test.beforeEach(async ({ page, settingsPage }) => {
     await clearDatabase(page);
     settingsPage.goto();
+    await settingsPage.page.waitForLoadState('networkidle');
   });
 
   test('each category item has a visible drag handle', async ({ settingsPage }) => {
@@ -101,11 +75,13 @@ test.describe.serial('Drag handle visibility', () => {
     let txPage = transactionsPage;
     // Tags appear once they have been applied to at least one transaction.
     await txPage.goto();
+    await txPage.page.waitForLoadState('networkidle');
     await seedTransactionsViaAPI(request, [{
       description: 'Tagged A', amount: 10, type: 'expense',
       category: 'other', tags: 'urgent,planned',
     }]);
     await setPage.goto();
+    await setPage.page.waitForLoadState('networkidle');
 
     const handles = setPage.tagList.locator(setPage.dragHandleStr);
     await expect(handles).toHaveCount(11);

@@ -92,7 +92,7 @@ test.describe('Monthly totals — income only', () => {
   });
 
   test('single income: income=amount, expense=$0, net positive', async ({ page }) => {
-    await txPage.addTransactionViaUI({ description: 'Salary', amount: 3000, type: 'income', category: 'salary' });
+    await txPage.addTransactionViaUI({ description: 'SalaryPay', amount: 3000, type: 'income', category: 'salary' });
 
     await txPage.scrollToTotals();
 

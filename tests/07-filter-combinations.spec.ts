@@ -68,7 +68,6 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
   await seedTransactionsViaAPI(request, transactions);
   await tp.page.waitForLoadState('networkidle');
 
-
   await tp.scrollToTotals();
   const tableRows = tp.page.getByRole('row');
   await expect(tableRows).toHaveCount(transactions.length + 1); // Add 1 for header row
@@ -88,7 +87,6 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food — expense total reflects only food transactions', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
     await sumPage.filter.selectCategory('food');
-    await page.waitForTimeout(500); // flaky test. Try adding delay
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     // food expenses: 120 + 40 + 15 = $175.00
     expect(expenseValue!.trim()).toBe('$175.00');
@@ -99,7 +97,6 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:transport — expense total reflects only transport transactions', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
     await sumPage.filter.selectCategory('transport');
-    await page.waitForTimeout(500);
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
     expect(expenseValue!.trim()).toBe('$60.00');
@@ -119,9 +116,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('multiple categories — totals are combined', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
     await sumPage.filter.selectCategory('food');
-    await page.waitForTimeout(500);
     await sumPage.filter.selectCategory('transport');
-    await page.waitForTimeout(500);
 
     // food ($175) + transport ($60) = $235 expenses
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();

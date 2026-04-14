@@ -75,10 +75,9 @@ test.describe('Security', () => {
   });
 
   test.describe('Input Validation', () => {
-    //let txPage: TransactionsPage;
     test.beforeEach(async ({ transactionsPage }) => {
       let txPage = transactionsPage;
-      txPage.goto();
+      await txPage.goto();
     });
 
     test('should reject negative amounts via server', async ({ page, transactionsPage }) => {
