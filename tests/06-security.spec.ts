@@ -10,7 +10,7 @@ test.describe('Security', () => {
   test.describe('XSS Protection', () => {
     test.beforeEach(async ({ transactionsPage }) => {
       let txPage = transactionsPage;
-      txPage.goto();
+      await txPage.goto();
     });
 
     test('should prevent XSS in transaction description', async ({ page, request }) => {
@@ -33,7 +33,7 @@ test.describe('Security', () => {
 
     test('should prevent XSS in category names', async ({ settingsPage }) => {
       let setPage = settingsPage;
-      setPage.goto();
+      await setPage.goto();
 
       await setPage.addCategory('<img src=x onerror="alert(1)">');
 

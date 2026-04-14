@@ -91,13 +91,13 @@ test.describe('Category Management', () => {
     await expect(setPage.categoryItem.filter({ hasText: originalName })).not.toBeVisible();
   });
 
-  test('should delete a category', async ({ page, settingsPage }) => {
+  test('should delete a category', async ({ settingsPage }) => {
     let setPage = settingsPage;
     const categoryName = `delete${Date.now()}`;
     await setPage.addCategory(categoryName);
 
     await setPage.deleteCategory(categoryName);
-    await expect(page.getByText(categoryName)).not.toBeAttached();
+    await expect(setPage.categoriesList.filter({ hasText: categoryName })).not.toBeAttached();
   });
 
   test('should reject invalid category characters', async ({ settingsPage }) => {

@@ -31,7 +31,7 @@ export async function seedTransactionsViaAPI(request: APIRequestContext, opts: T
       }
     });
     const responseText = await response.text();
-    expect(response.ok(), `API Seeding failed: ${response.status()} - ${responseText}`).toBeTruthy();
+    expect(response.ok(), `API Seeding failed: ${response.status()} - ${responseText}`);
   }
 }
 

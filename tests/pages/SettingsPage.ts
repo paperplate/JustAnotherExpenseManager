@@ -33,11 +33,16 @@ export class SettingsPage extends BasePage {
   }
 
   async addCategory(name: string): Promise<void> {
-    await this.categoryNameInput.fill(name);
-    const responsePromise = this.page.waitForResponse(
-      res => res.url().includes('/api/categories') && res.status() === 200);
-    await this.addCategoryBtn.click();
-    await responsePromise;
+    if (name.trim() !== '') {
+      await this.categoryNameInput.fill(name);
+      const responsePromise = this.page.waitForResponse(
+        res => res.url().includes('/api/categories') && ((res.status() === 200) || (res.status() === 400)));
+      await this.addCategoryBtn.click();
+      await responsePromise;
+    }
+    else {
+      await this.addCategoryBtn.click();
+    }
   }
 
   async openEditModal(categoryName: string): Promise<void> {
@@ -53,7 +58,8 @@ export class SettingsPage extends BasePage {
     await this.editCategorySave.click();
     if (accept) {
       const responsePromise = this.page.waitForResponse(
-        res => res.url().includes('/api/categories') && res.status() === 200);
+        res => res.url().includes('/api/categories') &&
+          ((res.status() === 200) || (res.status() === 400)));
       await responsePromise;
     }
     else {

@@ -66,7 +66,7 @@ async function dragItemToIndex(
 
 // ─── Drag handle visibility ───────────────────────────────────────────────────
 
-test.describe('Drag handle visibility', () => {
+test.describe.serial('Drag handle visibility', () => {
   test.beforeEach(async ({ page, settingsPage }) => {
     await clearDatabase(page);
     settingsPage.goto();
@@ -112,20 +112,12 @@ test.describe('Drag handle visibility', () => {
 // ─── Category reordering ──────────────────────────────────────────────────────
 
 test.describe.serial('Category reordering', () => {
-  test.beforeAll(async ({ browser, settingsPage }) => {
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-    const page = await ctx.newPage();
+  test.beforeEach(async ({ page, settingsPage }) => {
     await clearDatabase(page);
-    settingsPage.goto();
+    await settingsPage.goto();
     for (const name of ['alpha', 'beta', 'gamma', 'delta']) {
       await settingsPage.addCategory(name);
     }
-    await page.close();
-    await ctx.close();
-  });
-
-  test.beforeEach(async ({ settingsPage }) => {
-    await settingsPage.goto();
   });
 
   test('categories are rendered in insertion order initially', async ({ settingsPage }) => {
@@ -278,13 +270,10 @@ test.describe.serial('Category reordering', () => {
 // ─── Tag reordering ───────────────────────────────────────────────────────────
 
 test.describe.serial('Tag reordering', () => {
-  test.beforeAll(async ({ browser, request, transactionsPage }) => {
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-    const page = await ctx.newPage();
+  test.beforeEach(async ({ page, request, settingsPage, transactionsPage }) => {
     await clearDatabase(page);
     let txPage = transactionsPage;
-
-    txPage.goto();
+    await txPage.goto();
     // Create four transactions each carrying a unique tag so all four appear
     // in the tags list.
     const tags = ['urgent', 'planned', 'recurring', 'personal'];
@@ -294,12 +283,7 @@ test.describe.serial('Tag reordering', () => {
         category: 'other', tags: tag,
       }]);
     }
-    await page.close();
-    await ctx.close();
-  });
-
-  test.beforeEach(async ({ settingsPage }) => {
-    settingsPage.goto();
+    await settingsPage.goto();
   });
 
   test('tags are rendered in insertion order initially', async ({ settingsPage }) => {
@@ -356,7 +340,7 @@ test.describe.serial('Tag reordering', () => {
 
     const settingsOrder = await setPage.getListNames(setPage.tagList);
 
-    sumPage.goto();
+    await sumPage.goto();
     await sumPage.filter.openTagFilter();
     await expect(
       page.locator('#tag-options-list').filter({ hasText: 'personal' })
@@ -410,7 +394,6 @@ test.describe.serial('Tag reordering', () => {
 // ─── Rename does not reset sort_order ────────────────────────────────────────
 
 test.describe('Rename preserves sort order', () => {
-
   test.beforeEach(async ({ page, settingsPage }) => {
     await clearDatabase(page);
     await settingsPage.goto();

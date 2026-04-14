@@ -64,6 +64,7 @@ export class TransactionsPage extends BasePage {
     await this.categorySelect.selectOption({ value: opts.category });
 
     if (opts.tags) {
+      await this.addTagInput.waitFor();
       await this.addTagInput.click();
       for (const tag of opts.tags.split(',').map(t => t.trim()).filter(Boolean)) {
         await this.addTagInput.fill(tag + ',');

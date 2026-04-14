@@ -55,7 +55,6 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
   await clearDatabase(tp.page);
 
   tp.goto();
-  await tp.page.waitForLoadState('networkidle');
 
   let transactions: TransactionOptions[] = [
     groceries,
@@ -66,7 +65,9 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
     cinema
   ];
 
-  seedTransactionsViaAPI(request, transactions);
+  await seedTransactionsViaAPI(request, transactions);
+  await tp.page.waitForLoadState('networkidle');
+
 
   await tp.scrollToTotals();
   const tableRows = tp.page.getByRole('row');
@@ -76,13 +77,6 @@ async function seedData(tp: TransactionsPage, request: APIRequestContext): Promi
 // ─── Summary page filter combinations ────────────────────────────────────────
 
 test.describe.serial('Summary page — filter combinations', () => {
-  /*test.beforeAll(async ({ browser}) => {
-      const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-      const page = await ctx.newPage();
-      await page.close();
-      await ctx.close();
-    });*/
-
   test.beforeEach(async ({ summaryPage, transactionsPage, request }) => {
     let txPage = transactionsPage;
     await seedData(txPage, request);
@@ -328,14 +322,6 @@ test.describe.serial('Summary page — filter combinations', () => {
 // ─── Transactions page filter combinations ────────────────────────────────────
 
 test.describe.serial('Transactions page — filter combinations', () => {
-  /*test.beforeAll(async ({ browser, request, transactionsPage }:
-    { browser: Browser, request: APIRequestContext, transactionsPage: TransactionsPage }) => {
-    const page = await browser.newPage();
-    let txPage = transactionsPage;
-    await seedData(txPage, request);
-    await page.close();
-  });*/
-
   test.beforeEach(async ({ request, transactionsPage }) => {
     let txPage = transactionsPage;
     await seedData(txPage, request);
