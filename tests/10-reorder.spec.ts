@@ -62,12 +62,15 @@ test.describe.serial('Drag handle visibility', () => {
 
   test('each category item has a visible drag handle', async ({ settingsPage }) => {
     let setPage = settingsPage;
-    await setPage.addCategory('alpha');
-    await setPage.addCategory('beta');
+    const cat1: string = 'alpha';
+    const cat2: string = 'beta';
+    await setPage.addCategory(cat1);
+    await setPage.addCategory(cat2);
 
     const handles = setPage.categoriesList.locator(`${setPage.dragHandleStr}`);
-    await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: cat1 })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: cat2 })).toBeVisible();
   });
 
   test('each tag item has a visible drag handle', async ({ request, settingsPage, transactionsPage }) => {

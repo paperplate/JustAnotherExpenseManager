@@ -33,8 +33,8 @@ export class TransactionsPage extends BasePage {
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
     this.dateInput = page.getByRole('textbox', { name: 'Date' });
     this.categorySelect = page.getByRole('combobox', { name: 'Category' });
-    this.addTagInput = page.locator('#add-transaction-form .tagify');
-    this.editTagInput = page.locator('#edit-form .tagify');
+    this.addTagInput = page.locator('#add-transaction-form .tagify__input');
+    this.editTagInput = page.locator('#edit-form .tagify__input');
     this.submitButton = page.getByRole('button', { name: 'Add Transaction' });
 
     this.transactionsList = page.locator('#transactions-list');
@@ -66,7 +66,7 @@ export class TransactionsPage extends BasePage {
       await this.addTagInput.waitFor();
       await this.addTagInput.click();
       for (const tag of opts.tags.split(',').map(t => t.trim()).filter(Boolean)) {
-        await this.addTagInput.fill(tag + ',');
+        await this.addTagInput.pressSequentially(tag + ',');
       }
     }
 

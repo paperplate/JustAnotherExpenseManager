@@ -140,7 +140,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring — expense total is Groceries + Bus Pass, income is Paycheck', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('recurring');
+    await sumPage.filter.selectTag('recurring');
 
     await sumPage.scrollToSummary();
 
@@ -154,7 +154,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring — category chart is still visible', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('recurring');
+    await sumPage.filter.selectTag('recurring');
     await sumPage.scrollToSummary();
 
     await expect(page.locator('#charts-container')).toBeVisible();
@@ -163,7 +163,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:dining — only Pizza shown in expense total', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('dining');
+    await sumPage.filter.selectTag('dining');
     await sumPage.scrollToSummary();
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -172,7 +172,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:leisure — only Cinema shown in expense total', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('leisure');
+    await sumPage.filter.selectTag('leisure');
     await sumPage.scrollToSummary();
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
@@ -181,7 +181,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag filter URL contains tags= parameter', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('recurring');
+    await sumPage.filter.selectTag('recurring');
     expect(page.url()).toContain('tags=recurring');
   });
 
@@ -190,7 +190,7 @@ test.describe.serial('Summary page — filter combinations', () => {
   test('category:food + tag:recurring — only Groceries matches both', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
     await sumPage.filter.selectCategory('food');
-    await sumPage.filter.selectCategory('recurring');
+    await sumPage.filter.selectTag('recurring');
     await sumPage.scrollToSummary();
 
     const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();

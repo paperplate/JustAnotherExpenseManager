@@ -26,6 +26,9 @@ export class FilterComponent {
     if ((await this.categoryDetails.getAttribute('open')) === null) {
       await this.categoryDetails.locator('summary').click();
     }
+
+    await this.categoryOptionsList.waitFor({ state: 'visible' });
+    await expect(this.categoryOptionsList.locator('.filter-option').first()).toBeVisible({ timeout: 500 });
   }
 
   async openTagFilter(): Promise<void> {
