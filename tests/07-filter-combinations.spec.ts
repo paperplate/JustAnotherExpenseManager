@@ -120,11 +120,11 @@ test.describe.serial('Summary page — filter combinations', () => {
     await sumPage.filter.selectCategory('food');
     await sumPage.filter.selectCategory('transport');
 
+    await sumPage.page.waitForLoadState('networkidle');
     await sumPage.scrollToSummary();
 
     // food ($175) + transport ($60) = $235 expenses
-    const expenseValue = await page.locator(SUMMARY_EXPENSE_VALUE).textContent();
-    expect(expenseValue!.trim()).toBe('$235.00');
+    await expect(page.locator(SUMMARY_EXPENSE_VALUE)).toHaveText('$235.00');
   });
 
   test('category:food — category chart remains visible', async ({ page, summaryPage }) => {
@@ -276,7 +276,7 @@ test.describe.serial('Summary page — filter combinations', () => {
 
   test('tag:recurring + current_month — recurring within current month', async ({ page, summaryPage }) => {
     let sumPage = summaryPage;
-    await sumPage.filter.selectCategory('recurring');
+    await sumPage.filter.selectTag('recurring');
     await page.getByLabel('Time Range:').selectOption('current_month');
     await page.waitForLoadState('networkidle');
 

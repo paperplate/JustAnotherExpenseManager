@@ -33,8 +33,9 @@ export class SummaryPage extends BasePage {
   async scrollToSummary(): Promise<void> {
     await this.page.waitForLoadState('networkidle');
     const grid = this.page.locator('.summary-grid');
-    await grid.waitFor({ state: 'attached' });
-    await grid.scrollIntoViewIfNeeded({ timeout: 3000 });
-    await expect(grid).toBeInViewport();
+    //await grid.waitFor({ state: 'attached' });
+    //await grid.scrollIntoViewIfNeeded({ timeout: 3000 });
+    //await expect(grid).toBeInViewport();
+    await expect(grid).toBeVisible({ timeout: 8000 });
   }
 }

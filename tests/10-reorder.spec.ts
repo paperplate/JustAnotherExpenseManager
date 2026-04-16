@@ -94,11 +94,7 @@ test.describe.serial('Drag handle visibility', () => {
   test('drag handle shows grab cursor (CSS)', async ({ settingsPage }) => {
     let setPage = settingsPage;
     await setPage.addCategory('alpha');
-    const cursor = await setPage.categoriesList
-      .locator(setPage.dragHandleStr)
-      .first()
-      .evaluate(el => getComputedStyle(el).cursor);
-    expect(cursor).toBe('grab');
+    await expect(setPage.categoriesList.locator(setPage.dragHandleStr).first()).toHaveCSS('cursor', 'grab');
   });
 });
 
@@ -178,7 +174,7 @@ test.describe.serial('Category reordering', () => {
     await sumPage.goto();
     await sumPage.filter.openCategoryFilter();
 
-    const filterOptions = await sumPage.filter.categoryOptionsList.allTextContents();
+    const filterOptions = await sumPage.filter.categoryFilterOption.allTextContents();
     const filterNames = filterOptions.map(t => t.trim().toLowerCase());
 
     // Verify relative order of our four categories matches what we set.
@@ -197,7 +193,7 @@ test.describe.serial('Category reordering', () => {
     await txPage.goto();
     await txPage.filter.openCategoryFilter();
 
-    const filterOptions = await txPage.filter.categoryOptionsList.allTextContents();
+    const filterOptions = await txPage.filter.categoryFilterOption.allTextContents();
     const filterNames = filterOptions.map(t => t.trim().toLowerCase());
 
     // The filter list must contain all four custom categories.
@@ -221,7 +217,8 @@ test.describe.serial('Category reordering', () => {
 
     await txPage.goto();
 
-    await txPage.filter.openCategoryFilter();
+    //await txPage.filter.openCategoryFilter();
+    await txPage.page.waitForLoadState('networkidle');
     const options = await txPage.categorySelect.allTextContents();
     const selectOurs = options
       .map(t => t.trim().toLowerCase())

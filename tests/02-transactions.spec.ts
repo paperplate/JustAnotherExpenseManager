@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures';
+import { clearDatabase } from './helpers';
 
 /**
  * Transaction CRUD Tests
@@ -8,6 +9,7 @@ import { test, expect } from './fixtures';
 test.describe('Transactions UI', () => {
   test.beforeEach(async ({ transactionsPage }) => {
     let txPage = transactionsPage;
+    await clearDatabase(txPage.page);
     await txPage.goto();
   });
 
