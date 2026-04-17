@@ -18,27 +18,26 @@ export interface TransactionOptions {
   date?: string;
 }
 
-export async function seedTransactionsViaAPI(request: APIRequestContext, opts: TransactionOptions[]): Promise<void> {
+export async function seedTransactionsViaAPI(
+  request: APIRequestContext,
+  opts: TransactionOptions[],
+): Promise<void> {
   for (const o of opts) {
     const response = await request.post('/api/transactions', {
       form: {
         description: o.description,
         amount: String(o.amount),
         type: o.type,
-        date: o.date || TODAY,
+        date: o.date ?? TODAY,
         category: o.category,
-        tags: o.tags || ''
-      }
+        tags: o.tags ?? '',
+      },
     });
-    const responseText = await response.text();
-    expect(response.ok(), `API Seeding failed: ${response.status()} - ${responseText}`);
-    await new Promise(r => setTimeout(r, 50));
+    expect(response.ok(), `API seeding failed for "${o.description}": ${response.status()}`).toBeTruthy();
   }
 }
 
-/**
- * Parse a dollar string like "$1,234.56" or "$0.00" to a float.
- */
+/** Parse "$1,234.56" or "-$50.00" → float. */
 export function parseDollar(text: string | null): number {
   return parseFloat((text ?? '0').replace(/[$,]/g, ''));
 }

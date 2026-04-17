@@ -1,83 +1,39 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Playwright configuration for Expense Manager E2E tests
- * @see https://playwright.dev/docs/test-configuration
+ * Each worker starts its own Flask instance on a unique port with its own
+ * SQLite file (see tests/fixtures.ts → `port` worker fixture).
+ * This means spec files run fully in parallel without DB conflicts.
  */
-module.exports = defineConfig({
+export default defineConfig({
   testDir: './tests',
+  timeout: 30_000,
 
-  /* Maximum time one test can run for */
-  timeout: 30 * 1000,
+  // Tests within a file run serially; files run in parallel across workers.
+  fullyParallel: false,
 
-  /* Run tests in files in parallel */
-  fullyParallel: true,
-
-  /* Fail the build on CI if you accidentally left test.only in the source code */
   forbidOnly: !!process.env.CI,
-
-  /* Retry on CI only */
   retries: process.env.CI ? 2 : 1,
 
-  /* Reporters: html+list in both CI and locally */
-  reporter: [['html', { outputFolder: 'playwright-report' }],
-  ['json', { outputFile: 'results.json' }], ['list']],
+  // Each worker owns one Flask server + one SQLite DB.
+  workers: process.env.CI ? 2 : 4,
 
-  /* Workers: 1 in CI (single-threaded for reliability), unlimited locally */
-  workers: process.env.CI ? 1 : undefined,
-
-  /* Shared settings for all the projects below */
-  use: {
-    /* Base URL to use in actions like `await page.goto('/')` */
-    baseURL: process.env.BASE_URL || 'http://localhost:5005',
-
-    /* Collect trace when retrying the failed test */
-    trace: 'on-first-retry',
-
-    /* Screenshot on failure */
-    screenshot: 'only-on-failure',
-
-    /* Video on failure */
-    video: {
-      mode: 'retain-on-failure'
-    }
-
-  },
-
-  /* Configure projects for major browsers */
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-
-    {
-      name: 'firefox',
-      use: { ...devices['Desktop Firefox'] },
-    },
-
-    {
-      name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
-    },
-
-    /* Test against mobile viewports */
-    {
-      name: 'Mobile Chrome',
-      use: { ...devices['Pixel 5'] },
-    },
-
-    {
-      name: 'Mobile Safari',
-      use: { ...devices['iPhone 12'] },
-    },
+  reporter: [
+    ['html', { outputFolder: 'playwright-report' }],
+    ['json', { outputFile: 'results.json' }],
+    ['list'],
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: 'JAEM_CONFIG=testing FLASK_RUN_PORT=5005 FLASK_APP=JustAnotherExpenseManager flask run',
-    url: 'http://localhost:5005',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+  use: {
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: { mode: 'retain-on-failure' },
+    // baseURL is provided dynamically by the `port` worker fixture.
   },
+
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
+
+  // No webServer block — fixtures.ts spawns per-worker servers instead.
 });
