@@ -215,11 +215,17 @@ test.describe.serial('Category reordering', () => {
       ['alpha', 'beta', 'gamma', 'delta'].includes(n)
     );
 
+    const categoryResponsePromise = txPage.page.waitForResponse(
+      res => res.url().includes('/api/categories') && res.status() === 200
+    );
+
     await txPage.goto();
 
-    //await txPage.filter.openCategoryFilter();
-    await txPage.page.waitForLoadState('networkidle');
-    const options = await txPage.categorySelect.allTextContents();
+    await categoryResponsePromise;
+
+    await expect(txPage.page.getByLabel('Category').locator('option', { hasText: 'Alpha' })).toBeAttached();
+
+    const options = await txPage.categorySelect.locator('option').allInnerTexts();
     const selectOurs = options
       .map(t => t.trim().toLowerCase())
       .filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
@@ -231,6 +237,8 @@ test.describe.serial('Category reordering', () => {
     let setPage = settingsPage;
     const before = await setPage.getListNames(setPage.categoriesList);
     await setPage.addCategory('zeta');
+    await expect(setPage.categoryItem.filter({ hasText: 'zeta' })).toBeVisible();
+
     const after = await setPage.getListNames(setPage.categoriesList);
 
     expect(after[after.length - 1]).toBe('zeta');
@@ -243,7 +251,7 @@ test.describe.serial('Category reordering', () => {
   test('deleting a category does not disturb the order of the remaining ones', async ({ page, settingsPage }) => {
     let setPage = settingsPage;
     const before = await setPage.getListNames(setPage.categoriesList);
-    const targetName = 'zeta';
+    const targetName: string = 'delta';
     const expected = before.filter(n => n !== targetName);
 
     page.once('dialog', d => d.accept());
@@ -403,6 +411,8 @@ test.describe('Rename preserves sort order', () => {
 
     const middle: string = 'middle';
     await setPage.submitRename(middle);
+
+    await expect(setPage.categoryItem.filter({ hasText: middle })).toBeVisible();
 
     const after = await setPage.getListNames(setPage.categoriesList);
     const middleIdx = after.indexOf(middle);

@@ -40,27 +40,37 @@ export class FilterComponent {
   async selectCategory(name: string): Promise<void> {
     await this.openCategoryFilter();
     const regexp = new RegExp(`^${name}$`, 'i');
+    const responsePromise = this.waitForFilterResponse();
     await this.categoryFilterOption.filter({ hasText: regexp }).click();
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
   }
 
   async selectTag(name: string): Promise<void> {
     await this.openTagFilter();
     const regexp = new RegExp(`^${name}$`, 'i');
+    const responsePromise = this.waitForFilterResponse();
     await this.tagFilterOption.filter({ hasText: regexp }).click();
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
   }
 
   async resetCategoryFilter(): Promise<void> {
     await this.openCategoryFilter();
+    const responsePromise = this.waitForFilterResponse();
     await this.page.locator('#category-details .filter-option[data-value=""]').click();
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
   }
 
   async resetTagFilter(): Promise<void> {
     await this.openTagFilter();
+    const responsePromise = this.waitForFilterResponse();
     await this.page.locator('#tag-details .filter-option[data-value=""]').click();
-    await this.page.waitForLoadState('networkidle');
+    await responsePromise;
+  }
+
+  private waitForFilterResponse() {
+    return this.page.waitForResponse(res =>
+      (res.url().includes('/api/transactions') || res.url().includes('/api/stats')) && res.status() === 200
+    );
   }
 }
 
