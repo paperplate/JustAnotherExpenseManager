@@ -1,248 +1,182 @@
-import { test, expect, Page } from '@playwright/test';
-import { clearDatabase, addCategory, addTransaction } from './helpers';
-
 /**
  * Category & Tag Reorder Tests
  *
- * Verifies drag-to-reorder behaviour on the Settings page and confirms that
- * the persisted order flows through to the filter dropdowns on the Summary
- * and Transactions pages.
+ * Verifies drag-to-reorder on the Settings page and confirms the persisted
+ * order flows through to filter dropdowns and the add-transaction <select>.
  *
  * Drag mechanics note
  * -------------------
- * Sortable.js uses pointer/mouse events, NOT the HTML5 Drag and Drop API.
- * Playwright's page.dragAndDrop() dispatches HTML5 drag events and therefore
- * has no effect on Sortable lists. All drag operations here use the low-level
- * mouse API (mousedown → incremental moves → mouseup) to simulate the pointer
- * events that Sortable.js actually listens for.
+ * Sortable.js uses pointer/mouse events, not the HTML5 DnD API.
+ * Playwright's page.dragAndDrop() dispatches HTML5 drag events → no effect.
+ * All drags here use the low-level mouse API (mousedown → moves → mouseup).
  */
 
-// ─── Shared drag helper ───────────────────────────────────────────────────────
+import { Locator } from '@playwright/test';
+import { test, expect } from './fixtures';
+import { clearDatabase, seedTransactionsViaAPI } from './helpers';
+import { SettingsPage } from './pages/SettingsPage';
 
-/**
- * Drag the item at `sourceIndex` in `listSelector` to the position of the
- * item currently at `targetIndex`. Uses small incremental mouse steps so
- * Sortable.js has time to compute the new insertion point.
- */
+// ── Shared drag helper ────────────────────────────────────────────────────────
+
 async function dragItemToIndex(
-  page: Page,
-  listSelector: string,
+  setPage: SettingsPage,
+  listLocator: Locator,
   sourceIndex: number,
-  targetIndex: number
+  targetIndex: number,
 ): Promise<void> {
-  const items = page.locator(`${listSelector} .category-item`);
-  const handle = items.nth(sourceIndex).locator('.drag-handle');
-  const target = items.nth(targetIndex);
+  const source = listLocator.locator('.drag-handle').nth(sourceIndex);
+  const target = listLocator.locator('.drag-handle').nth(targetIndex);
 
-  const handleBox = await handle.boundingBox();
-  const targetBox = await target.boundingBox();
-  if (!handleBox || !targetBox) throw new Error('Could not get bounding boxes for drag');
+  await source.hover();
+  await setPage.page.mouse.down();
+  await setPage.page.mouse.move(0, 10);
 
-  const startX = handleBox.x + handleBox.width / 2;
-  const startY = handleBox.y + handleBox.height / 2;
-  // Drop slightly past the mid-point of the target so Sortable registers it
-  // as "after" that element when dragging downward, or "before" when upward.
-  const endY = targetIndex > sourceIndex
-    ? targetBox.y + targetBox.height * 0.75
-    : targetBox.y + targetBox.height * 0.25;
-
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  // Move in multiple steps — Sortable.js needs intermediate mousemove events
-  // to track the drag and decide where to insert the ghost placeholder.
-  await page.mouse.move(startX, startY + (endY - startY) * 0.3, { steps: 5 });
-  await page.mouse.move(startX, startY + (endY - startY) * 0.6, { steps: 5 });
-  await page.mouse.move(startX, endY, { steps: 10 });
-  // Brief pause so Sortable can settle the placeholder before we release.
-  await page.waitForTimeout(100);
-  await page.mouse.up();
-  await page.waitForTimeout(300);
+  const box = await target.boundingBox();
+  if (box) {
+    await setPage.page.mouse.move(
+      box.x + box.width / 2,
+      box.y + box.height / 2,
+      { steps: 5 },
+    );
+  }
+  await setPage.page.mouse.up();
 }
 
-/** Return the visible text content of every .category-item in a list. */
-async function getItemNames(page: Page, listSelector: string): Promise<string[]> {
-  return page.locator(`${listSelector} .category-item .category-name`).allTextContents();
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const CAT_LIST = '#categories-list';
-const TAG_LIST = '#tags-list';
-const FILTER_CAT_OPTIONS = '#category-options-list .filter-option';
-const FILTER_TAG_OPTIONS = '#tag-options-list .filter-option';
-
-// ─── Drag handle visibility ───────────────────────────────────────────────────
+// ── Drag handle visibility ────────────────────────────────────────────────────
 
 test.describe('Drag handle visibility', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    await settingsPage.goto();
   });
 
-  test('each category item has a visible drag handle', async ({ page }) => {
-    await addCategory(page, 'alpha');
-    await addCategory(page, 'beta');
-
-    const handles = page.locator(`${CAT_LIST} .drag-handle`);
-    await expect(handles).toHaveCount(2);
+  test('each category item has a visible drag handle', async ({ settingsPage }) => {
+    await settingsPage.addCategory('alpha');
+    await settingsPage.addCategory('beta');
+    const handles = settingsPage.categoriesList.locator('.drag-handle');
     await expect(handles.first()).toBeVisible();
   });
 
-  test('each tag item has a visible drag handle', async ({ page }) => {
-    // Tags appear once they have been applied to at least one transaction.
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+  test('each tag item has a visible drag handle', async ({ request, settingsPage, transactionsPage }) => {
+    await transactionsPage.goto();
+    await seedTransactionsViaAPI(request, [{
       description: 'Tagged A', amount: 10, type: 'expense',
       category: 'other', tags: 'urgent,planned',
-    });
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+    }]);
+    await settingsPage.goto();
+    await settingsPage.page.waitForLoadState('networkidle');
 
-    const handles = page.locator(`${TAG_LIST} .drag-handle`);
+    const handles = settingsPage.tagList.locator('.drag-handle');
     await expect(handles).toHaveCount(2);
     await expect(handles.first()).toBeVisible();
   });
 
-  test('drag handle shows grab cursor (CSS)', async ({ page }) => {
-    await addCategory(page, 'alpha');
-    const cursor = await page
-      .locator(`${CAT_LIST} .drag-handle`)
-      .first()
-      .evaluate(el => getComputedStyle(el).cursor);
-    expect(cursor).toBe('grab');
+  test('drag handle has grab cursor', async ({ settingsPage }) => {
+    await settingsPage.addCategory('alpha');
+    await expect(settingsPage.categoriesList.locator('.drag-handle').first())
+      .toHaveCSS('cursor', 'grab');
   });
 });
 
-// ─── Category reordering ──────────────────────────────────────────────────────
+// ── Category reordering ───────────────────────────────────────────────────────
 
-test.describe.serial('Category reordering', () => {
-  test.beforeAll(async ({ browser }) => {
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-    const page = await ctx.newPage();
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+// serial: tests depend on ordering established by earlier tests in the block.
+test.describe.configure({ mode: 'serial' });
+
+test.describe('Category reordering', () => {
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    await settingsPage.goto();
     for (const name of ['alpha', 'beta', 'gamma', 'delta']) {
-      await addCategory(page, name);
+      await settingsPage.addCategory(name);
     }
-    await page.close();
-    await ctx.close();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('categories are rendered in insertion order initially', async ({ page }) => {
-    const names = await getItemNames(page, CAT_LIST);
-    // Default seeded categories arrive first; our four are appended in order.
+  test('categories render in insertion order initially', async ({ settingsPage }) => {
+    const names = await settingsPage.getListNames(settingsPage.categoriesList);
     const ours = names.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
     expect(ours).toEqual(['alpha', 'beta', 'gamma', 'delta']);
   });
 
-  test('dragging a category down reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+  test('dragging a category down reorders the list immediately', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
     const alphaIdx = before.indexOf('alpha');
-
-    // Drag alpha one position down.
-    await dragItemToIndex(page, CAT_LIST, alphaIdx, alphaIdx + 1);
-
-    const after = await getItemNames(page, CAT_LIST);
-    const alphaAfter = after.indexOf('alpha');
-    const betaAfter = after.indexOf('beta');
-    expect(alphaAfter).toBeGreaterThan(betaAfter);
+    await dragItemToIndex(settingsPage, settingsPage.categoriesList, alphaIdx, alphaIdx + 1);
+    const after = await settingsPage.getListNames(settingsPage.categoriesList);
+    expect(after.indexOf('alpha')).toBeGreaterThan(after.indexOf('beta'));
   });
 
-  test('dragging a category up reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+  test('dragging a category up reorders the list immediately', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
     const deltaIdx = before.indexOf('delta');
-
-    // Drag delta up one position.
-    await dragItemToIndex(page, CAT_LIST, deltaIdx, deltaIdx - 1);
-
-    const after = await getItemNames(page, CAT_LIST);
+    await dragItemToIndex(settingsPage, settingsPage.categoriesList, deltaIdx, deltaIdx - 1);
+    const after = await settingsPage.getListNames(settingsPage.categoriesList);
     expect(after.indexOf('delta')).toBeLessThan(before.indexOf('delta'));
   });
 
-  test('reordered position persists after a full page reload', async ({ page }) => {
-    // Move alpha to after gamma on this load.
-    const before = await getItemNames(page, CAT_LIST);
+  test('reordered position persists after page reload', async ({ page, settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
     const alphaIdx = before.indexOf('alpha');
     const gammaIdx = before.indexOf('gamma');
+    await dragItemToIndex(settingsPage, settingsPage.categoriesList, alphaIdx, gammaIdx);
+    const afterDrag = await settingsPage.getListNames(settingsPage.categoriesList);
 
-    await dragItemToIndex(page, CAT_LIST, alphaIdx, gammaIdx);
-    const afterDrag = await getItemNames(page, CAT_LIST);
-
-    // Reload and confirm the server returned the same order.
     await page.reload();
     await page.waitForLoadState('networkidle');
-    const afterReload = await getItemNames(page, CAT_LIST);
+    const afterReload = await settingsPage.getListNames(settingsPage.categoriesList);
 
     expect(afterReload.indexOf('alpha')).toBe(afterDrag.indexOf('alpha'));
     expect(afterReload.indexOf('gamma')).toBe(afterDrag.indexOf('gamma'));
   });
 
-  test('custom order is reflected in the Summary page category filter', async ({ page }) => {
-    // Establish a known order by dragging delta to the front of our four.
-    const before = await getItemNames(page, CAT_LIST);
+  test('custom order reflected in Summary page category filter', async ({ settingsPage, summaryPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
     const deltaIdx = before.indexOf('delta');
     const alphaIdx = before.indexOf('alpha');
-    await dragItemToIndex(page, CAT_LIST, deltaIdx, alphaIdx);
+    await dragItemToIndex(settingsPage, settingsPage.categoriesList, deltaIdx, alphaIdx);
 
-    const settingsOrder = await getItemNames(page, CAT_LIST);
+    await summaryPage.goto();
+    await summaryPage.filter.openCategoryFilter();
 
-    await page.goto('/summary');
-    await page.waitForLoadState('networkidle');
-    // Open category filter dropdown.
-    await page.locator('#category-details summary').click();
-    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
+    const filterTexts = await summaryPage.filter.categoryFilterOption.allTextContents();
+    const filterNames = filterTexts.map(t => t.trim().toLowerCase());
 
-    const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
-    const filterNames = filterOptions.map(t => t.trim().toLowerCase());
-
-    // Verify relative order of our four categories matches what we set.
-    const positions = ['alpha', 'beta', 'gamma', 'delta'].map(n => filterNames.indexOf(n));
-    const deltaPos = filterNames.indexOf('delta');
-    const alphaPos = filterNames.indexOf('alpha');
-    expect(deltaPos).toBeLessThan(alphaPos);
-    expect(positions.every(p => p !== -1)).toBe(true);
+    expect(filterNames.indexOf('delta')).toBeLessThan(filterNames.indexOf('alpha'));
+    expect(['alpha', 'beta', 'gamma', 'delta'].every(n => filterNames.includes(n))).toBe(true);
   });
 
-  test('custom order is reflected in the Transactions page category filter', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, CAT_LIST);
+  test('custom order reflected in Transactions page category filter', async ({ settingsPage, transactionsPage }) => {
+    const settingsOrder = await settingsPage.getListNames(settingsPage.categoriesList);
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#category-details summary').click();
-    await expect(page.locator('#category-options-list').first()).toBeVisible({ timeout: 5000 });
+    await transactionsPage.goto();
+    await transactionsPage.filter.openCategoryFilter();
 
-    const filterOptions = await page.locator(FILTER_CAT_OPTIONS).allTextContents();
-    const filterNames = filterOptions.map(t => t.trim().toLowerCase());
+    const filterTexts = await transactionsPage.filter.categoryFilterOption.allTextContents();
+    const filterNames = filterTexts.map(t => t.trim().toLowerCase());
 
-    // The filter list must contain all four custom categories.
-    for (const name of ['alpha', 'beta', 'gamma', 'delta']) {
-      expect(filterNames).toContain(name);
-    }
-
-    // Relative order must match the settings page order.
     const settingsOurs = settingsOrder.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
     const filterOurs = filterNames.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
     expect(filterOurs).toEqual(settingsOurs);
   });
 
-  test('custom order is reflected in the add-transaction category <select>', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, CAT_LIST);
-    const settingsOurs = settingsOrder.filter(n =>
-      ['alpha', 'beta', 'gamma', 'delta'].includes(n)
+  test('custom order reflected in add-transaction category <select>', async ({ settingsPage, transactionsPage }) => {
+    const settingsOrder = await settingsPage.getListNames(settingsPage.categoriesList);
+    const settingsOurs = settingsOrder.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
+
+    // Wait for loadCategorySelect() to finish populating the <select>.
+    const categoriesResponse = transactionsPage.page.waitForResponse(
+      res => res.url().includes('/api/categories') && res.status() === 200,
     );
+    await transactionsPage.goto();
+    await categoriesResponse;
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+    // Confirm at least one of our options is present before reading all.
+    await expect(
+      transactionsPage.page.getByLabel('Category').locator('option', { hasText: 'Alpha' }),
+    ).toBeAttached();
 
-    const options = await page.getByLabel('Category').locator('option').allTextContents();
+    // scope to <option> children — allTextContents() on <select> returns a single blob.
+    const options = await transactionsPage.categorySelect.locator('option').allTextContents();
     const selectOurs = options
       .map(t => t.trim().toLowerCase())
       .filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
@@ -250,273 +184,210 @@ test.describe.serial('Category reordering', () => {
     expect(selectOurs).toEqual(settingsOurs);
   });
 
-  test('new category added after reordering lands at the bottom', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
-    await addCategory(page, 'zeta');
-    const after = await getItemNames(page, CAT_LIST);
+  test('new category added after reordering lands at the bottom', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
+    await settingsPage.addCategory('zeta');
+    await expect(settingsPage.categoryItem.filter({ hasText: 'zeta' })).toBeVisible();
 
+    const after = await settingsPage.getListNames(settingsPage.categoriesList);
     expect(after[after.length - 1]).toBe('zeta');
-    // All previous categories are still present and their relative order is intact.
+
     const beforeOurs = before.filter(n => after.includes(n));
-    const afterWithoutNew = after.filter(n => n !== 'zeta');
-    expect(afterWithoutNew).toEqual(beforeOurs);
+    expect(after.filter(n => n !== 'zeta')).toEqual(beforeOurs);
   });
 
-  test('deleting a category does not disturb the order of the remaining ones', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
-    const targetName = 'zeta';
-    const expected = before.filter(n => n !== targetName);
+  test('deleting a category does not disturb remaining order', async ({ page, settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
+    const expected = before.filter(n => n !== 'delta');
 
     page.once('dialog', d => d.accept());
-    await page.locator(`${CAT_LIST} .category-item`, { hasText: targetName })
+    await settingsPage.categoryItem.filter({ hasText: 'delta' })
       .getByRole('button', { name: 'Delete' })
       .click();
     await page.waitForLoadState('networkidle');
 
-    const after = await getItemNames(page, CAT_LIST);
+    const after = await settingsPage.getListNames(settingsPage.categoriesList);
     expect(after).toEqual(expected);
   });
 });
 
-// ─── Tag reordering ───────────────────────────────────────────────────────────
+// ── Tag reordering ────────────────────────────────────────────────────────────
 
-test.describe.serial('Tag reordering', () => {
-  test.beforeAll(async ({ browser }) => {
-    const ctx = await browser.newContext({ baseURL: process.env.BASE_URL || 'http://localhost:5005' });
-    const page = await ctx.newPage();
-    await clearDatabase(page);
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    // Create four transactions each carrying a unique tag so all four appear
-    // in the tags list.
-    const tags = ['urgent', 'planned', 'recurring', 'personal'];
-    for (const tag of tags) {
-      await addTransaction(page, {
+test.describe('Tag reordering', () => {
+  test.beforeEach(async ({ request, settingsPage, transactionsPage }) => {
+    await clearDatabase(request);
+    await transactionsPage.goto();
+    for (const tag of ['urgent', 'planned', 'recurring', 'personal']) {
+      await seedTransactionsViaAPI(request, [{
         description: `Trans ${tag}`, amount: 10, type: 'expense',
         category: 'other', tags: tag,
-      });
+      }]);
     }
-    await page.close();
-    await ctx.close();
+    await settingsPage.goto();
   });
 
-  test.beforeEach(async ({ page }) => {
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-  });
-
-  test('tags are rendered in insertion order initially', async ({ page }) => {
-    const names = await getItemNames(page, TAG_LIST);
+  test('tags render in insertion order initially', async ({ settingsPage }) => {
+    const names = await settingsPage.getListNames(settingsPage.tagList);
     expect(names).toEqual(['urgent', 'planned', 'recurring', 'personal']);
   });
 
-  test('dragging a tag down reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+  test('dragging a tag down reorders list immediately', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.tagList);
     const urgentIdx = before.indexOf('urgent');
-
-    await dragItemToIndex(page, TAG_LIST, urgentIdx, urgentIdx + 1);
-
-    const after = await getItemNames(page, TAG_LIST);
+    await dragItemToIndex(settingsPage, settingsPage.tagList, urgentIdx, urgentIdx + 1);
+    const after = await settingsPage.getListNames(settingsPage.tagList);
     expect(after.indexOf('urgent')).toBeGreaterThan(after.indexOf('planned'));
   });
 
-  test('dragging a tag up reorders the visible list immediately', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+  test('dragging a tag up reorders list immediately', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.tagList);
     const personalIdx = before.indexOf('personal');
-
-    await dragItemToIndex(page, TAG_LIST, personalIdx, personalIdx - 1);
-
-    const after = await getItemNames(page, TAG_LIST);
+    await dragItemToIndex(settingsPage, settingsPage.tagList, personalIdx, personalIdx - 1);
+    const after = await settingsPage.getListNames(settingsPage.tagList);
     expect(after.indexOf('personal')).toBeLessThan(before.indexOf('personal'));
   });
 
-  test('reordered tag position persists after page reload', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
+  test('reordered tag position persists after page reload', async ({ page, settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.tagList);
     const recurringIdx = before.indexOf('recurring');
     const urgentIdx = before.indexOf('urgent');
-
-    await dragItemToIndex(page, TAG_LIST, recurringIdx, urgentIdx);
-    const afterDrag = await getItemNames(page, TAG_LIST);
+    await dragItemToIndex(settingsPage, settingsPage.tagList, recurringIdx, urgentIdx);
+    const afterDrag = await settingsPage.getListNames(settingsPage.tagList);
 
     await page.reload();
     await page.waitForLoadState('networkidle');
-    const afterReload = await getItemNames(page, TAG_LIST);
-
+    const afterReload = await settingsPage.getListNames(settingsPage.tagList);
     expect(afterReload.indexOf('recurring')).toBe(afterDrag.indexOf('recurring'));
   });
 
-  test('custom tag order is reflected in the Summary page tag filter', async ({ page }) => {
-    // Move personal to first position.
-    const before = await getItemNames(page, TAG_LIST);
+  test('custom tag order reflected in Summary page tag filter', async ({ page, summaryPage, settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.tagList);
     const personalIdx = before.indexOf('personal');
-    await dragItemToIndex(page, TAG_LIST, personalIdx, 0);
+    await dragItemToIndex(settingsPage, settingsPage.tagList, personalIdx, 0);
+    const settingsOrder = await settingsPage.getListNames(settingsPage.tagList);
 
-    const settingsOrder = await getItemNames(page, TAG_LIST);
-
-    await page.goto('/summary');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#tag-details summary').click();
+    await summaryPage.goto();
+    await summaryPage.filter.openTagFilter();
     await expect(
-      page.locator('#tag-options-list').filter({ hasText: 'personal' })
-    ).toBeVisible({ timeout: 5000 });
+      page.locator('#tag-options-list').filter({ hasText: 'personal' }),
+    ).toBeVisible({ timeout: 5_000 });
 
-    const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
-    const filterNames = filterOptions.map(t => t.trim());
+    const filterTexts = await summaryPage.filter.tagFilterOption.allTextContents();
+    const filterNames = filterTexts.map(t => t.trim());
 
-    // personal should now appear before urgent in the filter list.
     expect(filterNames.indexOf('personal')).toBeLessThan(filterNames.indexOf('urgent'));
 
-    // Relative order must match the settings page order exactly.
-    const tagNames = ['urgent', 'planned', 'recurring', 'personal'];
-    const settingsOurs = settingsOrder.filter(n => tagNames.includes(n));
-    const filterOurs = filterNames.filter(n => tagNames.includes(n));
+    const tags = ['urgent', 'planned', 'recurring', 'personal'];
+    const settingsOurs = settingsOrder.filter(n => tags.includes(n));
+    const filterOurs = filterNames.filter(n => tags.includes(n));
     expect(filterOurs).toEqual(settingsOurs);
   });
 
-  test('custom tag order is reflected in the Transactions page tag filter', async ({ page }) => {
-    const settingsOrder = await getItemNames(page, TAG_LIST);
+  test('custom tag order reflected in Transactions page tag filter', async ({ page, transactionsPage, settingsPage }) => {
+    const settingsOrder = await settingsPage.getListNames(settingsPage.tagList);
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await page.locator('#tag-details summary').click();
+    await transactionsPage.goto();
+    await transactionsPage.filter.openTagFilter();
     await expect(
-      page.locator('#tag-options-list').filter({ hasText: 'urgent' })
-    ).toBeVisible({ timeout: 5000 });
+      page.locator('#tag-options-list').filter({ hasText: 'urgent' }),
+    ).toBeVisible({ timeout: 5_000 });
 
-    const filterOptions = await page.locator(FILTER_TAG_OPTIONS).allTextContents();
-    const filterNames = filterOptions.map(t => t.trim());
+    const filterTexts = await transactionsPage.filter.tagFilterOption.allTextContents();
+    const filterNames = filterTexts.map(t => t.trim());
 
-    const tagNames = ['urgent', 'planned', 'recurring', 'personal'];
-    const settingsOurs = settingsOrder.filter(n => tagNames.includes(n));
-    const filterOurs = filterNames.filter(n => tagNames.includes(n));
-    expect(filterOurs).toEqual(settingsOurs);
+    const tags = ['urgent', 'planned', 'recurring', 'personal'];
+    expect(settingsOrder.filter(n => tags.includes(n))).toEqual(filterNames.filter(n => tags.includes(n)));
   });
 
-  test('deleting a tag does not disturb the order of the remaining ones', async ({ page }) => {
-    const before = await getItemNames(page, TAG_LIST);
-
-    page.once('dialog', d => d.accept());
-    await page.locator(`${TAG_LIST} .category-item`, { hasText: 'personal' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
-
-    const after = await getItemNames(page, TAG_LIST);
-    const expected = before.filter(n => n !== 'personal');
-    expect(after).toEqual(expected);
+  test('deleting a tag does not disturb remaining order', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.tagList);
+    await settingsPage.deleteTag('personal');
+    const after = await settingsPage.getListNames(settingsPage.tagList);
+    expect(after).toEqual(before.filter(n => n !== 'personal'));
   });
 });
 
-// ─── Rename does not reset sort_order ────────────────────────────────────────
+// ── Rename preserves sort_order ───────────────────────────────────────────────
 
 test.describe('Rename preserves sort order', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    await settingsPage.goto();
     for (const name of ['first', 'second', 'third']) {
-      await addCategory(page, name);
+      await settingsPage.addCategory(name);
     }
   });
 
-  test('renaming the middle category keeps it in the middle', async ({ page }) => {
-    const before = await getItemNames(page, CAT_LIST);
+  test('renaming the middle category keeps it in the middle', async ({ settingsPage }) => {
+    const before = await settingsPage.getListNames(settingsPage.categoriesList);
     const secondIdx = before.indexOf('second');
 
-    // Rename 'second' → 'middle'
-    await page.locator(`${CAT_LIST} .category-item`, { hasText: 'second' })
-      .getByRole('button', { name: 'Edit' })
-      .click();
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.getByLabel('Category Name').fill('middle');
-    await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
-    await page.waitForLoadState('networkidle');
+    await settingsPage.openEditModal('second');
+    await settingsPage.submitRename('middle');
+    await expect(settingsPage.categoryItem.filter({ hasText: 'middle' })).toBeVisible();
 
-    const after = await getItemNames(page, CAT_LIST);
-    const middleIdx = after.indexOf('middle');
-    expect(middleIdx).toBe(secondIdx);
+    const after = await settingsPage.getListNames(settingsPage.categoriesList);
+    expect(after.indexOf('middle')).toBe(secondIdx);
   });
 });
 
-// ─── API contract ─────────────────────────────────────────────────────────────
+// ── API contract ──────────────────────────────────────────────────────────────
 
 test.describe('Order API contract', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    await settingsPage.goto();
     for (const name of ['cat1', 'cat2', 'cat3']) {
-      await addCategory(page, name);
+      await settingsPage.addCategory(name);
     }
   });
 
   test('PATCH /api/categories/order returns 200 with valid payload', async ({ page }) => {
-    const response = await page.request.patch('/api/categories/order', {
+    const res = await page.request.patch('/api/categories/order', {
       data: { order: ['cat3', 'cat1', 'cat2'] },
     });
-    expect(response.status()).toBe(200);
-    expect((await response.json()).success).toBe(true);
+    expect(res.status()).toBe(200);
+    expect((await res.json()).success).toBe(true);
   });
 
   test('PATCH /api/categories/order with non-array body returns 400', async ({ page }) => {
-    const response = await page.request.patch('/api/categories/order', {
+    const res = await page.request.patch('/api/categories/order', {
       data: { order: 'not-an-array' },
     });
-    expect(response.status()).toBe(400);
+    expect(res.status()).toBe(400);
   });
 
-  test('PATCH /api/categories/order with missing body returns 400', async ({ page }) => {
-    const response = await page.request.patch('/api/categories/order', {
-      data: {},
-    });
-    // An empty order list is a no-op and should succeed, but a missing
-    // 'order' key means request.json() won't have the field — the route
-    // should still respond without a server error.
-    expect(response.status()).toBeLessThan(500);
-  });
-
-  test('GET /api/categories returns categories in the order set by PATCH', async ({ page }) => {
+  test('GET /api/categories returns categories in PATCH order', async ({ page }) => {
     await page.request.patch('/api/categories/order', {
       data: { order: ['cat3', 'cat1', 'cat2'] },
     });
-
-    const response = await page.request.get('/api/categories');
-    const categories = await response.json();
-    const names = categories
-      .map((c: { category_name: string }) => c.category_name)
-      .filter((n: string) => ['cat1', 'cat2', 'cat3'].includes(n));
-
+    const res = await page.request.get('/api/categories');
+    const cats: { category_name: string }[] = await res.json();
+    const names = cats.map(c => c.category_name).filter(n => ['cat1', 'cat2', 'cat3'].includes(n));
     expect(names).toEqual(['cat3', 'cat1', 'cat2']);
   });
 
-  test('PATCH /api/tags/order returns 200 with valid payload', async ({ page }) => {
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+  test('PATCH /api/tags/order returns 200 with valid payload', async ({ page, transactionsPage }) => {
+    await transactionsPage.goto();
+    await transactionsPage.addTransactionViaUI({
       description: 'T1', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
-
-    const response = await page.request.patch('/api/tags/order', {
+    const res = await page.request.patch('/api/tags/order', {
       data: { order: ['tagC', 'tagA', 'tagB'] },
     });
-    expect(response.status()).toBe(200);
-    expect((await response.json()).success).toBe(true);
+    expect(res.status()).toBe(200);
+    expect((await res.json()).success).toBe(true);
   });
 
-  test('GET /api/tags returns tags in the order set by PATCH', async ({ page }) => {
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+  test('GET /api/tags returns tags in PATCH order', async ({ page, transactionsPage }) => {
+    await transactionsPage.goto();
+    await transactionsPage.addTransactionViaUI({
       description: 'T2', amount: 5, type: 'expense', category: 'other', tags: 'tagA,tagB,tagC',
     });
-
     await page.request.patch('/api/tags/order', {
       data: { order: ['tagC', 'tagA', 'tagB'] },
     });
-
-    const response = await page.request.get('/api/tags');
-    const tags: string[] = await response.json();
-    const ours = tags.filter(t => ['tagA', 'tagB', 'tagC'].includes(t));
-    expect(ours).toEqual(['tagC', 'tagA', 'tagB']);
+    const tags: string[] = await (await page.request.get('/api/tags')).json();
+    expect(tags.filter(t => ['tagA', 'tagB', 'tagC'].includes(t))).toEqual(['tagC', 'tagA', 'tagB']);
   });
 });

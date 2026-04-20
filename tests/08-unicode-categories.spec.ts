@@ -1,5 +1,5 @@
-import { test, expect, Page } from '@playwright/test';
-import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename, scrollToTotals, openCategoryFilter } from './helpers'
+import { test, expect } from './fixtures';
+import { clearDatabase } from './helpers'
 
 /**
  * Unicode Category Management Tests
@@ -11,226 +11,220 @@ import { addTransaction, clearDatabase, addCategory, openEditModal, submitRename
  */
 
 // ─── constants ─────────────────────────────────────────────────────────────
-const SETTINGS_CATEGORY_LIST_ITEM: string = '#categories-list .category-item';
-const FILTER_CATEGORY_LIST: string = '#category-options-list .filter-option';
-
-// ─── helpers ─────────────────────────────────────────────────────────────
-async function renameCategory(page: Page, original: string, renamed: string): Promise<void> {
-  await addCategory(page, original);
-  await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-  await openEditModal(page, original);
-  await expect(page.locator('#editCategoryModal')).toBeVisible();
-  await submitRename(page, renamed);
-}
-
-async function mergeCategories(page: Page, original: string, target: string): Promise<void> {
-  await addCategory(page, original);
-  await expect(page.locator('#add-category-result')).toContainText('added successfully');
-  await addCategory(page, target);
-  await expect(page.locator('#add-category-result')).toContainText('added successfully');
-
-  await openEditModal(page, original);
-  await expect(page.locator('#editCategoryModal')).toBeVisible();
-  await page.getByLabel('Category Name').fill(target);
-
-  page.once('dialog', dialog => dialog.accept());
-  await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
-  await page.waitForLoadState('networkidle');
-}
+const ADD_CAT_RESULT: string = '#add-category-result';
 
 // ─── Rename tests ─────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — rename', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    let setPage = settingsPage;
+    setPage.goto();
   });
 
-  test('rename Chinese → English succeeds', async ({ page }) => {
+  test('rename Chinese → English succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
     const original: string = '食物';
     const renamed: string = 'food-renamed';
-    await renameCategory(page, original, renamed);
-    await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('rename English → Chinese succeeds', async ({ page }) => {
+  test('rename English → Chinese succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
     const original: string = 'food2';
     const renamed: string = '食物';
-    await renameCategory(page, original, renamed);
-    await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('rename Chinese → Chinese succeeds', async ({ page }) => {
+  test('rename Chinese → Chinese succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
     const original: string = '食物';
     const renamed: string = '餐饮';
-    await renameCategory(page, original, renamed);
-    await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('rename English → English succeeds', async ({ page }) => {
+  test('rename English → English succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
     const original: string = 'groceries';
     const renamed: string = 'supermarket';
-    await renameCategory(page, original, renamed);
-    await expect(page.locator('#editCategoryModal')).not.toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: renamed })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: original })).not.toBeVisible();
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('renamed Chinese category appears in transaction form dropdown', async ({ page }) => {
+  test('renamed Chinese category appears in transaction form dropdown', async ({ settingsPage, transactionsPage }) => {
+    let setPage = settingsPage;
+    let txPage = transactionsPage;
     const original: string = '交通';
     const renamed: string = 'transport2';
-    await renameCategory(page, original, renamed);
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-
-    await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: renamed })).toBeAttached();
-    await expect(page.locator(FILTER_CATEGORY_LIST, { hasText: original })).not.toBeAttached();
+    txPage.goto();
+    await expect(txPage.filter.categoryFilterOption.filter({ hasText: renamed })).toBeAttached();
+    await expect(txPage.filter.categoryFilterOption.filter({ hasText: original })).not.toBeAttached();
   });
 });
 
 // ─── Merge tests ──────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — merge', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    let setPage = settingsPage;
+    setPage.goto();
   });
 
-  test('merge Chinese source → English target succeeds', async ({ page }) => {
-    await mergeCategories(page, '食物', 'food2');
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
+  test('merge Chinese source → English target succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = '食物';
+    const renamed: string = 'food2';
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('merge English source → Chinese target succeeds', async ({ page }) => {
-    await mergeCategories(page, 'food2', '食物');
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).not.toBeVisible();
+  test('merge English source → Chinese target succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = 'food2';
+    const renamed: string = '食物';
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('merge Chinese source → Chinese target succeeds', async ({ page }) => {
-    await mergeCategories(page, '食物', '饮食');
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '饮食' })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
+  test('merge Chinese source → Chinese target succeeds', async ({ settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = '食物';
+    const renamed: string = '饮食';
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('merge English source → English target succeeds (regression guard)', async ({ page }) => {
-    await mergeCategories(page, 'groceries2', 'food2');
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'groceries2' })).not.toBeVisible();
+  test('merge English source → English target succeeds (regression guard)', async ({ settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = 'groceries2';
+    const renamed: string = 'food2';
+    await setPage.addCategory(original);
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('merge moves transactions from Chinese source to English target', async ({ page }) => {
-    await addCategory(page, '食物');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+  test('merge moves transactions from Chinese source to English target', async ({ page, settingsPage, transactionsPage }) => {
+    let setPage = settingsPage;
+    let txPage = transactionsPage;
+    const original: string = '食物';
+    const renamed: string = 'food2';
+    await setPage.addCategory(original);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
-    await addTransaction(page, {
+    await txPage.goto();
+    await txPage.addTransactionViaUI({
       description: 'Chinese cat transaction', amount: 50, type: 'expense', category: '食物'
     });
     await expect(page.getByText('Chinese cat transaction')).toBeVisible();
 
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
-    await addCategory(page, 'food2');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+    await setPage.goto();
+    await setPage.addCategory(renamed);
+    await expect(setPage.addCategoryResult).toContainText('added successfully');
 
-    await openEditModal(page, '食物');
-    const editCategoryModal = page.locator('#editCategoryModal');
-    await expect(editCategoryModal).toBeVisible();
-    await page.getByLabel('Category Name').fill('food2');
-
-    page.once('dialog', dialog => dialog.accept());
-    await editCategoryModal.getByRole('button', { name: 'Save Changes' }).click();
-    //await page.waitForLoadState('networkidle');
-    await expect(editCategoryModal).not.toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
-
+    await setPage.openEditModal(original);
+    await setPage.submitRename(renamed);
+    await expect(setPage.categoryItem.filter({ hasText: renamed })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
 
     await page.goto('/transactions?categories=food2');
     await page.waitForLoadState('networkidle');
     await expect(page.getByText('Chinese cat transaction')).toBeVisible();
   });
 
-  test('declining merge prompt leaves both categories intact', async ({ page }) => {
+  test('declining merge prompt leaves both categories intact', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
     const cat1: string = '食物2';
     const cat2: string = 'food22';
-    await addCategory(page, cat1);
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
-    await addCategory(page, cat2);
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+    await setPage.addCategory(cat1);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
+    await setPage.addCategory(cat2);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
 
-    await openEditModal(page, cat1);
-    await expect(page.locator('#editCategoryModal')).toBeVisible();
-    await page.getByLabel('Category Name').fill(cat2);
+    await setPage.openEditModal(cat1);
+    await setPage.submitRename(cat2, false);
 
-    page.once('dialog', dialog => dialog.dismiss());
-    await page.locator('#editCategoryModal').getByRole('button', { name: 'Save Changes' }).click();
-    await page.waitForTimeout(500);
-
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: cat1 })).toBeVisible();
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: cat2 })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: cat1 })).toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: cat2 })).toBeVisible();
   });
 });
 
 // ─── Delete tests ─────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — delete', () => {
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
-    await page.goto('/settings');
-    await page.waitForLoadState('networkidle');
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
+    let setPage = settingsPage;
+    setPage.goto();
   });
 
-  test('delete Chinese category succeeds', async ({ page }) => {
-    await addCategory(page, '食物');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+  test('delete Chinese category succeeds', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = '食物';
+    await setPage.addCategory(original);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
+    await setPage.deleteCategory(original);
 
-    page.once('dialog', dialog => dialog.accept());
-    await page.locator('.category-item', { hasText: '食物' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
-
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: '食物' })).not.toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('delete English category succeeds (regression guard)', async ({ page }) => {
-    await addCategory(page, 'food2');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+  test('delete English category succeeds (regression guard)', async ({ page, settingsPage }) => {
+    let setPage = settingsPage;
+    const original: string = 'food2';
+    await setPage.addCategory(original);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
 
-    page.once('dialog', dialog => dialog.accept());
-    await page.locator('.category-item', { hasText: 'food2' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
+    await setPage.deleteCategory(original);
 
-    await expect(page.locator(SETTINGS_CATEGORY_LIST_ITEM, { hasText: 'food2' })).not.toBeVisible();
+    await expect(setPage.categoryItem.filter({ hasText: original })).not.toBeVisible();
   });
 
-  test('deleting Chinese category removes it from transaction dropdown', async ({ page }) => {
-    await addCategory(page, '交通');
-    await expect(page.locator('#add-category-result')).toContainText('added successfully');
+  test('deleting Chinese category removes it from transaction dropdown', async ({ page, settingsPage, transactionsPage }) => {
+    let setPage = settingsPage;
+    let txPage = transactionsPage;
+    const original: string = '交通';
+    await setPage.addCategory(original);
+    await expect(page.locator(ADD_CAT_RESULT)).toContainText('added successfully');
 
-    page.once('dialog', dialog => dialog.accept());
-    await page.locator('.category-item', { hasText: '交通' })
-      .getByRole('button', { name: 'Delete' })
-      .click();
-    await page.waitForLoadState('networkidle');
+    const deletePromise = page.waitForResponse(res =>
+      res.url().includes('/api/categories') && res.request().method() === 'DELETE'
+    );
 
-    await page.goto('/transactions');
-    await page.waitForLoadState('networkidle');
+    await setPage.deleteCategory(original);
+
+    await deletePromise;
+
+    await txPage.goto();
     await expect(page.getByLabel('Category').locator('option[value="交通"]')).not.toBeAttached();
   });
 });

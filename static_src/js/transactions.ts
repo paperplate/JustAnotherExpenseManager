@@ -51,19 +51,13 @@ async function initTagify() {
   const addInput = document.getElementById('tags') as HTMLInputElement;
   if (addInput) {
     addTagify = new Tagify(addInput, sharedSettings);
-    setTimeout(() => {
-      const wrapper = addInput.closest('.tagify');
-      if (wrapper) { wrapper.setAttribute('data-testid', 'tags-input'); }
-    }, 0);
+    addTagify.DOM.scope.setAttribute('data-testid', 'tags-input');
   }
 
   const editInput = document.getElementById('edit-tags') as HTMLInputElement;
   if (editInput) {
     editTagify = new Tagify(editInput, sharedSettings);
-    setTimeout(() => {
-      const wrapper = editInput.closest('.tagify');
-      if (wrapper) { wrapper.setAttribute('data-testid', 'edit-tags-input'); }
-    }, 0);
+    editTagify.DOM.scope.setAttribute('data-testid', 'edit-tags-input');
   }
 }
 

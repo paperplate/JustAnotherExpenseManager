@@ -1,15 +1,15 @@
-import { expect, Page } from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 
-const TODAY = new Date().toISOString().split('T')[0];
+export const TODAY = new Date().toISOString().split('T')[0];
 
-async function clearDatabase(page: Page): Promise<void> {
-  const response = await page.request.post('/api/transactions/clear-all');
+export async function clearDatabase(request: APIRequestContext): Promise<void> {
+  const response = await request.post('/api/transactions/clear-all');
   if (!response.ok()) {
     throw new Error(`clear-all failed: ${response.status()} ${await response.text()}`);
   }
 }
 
-interface TransactionOptions {
+export interface TransactionOptions {
   description: string;
   amount: number;
   type: 'income' | 'expense';
@@ -18,125 +18,26 @@ interface TransactionOptions {
   date?: string;
 }
 
-async function addTransaction(page: Page, opts: TransactionOptions): Promise<void> {
-  const { description, amount, type, category, tags = '', date = TODAY } = opts;
-  await page.getByRole('textbox', { name: 'Description' }).fill(description);
-  await page.getByRole('spinbutton', { name: 'Amount ($)' }).fill(String(amount));
-  await page.getByRole('combobox', { name: 'Type' }).selectOption(type);
-  await page.getByRole('textbox', { name: 'Date' }).fill(date);
-  await page.getByRole('combobox', { name: 'Category' }).selectOption({ value: category });
-  if (tags) {
-    // Tagify replaces the plain <input> with a contenteditable div.
-    // Type each tag followed by Enter so Tagify converts it to a pill.
-    //const tagifyInput = page.locator('.tagify__input');
-    const tagifyInput = page.getByRole('textbox', { name: 'Tags input field' });
-    await tagifyInput.click();
-    for (const tag of tags.split(',').map(t => t.trim()).filter(Boolean)) {
-      await tagifyInput.fill(tag + ',');
-    }
+export async function seedTransactionsViaAPI(
+  request: APIRequestContext,
+  opts: TransactionOptions[],
+): Promise<void> {
+  for (const o of opts) {
+    const response = await request.post('/api/transactions', {
+      form: {
+        description: o.description,
+        amount: String(o.amount),
+        type: o.type,
+        date: o.date ?? TODAY,
+        category: o.category,
+        tags: o.tags ?? '',
+      },
+    });
+    expect(response.ok(), `API seeding failed for "${o.description}": ${response.status()}`).toBeTruthy();
   }
-  await page.getByRole('button', { name: 'Add Transaction' }).click();
-  await page.waitForLoadState('networkidle');
-  await page.getByRole('cell', { name: description, exact: true }).isVisible();
 }
 
-/**
- * Parse a dollar string like "$1,234.56" or "$0.00" to a float.
- */
-function parseDollar(text: string | null): number {
+/** Parse "$1,234.56" or "-$50.00" → float. */
+export function parseDollar(text: string | null): number {
   return parseFloat((text ?? '0').replace(/[$,]/g, ''));
 }
-
-async function addCategory(page: Page, name: string): Promise<void> {
-  await page.getByPlaceholder('Enter category name').fill(name);
-  await page.getByRole('button', { name: 'Add Category' }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function openEditModal(page: Page, categoryName: string): Promise<void> {
-  await page.locator('.category-item', { hasText: categoryName })
-    .getByRole('button', { name: 'Edit' })
-    .click();
-}
-
-async function submitRename(page: Page, newName: string): Promise<void> {
-  await page.getByLabel('Category Name').fill(newName);
-  await page.getByRole('button', { name: 'Save Changes' }).click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function openCategoryFilter(page: Page): Promise<void> {
-  const details = page.locator('#category-details');
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-}
-
-async function openTagFilter(page: Page): Promise<void> {
-  const details = page.locator('#tag-details');
-  if ((await details.getAttribute('open')) === null) {
-    await details.locator('summary').click();
-  }
-}
-
-async function selectCategory(page: Page, name: string): Promise<void> {
-  await openCategoryFilter(page);
-  const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#category-options-list .filter-option')
-    .filter({ hasText: regexp })
-    .click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function selectTag(page: Page, name: string): Promise<void> {
-  await openTagFilter(page);
-  const regexp = new RegExp(`^${name}$`, 'i');
-  await page.locator('#tag-options-list .filter-option')
-    .filter({ hasText: regexp })
-    .click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetCategoryFilter(page: Page): Promise<void> {
-  await openCategoryFilter(page);
-  await page.locator('#category-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function resetTagFilter(page: Page): Promise<void> {
-  await openTagFilter(page);
-  await page.locator('#tag-details .filter-option[data-value=""]').click();
-  await page.waitForLoadState('networkidle');
-}
-
-async function scrollToTotals(page: Page): Promise<void> {
-  const totals = page.locator('.monthly-totals');
-  await totals.waitFor({ state: 'attached' });
-  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
-  await expect(totals).toBeInViewport();
-}
-
-async function scrollToSummary(page: Page): Promise<void> {
-  const totals = page.locator('.summary-grid');
-  await totals.waitFor({ state: 'attached' });
-  await totals.scrollIntoViewIfNeeded({ timeout: 3000 });
-  await expect(totals).toBeInViewport();
-}
-
-export {
-  clearDatabase,
-  addTransaction,
-  parseDollar,
-  addCategory,
-  openCategoryFilter,
-  openEditModal,
-  submitRename,
-  TODAY,
-  selectCategory,
-  selectTag,
-  resetCategoryFilter,
-  resetTagFilter,
-  scrollToTotals,
-  TransactionOptions,
-  scrollToSummary
-};
