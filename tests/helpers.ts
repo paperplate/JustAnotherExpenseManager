@@ -1,9 +1,9 @@
-import { APIRequestContext, expect, Page } from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 
 export const TODAY = new Date().toISOString().split('T')[0];
 
-export async function clearDatabase(page: Page): Promise<void> {
-  const response = await page.request.post('/api/transactions/clear-all');
+export async function clearDatabase(request: APIRequestContext): Promise<void> {
+  const response = await request.post('/api/transactions/clear-all');
   if (!response.ok()) {
     throw new Error(`clear-all failed: ${response.status()} ${await response.text()}`);
   }

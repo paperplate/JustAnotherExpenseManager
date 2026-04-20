@@ -45,8 +45,8 @@ async function dragItemToIndex(
 // ── Drag handle visibility ────────────────────────────────────────────────────
 
 test.describe('Drag handle visibility', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     await settingsPage.goto();
   });
 
@@ -84,8 +84,8 @@ test.describe('Drag handle visibility', () => {
 test.describe.configure({ mode: 'serial' });
 
 test.describe('Category reordering', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     await settingsPage.goto();
     for (const name of ['alpha', 'beta', 'gamma', 'delta']) {
       await settingsPage.addCategory(name);
@@ -155,13 +155,13 @@ test.describe('Category reordering', () => {
     const filterNames = filterTexts.map(t => t.trim().toLowerCase());
 
     const settingsOurs = settingsOrder.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
-    const filterOurs   = filterNames.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
+    const filterOurs = filterNames.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
     expect(filterOurs).toEqual(settingsOurs);
   });
 
   test('custom order reflected in add-transaction category <select>', async ({ settingsPage, transactionsPage }) => {
     const settingsOrder = await settingsPage.getListNames(settingsPage.categoriesList);
-    const settingsOurs  = settingsOrder.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
+    const settingsOurs = settingsOrder.filter(n => ['alpha', 'beta', 'gamma', 'delta'].includes(n));
 
     // Wait for loadCategorySelect() to finish populating the <select>.
     const categoriesResponse = transactionsPage.page.waitForResponse(
@@ -214,8 +214,8 @@ test.describe('Category reordering', () => {
 // ── Tag reordering ────────────────────────────────────────────────────────────
 
 test.describe('Tag reordering', () => {
-  test.beforeEach(async ({ page, request, settingsPage, transactionsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage, transactionsPage }) => {
+    await clearDatabase(request);
     await transactionsPage.goto();
     for (const tag of ['urgent', 'planned', 'recurring', 'personal']) {
       await seedTransactionsViaAPI(request, [{
@@ -250,7 +250,7 @@ test.describe('Tag reordering', () => {
   test('reordered tag position persists after page reload', async ({ page, settingsPage }) => {
     const before = await settingsPage.getListNames(settingsPage.tagList);
     const recurringIdx = before.indexOf('recurring');
-    const urgentIdx    = before.indexOf('urgent');
+    const urgentIdx = before.indexOf('urgent');
     await dragItemToIndex(settingsPage, settingsPage.tagList, recurringIdx, urgentIdx);
     const afterDrag = await settingsPage.getListNames(settingsPage.tagList);
 
@@ -279,7 +279,7 @@ test.describe('Tag reordering', () => {
 
     const tags = ['urgent', 'planned', 'recurring', 'personal'];
     const settingsOurs = settingsOrder.filter(n => tags.includes(n));
-    const filterOurs   = filterNames.filter(n => tags.includes(n));
+    const filterOurs = filterNames.filter(n => tags.includes(n));
     expect(filterOurs).toEqual(settingsOurs);
   });
 
@@ -310,8 +310,8 @@ test.describe('Tag reordering', () => {
 // ── Rename preserves sort_order ───────────────────────────────────────────────
 
 test.describe('Rename preserves sort order', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     await settingsPage.goto();
     for (const name of ['first', 'second', 'third']) {
       await settingsPage.addCategory(name);
@@ -334,8 +334,8 @@ test.describe('Rename preserves sort order', () => {
 // ── API contract ──────────────────────────────────────────────────────────────
 
 test.describe('Order API contract', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     await settingsPage.goto();
     for (const name of ['cat1', 'cat2', 'cat3']) {
       await settingsPage.addCategory(name);

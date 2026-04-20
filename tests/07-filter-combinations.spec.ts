@@ -15,36 +15,34 @@
 
 import { test, expect } from './fixtures';
 import { clearDatabase, seedTransactionsViaAPI, TODAY, type TransactionOptions } from './helpers';
-import type { Page } from '@playwright/test';
-import type { TransactionsPage } from './pages/TransactionsPage';
 import type { APIRequestContext } from '@playwright/test';
 
 // ── Seed data ─────────────────────────────────────────────────────────────────
 
 const TRANSACTIONS: TransactionOptions[] = [
-  { description: 'Groceries',  amount: 120,  type: 'expense', category: 'food',          tags: 'recurring' },
-  { description: 'Pizza',      amount: 40,   type: 'expense', category: 'food',          tags: 'dining' },
-  { description: 'Snacks',     amount: 15,   type: 'expense', category: 'food',          tags: '' },
-  { description: 'Bus Pass',   amount: 60,   type: 'expense', category: 'transport',     tags: 'recurring,commute' },
-  { description: 'Paycheck',   amount: 3000, type: 'income',  category: 'salary',        tags: 'recurring' },
-  { description: 'Cinema',     amount: 30,   type: 'expense', category: 'entertainment', tags: 'leisure' },
+  { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'recurring' },
+  { description: 'Pizza', amount: 40, type: 'expense', category: 'food', tags: 'dining' },
+  { description: 'Snacks', amount: 15, type: 'expense', category: 'food', tags: '' },
+  { description: 'Bus Pass', amount: 60, type: 'expense', category: 'transport', tags: 'recurring,commute' },
+  { description: 'Paycheck', amount: 3000, type: 'income', category: 'salary', tags: 'recurring' },
+  { description: 'Cinema', amount: 30, type: 'expense', category: 'entertainment', tags: 'leisure' },
 ];
 
-async function seedData(page: Page, request: APIRequestContext): Promise<void> {
-  await clearDatabase(page);
+async function seedData(request: APIRequestContext): Promise<void> {
+  await clearDatabase(request);
   await seedTransactionsViaAPI(request, TRANSACTIONS);
 }
 
 // ── Selector constants ────────────────────────────────────────────────────────
 
 const EXPENSE_CARD = '.summary-card.expense .summary-value';
-const INCOME_CARD  = '.summary-card.income .summary-value';
+const INCOME_CARD = '.summary-card.income .summary-value';
 
 // ── Summary page — filter combinations ───────────────────────────────────────
 
 test.describe('Summary page — filter combinations', () => {
-  test.beforeEach(async ({ page, summaryPage, request }) => {
-    await seedData(page, request);
+  test.beforeEach(async ({ summaryPage, request }) => {
+    await seedData(request);
     await summaryPage.goto();
   });
 
@@ -221,8 +219,8 @@ test.describe('Summary page — filter combinations', () => {
 // ── Transactions page — filter combinations ───────────────────────────────────
 
 test.describe('Transactions page — filter combinations', () => {
-  test.beforeEach(async ({ page, transactionsPage, request }) => {
-    await seedData(page, request);
+  test.beforeEach(async ({ transactionsPage, request }) => {
+    await seedData(request);
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
     // Confirm all 6 rows loaded (header + 6 data rows)

@@ -1,9 +1,5 @@
 import { test, expect } from './fixtures';
-import {
-  clearDatabase,
-  TransactionOptions,
-  seedTransactionsViaAPI
-} from './helpers'
+import { clearDatabase, TransactionOptions } from './helpers'
 import { TransactionsPage } from './pages/TransactionsPage';
 
 /**
@@ -18,7 +14,7 @@ test.describe('Filters and Statistics', () => {
     await txPage.goto();
     await page.waitForLoadState('networkidle');
 
-    await clearDatabase(page);
+    await clearDatabase(request);
     let transactions: TransactionOptions[] = [
       {
         description: 'Filter Test Expense',

@@ -7,9 +7,9 @@ import { clearDatabase } from './helpers';
  */
 
 test.describe('Transactions UI', () => {
-  test.beforeEach(async ({ transactionsPage }) => {
+  test.beforeEach(async ({ transactionsPage, request }) => {
     let txPage = transactionsPage;
-    await clearDatabase(txPage.page);
+    await clearDatabase(request);
     await txPage.goto();
   });
 

@@ -16,8 +16,8 @@ const ADD_CAT_RESULT: string = '#add-category-result';
 // ─── Rename tests ─────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — rename', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     let setPage = settingsPage;
     setPage.goto();
   });
@@ -84,8 +84,8 @@ test.describe('Unicode category — rename', () => {
 // ─── Merge tests ──────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — merge', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     let setPage = settingsPage;
     setPage.goto();
   });
@@ -182,8 +182,8 @@ test.describe('Unicode category — merge', () => {
 // ─── Delete tests ─────────────────────────────────────────────────────────────
 
 test.describe('Unicode category — delete', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     let setPage = settingsPage;
     setPage.goto();
   });

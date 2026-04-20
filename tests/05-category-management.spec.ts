@@ -105,8 +105,8 @@ test.describe('Category Management', () => {
 const ADD_CAT_RESULT = '#add-category-result';
 
 test.describe('Category Management — Unicode names', () => {
-  test.beforeEach(async ({ page, settingsPage }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ request, settingsPage }) => {
+    await clearDatabase(request);
     await settingsPage.goto();
   });
 
@@ -157,7 +157,7 @@ test.describe('Category Management — Unicode names', () => {
     await expect(settingsPage.categoryItem.filter({ hasText: '食物' })).not.toBeVisible();
   });
 
-  test('declining merge leaves both categories intact', async ({ page, settingsPage }) => {
+  test('declining merge leaves both categories intact', async ({ settingsPage }) => {
     await settingsPage.addCategory('食物2');
     await settingsPage.addCategory('food22');
 

@@ -1,15 +1,14 @@
-import { test, expect } from '@playwright/test';
-import { clearDatabase, parseDollar, seedTransactionsViaAPI } from './helpers'
+import { test, expect } from './fixtures';
+import { clearDatabase, parseDollar } from './helpers'
 import { TransactionsPage } from './pages/TransactionsPage';
-import { setPriority } from 'os';
 
 // ─── Transactions list rendering ─────────────────────────────────────────────
 
 test.describe('Transactions list rendering', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     txPage.goto();
   });
@@ -19,13 +18,13 @@ test.describe('Transactions list rendering', () => {
     await expect(page.getByRole('table')).not.toBeVisible();
   });
 
-  test('table appears after adding a transaction', async ({ page }) => {
+  test('table appears after adding a transaction', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
     await expect(txPage.table).toBeVisible();
     await expect(txPage.table.getByText('Coffee')).toBeVisible();
   });
 
-  test('monthly totals bar is visible after adding a transaction', async ({ page }) => {
+  test('monthly totals bar is visible after adding a transaction', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5, type: 'expense', category: 'food' });
     await expect(txPage.monthlyTotals).toBeVisible();
   });
@@ -48,13 +47,13 @@ test.describe('Transactions list rendering', () => {
 test.describe('Monthly totals — expense only', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     await txPage.goto();
   });
 
-  test('single expense: income=$0, expense=amount, net negative', async ({ page }) => {
+  test('single expense: income=$0, expense=amount, net negative', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Lunch', amount: 25, type: 'expense', category: 'food' });
     const income = parseDollar(await txPage.income.textContent());
     const expense = parseDollar(await txPage.expenses.textContent());
@@ -65,7 +64,7 @@ test.describe('Monthly totals — expense only', () => {
     expect(net).toBeCloseTo(-25, 2);
   });
 
-  test('multiple expenses: totals are summed correctly', async ({ page }) => {
+  test('multiple expenses: totals are summed correctly', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Coffee', amount: 5.50, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'Bus', amount: 2.75, type: 'expense', category: 'transport' });
     await txPage.addTransactionViaUI({ description: 'Book', amount: 12.00, type: 'expense', category: 'shopping' });
@@ -85,13 +84,13 @@ test.describe('Monthly totals — expense only', () => {
 test.describe('Monthly totals — income only', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     txPage.goto();
   });
 
-  test('single income: income=amount, expense=$0, net positive', async ({ page }) => {
+  test('single income: income=amount, expense=$0, net positive', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'SalaryPay', amount: 3000, type: 'income', category: 'salary' });
 
     await txPage.scrollToTotals();
@@ -111,13 +110,13 @@ test.describe('Monthly totals — income only', () => {
 test.describe('Monthly totals — mixed', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     txPage.goto();
   });
 
-  test('income and expenses: all three totals are non-zero and correct', async ({ page }) => {
+  test('income and expenses: all three totals are non-zero and correct', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'SalaryPay', amount: 2000, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Rent', amount: 800, type: 'expense', category: 'other' });
     await txPage.addTransactionViaUI({ description: 'Groceries', amount: 150, type: 'expense', category: 'food' });
@@ -134,7 +133,7 @@ test.describe('Monthly totals — mixed', () => {
     expect(net).toBeCloseTo(1050, 2);
   });
 
-  test('totals are never $0.00 when transactions exist (regression)', async ({ page }) => {
+  test('totals are never $0.00 when transactions exist (regression)', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Freelance', amount: 500, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Taxi', amount: 35, type: 'expense', category: 'transport' });
 
@@ -147,7 +146,7 @@ test.describe('Monthly totals — mixed', () => {
     expect(expense).toBeGreaterThan(0);
   });
 
-  test('net = income - expense (mathematical identity)', async ({ page }) => {
+  test('net = income - expense (mathematical identity)', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'Bonus', amount: 1250.50, type: 'income', category: 'salary' });
     await txPage.addTransactionViaUI({ description: 'Heating', amount: 320.75, type: 'expense', category: 'utilities' });
 
@@ -164,8 +163,8 @@ test.describe('Monthly totals — mixed', () => {
 test.describe('Monthly totals update after mutations', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     txPage.goto();
   });
@@ -230,8 +229,8 @@ test.describe('Monthly totals update after mutations', () => {
 test.describe('Monthly transaction count', () => {
   let txPage: TransactionsPage;
 
-  test.beforeEach(async ({ page }) => {
-    await clearDatabase(page);
+  test.beforeEach(async ({ page, request }) => {
+    await clearDatabase(request);
     txPage = new TransactionsPage(page);
     txPage.goto();
   });
