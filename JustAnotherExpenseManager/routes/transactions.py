@@ -55,6 +55,73 @@ def _render_transactions_list(result: Dict[str, Any]) -> str:
     )
 
 
+def _parse_csv_row(row: dict, row_num: int) -> Dict[str, Any]:
+    """
+    Parse a single CSV row dict into a normalised transaction preview dict.
+
+    Returns a dict with keys:
+        row_num, description, amount, type, category, date, tags, error
+    ``error`` is None on success, or a human-readable string on failure.
+    """
+    description = (row.get('name') or row.get('description') or '').strip()
+    amount_str = row.get('amount', '').strip()
+    type_str = (row.get('type', '').strip() or row.get('transaction', '').strip())
+    category = row.get('category', '').strip().lower()
+    date_str = (row.get('date', '').strip() or row.get('transaction date', '').strip())
+    if 'T' in date_str:
+        date_str = date_str[:date_str.find('T')]
+    tags_str = row.get('tags', '').strip()
+
+    result: Dict[str, Any] = {
+        'row_num': row_num,
+        'description': description,
+        'amount': '',
+        'type': type_str or 'expense',
+        'category': category,
+        'date': date_str,
+        'tags': tags_str,
+        'error': None,
+    }
+
+    if not description:
+        result['error'] = f'Row {row_num}: Missing description'
+        return result
+
+    if not amount_str:
+        result['error'] = f'Row {row_num}: Missing amount'
+        return result
+
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        result['error'] = f'Row {row_num}: Invalid amount "{amount_str}"'
+        return result
+
+    if type_str:
+        try:
+            trans_type = _parse_transaction_type(type_str)
+            result['type'] = trans_type.value
+        except ValueError:
+            result['error'] = f'Row {row_num}: Invalid type "{type_str}"'
+            return result
+    else:
+        result['type'] = 'income' if amount >= 0 else 'expense'
+
+    result['amount'] = str(abs(amount))
+
+    if not date_str:
+        result['error'] = f'Row {row_num}: Missing date'
+        return result
+
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+    except ValueError:
+        result['error'] = f'Row {row_num}: Invalid date format "{date_str}" (expected YYYY-MM-DD)'
+        return result
+
+    return result
+
+
 @transaction_bp.route('/transactions')
 def transactions_page():
     """Display transactions page."""
@@ -167,19 +234,7 @@ def delete_transaction(transaction_id):
 
 @transaction_bp.route('/api/transactions/export', methods=['GET'])
 def export_transactions() -> Response:
-    """Export transactions as a CSV file.
-
-    Accepts the same filter query parameters as GET /api/transactions so the
-    user can export a filtered subset or the full history.
-
-    Query parameters
-    ----------------
-    categories : comma-separated category names (optional)
-    tags       : comma-separated tag names (optional)
-    range      : time-range preset (optional)
-    start_date : YYYY-MM-DD inclusive lower bound (optional)
-    end_date   : YYYY-MM-DD inclusive upper bound (optional)
-    """
+    """Export transactions as a CSV file."""
     categories_param: Optional[str] = request.args.get('categories', None)
     tags_param: Optional[str] = request.args.get('tags', None)
     time_range: Optional[str] = request.args.get('range', None)
@@ -196,7 +251,6 @@ def export_transactions() -> Response:
         end_date=end_date,
     )
 
-    # Collect transactions across all pages so a filtered export is complete.
     all_transactions = []
     for page_num in range(1, result['total_pages'] + 1):
         page_result = service.get_all_transactions(
@@ -238,22 +292,122 @@ def lower_first(iterator):
     return itertools.chain([next(iterator).lower()], iterator)
 
 
+@transaction_bp.route('/api/transactions/preview', methods=['POST'])
+def preview_csv():
+    """
+    Parse a CSV file and return rows as JSON for user preview and editing.
+
+    No data is written to the database.  The caller should follow up with
+    POST /api/transactions/commit-import once the user has reviewed the rows.
+    """
+    if 'csv_file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+
+    file = request.files['csv_file']
+
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    if not file.filename.endswith('.csv'):
+        return jsonify({'error': 'File must be a CSV'}), 400
+
+    try:
+        stream = StringIO(file.stream.read().decode('UTF8'), newline=None)
+        csv_reader = csv.DictReader(lower_first(stream))
+        rows = [_parse_csv_row(row, i + 2) for i, row in enumerate(csv_reader)]
+        return jsonify({'rows': rows})
+    except Exception as e:  # pylint: disable=broad-except
+        return jsonify({'error': f'Failed to process CSV: {str(e)}'}), 500
+
+
+@transaction_bp.route('/api/transactions/commit-import', methods=['POST'])
+def commit_import():
+    """
+    Import pre-reviewed rows supplied as a JSON array.
+
+    Expected body: ``{"rows": [{description, amount, type, category, date, tags}, ...]}``
+
+    Rows that the user removed in the preview UI should be absent from the
+    array.  Each row is re-validated before saving so that manual edits made
+    in the preview table are also checked.
+    """
+    data = request.get_json()
+    if not data or 'rows' not in data:
+        return jsonify({'error': 'No rows provided'}), 400
+
+    service = TransactionService(g.db)
+    imported_count = 0
+    errors: List[str] = []
+
+    for idx, row in enumerate(data['rows'], start=1):
+        try:
+            description = str(row.get('description', '') or '').strip()
+            if not description:
+                errors.append(f'Row {idx}: Missing description')
+                continue
+
+            amount_raw = row.get('amount', '')
+            try:
+                amount = float(amount_raw)
+            except (TypeError, ValueError):
+                errors.append(f'Row {idx}: Invalid amount "{amount_raw}"')
+                continue
+
+            if amount < 0:
+                errors.append(f'Row {idx}: Amount cannot be negative')
+                continue
+
+            type_str = str(row.get('type', 'expense') or 'expense').strip()
+            try:
+                trans_type = _parse_transaction_type(type_str)
+            except ValueError:
+                errors.append(f'Row {idx}: Invalid type "{type_str}"')
+                continue
+
+            date_str = str(row.get('date', '') or '').strip()
+            if not date_str:
+                errors.append(f'Row {idx}: Missing date')
+                continue
+            try:
+                datetime.strptime(date_str, '%Y-%m-%d')
+            except ValueError:
+                errors.append(f'Row {idx}: Invalid date "{date_str}"')
+                continue
+
+            category = str(row.get('category', '') or '').strip().lower()
+            tags_str = str(row.get('tags', '') or '').strip()
+            tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
+
+            service.create_transaction(
+                description=description,
+                amount_dollars=amount,
+                type=trans_type,
+                date=date_str,
+                category=category if category else None,
+                tags=tags,
+            )
+            imported_count += 1
+
+        except Exception as e:  # pylint: disable=broad-except
+            errors.append(f'Row {idx}: {str(e)}')
+
+    response_data: Dict[str, Any] = {
+        'success': True,
+        'imported': imported_count,
+        'errors': errors,
+        'message': f'Successfully imported {imported_count} transaction(s)',
+    }
+    if errors:
+        response_data['message'] += f' with {len(errors)} error(s)'
+
+    return jsonify(response_data)
+
+
 @transaction_bp.route('/api/transactions/import', methods=['POST'])
 def import_transactions():
     """Import transactions from CSV.
 
-    Accepts flexible column layouts from different sources:
-
-    Column aliases
-    --------------
-    description : also accepted as ``name``
-
-    Type inference
-    --------------
-    If a ``type`` column is present and non-empty it is used directly
-    (``income`` / ``expense``).  When the column is absent or blank the
-    sign of ``amount`` determines the type: negative → expense,
-    positive → income.  The amount stored is always the absolute value.
+    Accepts flexible column layouts from different sources.
     """
     if 'csv_file' not in request.files:
         return jsonify({'error': 'No file uploaded'}), 400
@@ -275,69 +429,23 @@ def import_transactions():
         errors = []
 
         for row_num, row in enumerate(csv_reader, start=2):
+            parsed = _parse_csv_row(row, row_num)
+
+            if parsed['error']:
+                errors.append(parsed['error'])
+                continue
+
             try:
-                # --- description: accept 'name' as an alias ---
-                description = (
-                    row.get('name') or row.get('description') or ''
-                ).strip()
-
-                amount_str = row.get('amount', '').strip()
-                type_str = (row.get('type', '').strip() or row.get('transaction', '').strip())
-                category = row.get('category', '').strip().lower()
-                date_str = (row.get('date', '').strip() or row.get('transaction date', '').strip())
-                if 'T' in date_str:
-                    date_str = date_str[:date_str.find('T')]
-                tags_str = row.get('tags', '').strip()
-
-                if not description:
-                    errors.append(f'Row {row_num}: Missing description')
-                    continue
-
-                if not amount_str:
-                    errors.append(f'Row {row_num}: Missing amount')
-                    continue
-
-                try:
-                    amount = float(amount_str)
-                except ValueError:
-                    errors.append(f'Row {row_num}: Invalid amount "{amount_str}"')
-                    continue
-
-                if type_str:
-                    try:
-                        trans_type = _parse_transaction_type(type_str)
-                    except ValueError:
-                        errors.append(f'Row {row_num}: Invalid type "{type_str}"')
-                        continue
-                else:
-                    trans_type = TransactionType.INCOME if amount >= 0 else TransactionType.EXPENSE
-
-                amount = abs(amount)
-
-                if not date_str:
-                    errors.append(f'Row {row_num}: Missing date')
-                    continue
-
-                try:
-                    datetime.strptime(date_str, '%Y-%m-%d')
-                except ValueError:
-                    errors.append(
-                        f'Row {row_num}: Invalid date format "{date_str}" (expected YYYY-MM-DD)'
-                    )
-                    continue
-
-                tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
-
+                tags = [t.strip() for t in parsed['tags'].split(',') if t.strip()] if parsed['tags'] else []
                 service.create_transaction(
-                    description=description,
-                    amount_dollars=amount,
-                    type=trans_type,
-                    date=date_str,
-                    category=category if category else None,
-                    tags=tags
+                    description=parsed['description'],
+                    amount_dollars=float(parsed['amount']),
+                    type=_parse_transaction_type(parsed['type']),
+                    date=parsed['date'],
+                    category=parsed['category'] if parsed['category'] else None,
+                    tags=tags,
                 )
                 imported_count += 1
-
             except Exception as e:  # pylint: disable=broad-except
                 errors.append(f'Row {row_num}: {str(e)}')
 

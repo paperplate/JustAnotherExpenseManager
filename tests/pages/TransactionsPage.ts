@@ -23,22 +23,22 @@ export class TransactionsPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/transactions', 'Transactions - Expense Manager');
-    this.descriptionInput   = page.getByRole('textbox', { name: 'Description' });
-    this.amountInput        = page.getByRole('spinbutton', { name: 'Amount ($)' });
-    this.typeSelect         = page.getByRole('combobox', { name: 'Type' });
-    this.dateInput          = page.getByRole('textbox', { name: 'Date' });
-    this.categorySelect     = page.getByRole('combobox', { name: 'Category' });
-    this.addTagInput        = page.locator('#add-transaction-form .tagify__input');
-    this.editTagInput       = page.locator('#edit-form .tagify__input');
-    this.submitButton       = page.getByRole('button', { name: 'Add Transaction' });
-    this.transactionsList   = page.locator('#transactions-list');
-    this.editModal          = page.locator('#editModal');
-    this.addTransactionBtn  = page.getByRole('button', { name: 'Add Transaction' });
-    this.csvFile            = page.getByLabel('CSV File');
-    this.importCSVBtn       = page.getByRole('button', { name: 'Import CSV' });
-    this.importResult       = page.locator('#import-result');
-    this.table              = page.getByRole('table');
-    this.filter             = new FilterComponent(page);
+    this.descriptionInput = page.getByRole('textbox', { name: 'Description' });
+    this.amountInput = page.getByRole('spinbutton', { name: 'Amount ($)' });
+    this.typeSelect = page.getByRole('combobox', { name: 'Type' });
+    this.dateInput = page.getByRole('textbox', { name: 'Date' });
+    this.categorySelect = page.getByRole('combobox', { name: 'Category' });
+    this.addTagInput = page.locator('#add-transaction-form .tagify__input');
+    this.editTagInput = page.locator('#edit-form .tagify__input');
+    this.submitButton = page.getByRole('button', { name: 'Add Transaction' });
+    this.transactionsList = page.locator('#transactions-list');
+    this.editModal = page.locator('#editModal');
+    this.addTransactionBtn = page.getByRole('button', { name: 'Add Transaction' });
+    this.csvFile = page.getByLabel('CSV File');
+    this.importCSVBtn = page.getByRole('button', { name: 'Preview Import' });
+    this.importResult = page.locator('#import-result');
+    this.table = page.getByRole('table');
+    this.filter = new FilterComponent(page);
   }
 
   async addTransactionViaUI(opts: TransactionOptions): Promise<void> {
@@ -76,8 +76,8 @@ export class TransactionsPage extends BasePage {
   }
 
   /** Convenience aliases for the monthly-total cells. */
-  get income()   { return this.page.locator('.total-income-value'); }
+  get income() { return this.page.locator('.total-income-value'); }
   get expenses() { return this.page.locator('.total-expense-value'); }
-  get net()      { return this.page.locator('.total-net-value'); }
+  get net() { return this.page.locator('.total-net-value'); }
   get monthlyTotals() { return this.page.locator('.monthly-totals'); }
 }
