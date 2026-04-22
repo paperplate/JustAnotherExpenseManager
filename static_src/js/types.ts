@@ -73,6 +73,10 @@ declare global {
     editTransaction: (button: HTMLButtonElement) => Promise<void>;
     closeEditModal: () => void;
     saveEditTransaction: () => Promise<void>;
+    // transactions.ts — CSV preview
+    commitImport: () => Promise<void>;
+    cancelPreview: () => void;
+    removePreviewRow: (idx: number) => void;
     // settings.ts
     addCategory: () => Promise<void>;
     editCategory: (name: string) => void;
