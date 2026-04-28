@@ -24,6 +24,8 @@
     </div>
 </div>
 
+{%include 'split_bill_component.html' %}
+
 <div id="stats-container">
     <div class="card">Loading statistics...</div>
 </div>
@@ -32,9 +34,6 @@
 {% block extra_scripts %}
 <script type="module" src="{{ url_for('static', filename='js/stats.js') }}"></script>
 <script type="module">
-    // stats.js is a module and runs before this sibling module script
-    // because it appears first in document order — window.loadStats is
-    // therefore defined by the time this script executes.
     loadStats();
     document.addEventListener('transactionsChanged', loadStats);
 </script>
