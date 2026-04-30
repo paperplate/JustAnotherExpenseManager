@@ -4,11 +4,7 @@ import * as path from 'path';
 
 /**
  * CSV Import Tests
-<<<<<<< splitBill
  * Tests bulk importing and previewing transactions from CSV files
-=======
- * Tests the preview-then-commit import flow.
->>>>>>> main
  */
 
 test.describe('CSV Import', () => {

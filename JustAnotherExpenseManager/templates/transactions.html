@@ -5,7 +5,6 @@
 {% block extra_styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
 <style>
-<<<<<<< splitBill
   /* ── Tagify theme — match existing input style ── */
   .tagify {
       --tags-border-color: #e0e0e0;
@@ -119,121 +118,6 @@
   .badge-valid   { color: #00b894; font-weight: 600; }
   .badge-errors  { color: #d63031; font-weight: 600; }
   .badge-removed { color: #999; }
-=======
-    /* ── Tagify theme — match existing input style ── */
-    .tagify {
-        --tags-border-color: #e0e0e0;
-        --tags-hover-border-color: #667eea;
-        --tags-focus-border-color: #667eea;
-        --tag-bg: #e8f4f8;
-        --tag-hover: #d0eaf4;
-        --tag-text-color: #0984e3;
-        --tag-remove-btn-color: #0984e3;
-        --tag-remove-btn-bg--hover: #d0eaf4;
-        --tag-pad: 0.3em 0.6em;
-        --tagify-dd-bg-color: #fff;
-        --tagify-dd-color-primary: #667eea;
-
-        border: 2px solid var(--tags-border-color);
-        border-radius: 6px;
-        padding: 4px 10px;
-        font-size: 16px;
-        min-height: 44px;
-        transition: border-color 0.3s;
-        width: 100%;
-        box-sizing: border-box;
-    }
-    .tagify:hover        { border-color: var(--tags-hover-border-color); }
-    .tagify:focus-within { border-color: var(--tags-focus-border-color); outline: none; }
-
-    .tagify__tag > div          { border-radius: 12px; }
-    .tagify__tag > div::before  { box-shadow: 0 0 0 1.1em var(--tag-bg) inset !important; border-radius: 12px; }
-    .tagify__tag:hover > div::before { box-shadow: 0 0 0 1.1em var(--tag-hover) inset !important; }
-
-    .tagify__input::before { color: #aaa; } /* placeholder */
-
-    .tagify__dropdown {
-        border: 2px solid #667eea;
-        border-radius: 0 0 6px 6px;
-        box-shadow: 0 6px 16px rgba(102,126,234,0.15);
-    }
-    .tagify__dropdown__item--active { background: #667eea; color: #fff; }
-    .tagify__dropdown__item:hover   { background: #f0f2ff; }
-
-    /* ── CSV Preview table ── */
-    .preview-input {
-        padding: 4px 6px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 13px;
-        font-family: inherit;
-        background: #fff;
-        transition: border-color 0.2s;
-    }
-    .preview-input:focus {
-        outline: none;
-        border-color: #667eea;
-    }
-    .preview-row-error { background: #fff5f5 !important; }
-    .preview-row-ok    { background: #fff; }
-    .preview-row-removed { display: none !important; }
-
-    .preview-table-wrap {
-        overflow-x: auto;
-        max-height: 420px;
-        overflow-y: auto;
-        border: 1px solid #e0e0e0;
-        border-radius: 6px;
-    }
-    .preview-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-    .preview-table thead th {
-        position: sticky;
-        top: 0;
-        background: #f5f5f5;
-        padding: 8px 10px;
-        text-align: left;
-        border-bottom: 2px solid #e0e0e0;
-        white-space: nowrap;
-        font-size: 12px;
-        color: #555;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-    }
-    .preview-table tbody td {
-        padding: 5px 6px;
-        border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
-    }
-    .preview-table tbody tr:last-child td { border-bottom: none; }
-    .preview-table tbody tr:hover { background: #fafafa; }
-    .preview-table tbody tr.preview-row-error:hover { background: #fff0f0; }
-
-    .preview-status-ok    { color: #00b894; font-weight: 600; }
-    .preview-status-error { color: #d63031; font-size: 12px; }
-
-    .preview-actions-bar {
-        display: flex;
-        gap: 12px;
-        align-items: center;
-        margin-top: 16px;
-        flex-wrap: wrap;
-    }
-    .preview-count-badge {
-        display: inline-flex;
-        gap: 10px;
-        align-items: center;
-        font-size: 13px;
-        color: #666;
-        margin-left: auto;
-    }
-    .badge-valid   { color: #00b894; font-weight: 600; }
-    .badge-errors  { color: #d63031; font-weight: 600; }
-    .badge-removed { color: #999; }
->>>>>>> main
 </style>
 {% endblock %}
 
@@ -283,11 +167,7 @@
 <div class="card">
     <h2 style="margin-bottom: 20px; color: #333;">Import from CSV</h2>
     <p style="margin-bottom: 15px; color: #666;">
-<<<<<<< splitBill
         CSV format: description, amount, type, category, date, tags (optional)
-=======
-        CSV format: description, amount, type, category, date, tags (optional).
->>>>>>> main
         Click <strong>Preview Import</strong> to review and edit rows before saving.
     </p>
     <form id="import-form" enctype="multipart/form-data">
@@ -304,7 +184,6 @@
 
 <!-- CSV Preview Table (hidden until file parsed) -->
 <div id="csv-preview-container" class="card" style="display:none;">
-<<<<<<< splitBill
   <h2 style="margin-bottom: 6px; color: #333;">Review Import</h2>
   <p style="color: #666; margin-bottom: 16px; font-size: 14px;">
     Edit any cell before importing. Rows highlighted in red have validation errors — fix them or remove them.
@@ -345,48 +224,6 @@
       </div>
   </div>
   <div id="commit-result" style="margin-top: 12px;"></div>
-=======
-    <h2 style="margin-bottom: 6px; color: #333;">Review Import</h2>
-    <p style="color: #666; margin-bottom: 16px; font-size: 14px;">
-        Edit any cell before importing. Rows highlighted in red have validation errors — fix them or remove them.
-        You can also remove rows you don't want to import.
-    </p>
-
-    <div class="preview-table-wrap">
-        <table class="preview-table">
-            <thead>
-                <tr>
-                    <th style="width:36px;">#</th>
-                    <th style="min-width:160px;">Description</th>
-                    <th style="width:100px;">Amount ($)</th>
-                    <th style="width:100px;">Type</th>
-                    <th style="width:130px;">Category</th>
-                    <th style="width:130px;">Date</th>
-                    <th style="min-width:140px;">Tags</th>
-                    <th style="width:72px;">Status</th>
-                    <th style="width:36px;"></th>
-                </tr>
-            </thead>
-            <tbody id="preview-tbody">
-                <!-- rows injected by JS -->
-            </tbody>
-        </table>
-    </div>
-
-    <!-- datalist populated by JS -->
-    <datalist id="preview-categories"></datalist>
-
-    <div class="preview-actions-bar">
-        <button class="btn" onclick="commitImport()">⬆ Import Rows</button>
-        <button class="btn btn-cancel" onclick="cancelPreview()">Cancel</button>
-        <div class="preview-count-badge">
-            <span class="badge-valid"   id="badge-valid"></span>
-            <span class="badge-errors"  id="badge-errors"></span>
-            <span class="badge-removed" id="badge-removed"></span>
-        </div>
-    </div>
-    <div id="commit-result" style="margin-top: 12px;"></div>
->>>>>>> main
 </div>
 
 <!-- Filter Component -->

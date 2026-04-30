@@ -145,11 +145,6 @@ async function handleAddTransaction(e: Event): Promise<void> {
   }
 }
 
-<<<<<<< splitBill
-=======
-// ── CSV Preview ───────────────────────────────────────────────────────────────
-
->>>>>>> main
 /** Escape HTML special characters for safe innerHTML insertion. */
 function escapeHtml(str: unknown): string {
   return String(str ?? '')
@@ -247,11 +242,7 @@ function renderPreviewTable(rows: PreviewRow[], categories: Category[]): void {
       <td>
         <select class="preview-input" data-field="type" data-idx="${idx}" style="width:94px;">
           <option value="expense" ${row.type === 'expense' ? 'selected' : ''}>Expense</option>
-<<<<<<< splitBill
           <option value="income"  ${row.type === 'income' ? 'selected' : ''}>Income</option>
-=======
-          <option value="income"  ${row.type === 'income'  ? 'selected' : ''}>Income</option>
->>>>>>> main
         </select>
       </td>
       <td>
@@ -299,7 +290,6 @@ function removePreviewRow(idx: number): void {
   if (tr) tr.className = 'preview-row-removed';
   updatePreviewBadges();
 }
-<<<<<<< splitBill
 
 /** Recount visible/error/removed rows and update badge labels + button text. */
 function updatePreviewBadges(): void {
@@ -325,33 +315,6 @@ function updatePreviewBadges(): void {
   if (btn) btn.textContent = `⬆ Import ${importable} Row${importable !== 1 ? 's' : ''}`;
 }
 
-=======
-
-/** Recount visible/error/removed rows and update badge labels + button text. */
-function updatePreviewBadges(): void {
-  const tbody = document.getElementById('preview-tbody');
-  if (!tbody) return;
-
-  let valid = 0, errors = 0, removed = 0;
-  tbody.querySelectorAll('tr').forEach(tr => {
-    if (tr.classList.contains('preview-row-removed')) { removed++; return; }
-    if (tr.classList.contains('preview-row-error'))   { errors++;  return; }
-    valid++;
-  });
-
-  const bv = document.getElementById('badge-valid');
-  const be = document.getElementById('badge-errors');
-  const br = document.getElementById('badge-removed');
-  if (bv) bv.textContent = valid   ? `${valid} valid`        : '';
-  if (be) be.textContent = errors  ? `${errors} with errors` : '';
-  if (br) br.textContent = removed ? `${removed} removed`    : '';
-
-  const btn = document.querySelector<HTMLElement>('#csv-preview-container .btn:first-child');
-  const importable = valid + errors;
-  if (btn) btn.textContent = `⬆ Import ${importable} Row${importable !== 1 ? 's' : ''}`;
-}
-
->>>>>>> main
 /** Collect current field values from non-removed preview rows. */
 function collectPreviewRows(): object[] {
   const tbody = document.getElementById('preview-tbody');
@@ -365,19 +328,11 @@ function collectPreviewRows(): object[] {
     };
     rows.push({
       description: val('description'),
-<<<<<<< splitBill
       amount: val('amount'),
       type: val('type'),
       category: val('category'),
       date: val('date'),
       tags: val('tags'),
-=======
-      amount:      val('amount'),
-      type:        val('type'),
-      category:    val('category'),
-      date:        val('date'),
-      tags:        val('tags'),
->>>>>>> main
     });
   });
   return rows;
@@ -442,11 +397,6 @@ function cancelPreview(): void {
   if (importResult) importResult.innerHTML = '';
 }
 
-<<<<<<< splitBill
-=======
-// ── Edit / Delete ─────────────────────────────────────────────────────────────
-
->>>>>>> main
 async function deleteTransaction(id: string): Promise<void> {
   if (!confirm('Are you sure you want to delete this transaction?')) return;
 
@@ -548,7 +498,6 @@ function notifyTransactionsChanged(): void {
   document.dispatchEvent(new CustomEvent('transactionsChanged'));
 }
 
-<<<<<<< splitBill
 function emitSplitBillTotal(): void {
   const checkboxes = document.querySelectorAll<HTMLInputElement>(
     '.split-select-checkbox'
@@ -609,14 +558,3 @@ window.saveEditTransaction = saveEditTransaction;
 window.commitImport = commitImport;
 window.cancelPreview = cancelPreview;
 window.removePreviewRow = removePreviewRow;
-=======
-// ── Global exports ────────────────────────────────────────────────────────────
-window.loadTransactions    = loadTransactions;
-window.deleteTransaction   = deleteTransaction;
-window.editTransaction     = editTransaction;
-window.closeEditModal      = closeEditModal;
-window.saveEditTransaction = saveEditTransaction;
-window.commitImport        = commitImport;
-window.cancelPreview       = cancelPreview;
-window.removePreviewRow    = removePreviewRow;
->>>>>>> main
