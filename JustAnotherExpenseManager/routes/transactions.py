@@ -254,7 +254,6 @@ def export_transactions() -> Response:
         end_date=end_date,
     )
 
-    # Collect transactions across all pages so a filtered export is complete.
     all_transactions = []
     for page_num in range(1, result['total_pages'] + 1):
         page_result = service.get_all_transactions(
