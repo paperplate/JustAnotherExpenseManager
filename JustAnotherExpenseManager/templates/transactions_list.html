@@ -4,7 +4,9 @@
     <h3 style="color: #333; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #e0e0e0;">
         {{ current_month|replace('-', ' ')|title }}
     </h3>
-
+    <button id="split-select-toggle" class="btn btn-outline-secondary btn-sm" type="button">
+      Select for split
+      </button>
     <table class="transactions-table">
         <thead>
             <tr>
@@ -18,7 +20,12 @@
         </thead>
         <tbody>
             {% for trans in transactions %}
-            <tr>
+            <tr data-amount="{{trans.amount_dollars}}">
+              <td class="split-select-cell d-none">
+                <input type="checkbox"
+                       class="split-select-checkbox form-check-input"
+                       aria-label="Select for split"/>
+              </td>
                 <td>{{ trans.date }}</td>
                 <td>{{ trans.description }}</td>
                 <td>

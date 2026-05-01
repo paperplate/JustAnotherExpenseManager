@@ -4,7 +4,7 @@ import * as path from 'path';
 
 /**
  * CSV Import Tests
- * Tests the preview-then-commit import flow.
+ * Tests bulk importing and previewing transactions from CSV files
  */
 
 test.describe('CSV Import', () => {

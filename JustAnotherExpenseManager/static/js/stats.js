@@ -12909,6 +12909,11 @@ async function loadStats() {
 	try {
 		container.innerHTML = await (await fetch("/api/stats" + window.location.search)).text();
 		refreshCharts(window.location.search.slice(1));
+		const expenseElement = container.querySelector(".summary-card.expense .summary-value");
+		if (expenseElement) window.dispatchEvent(new CustomEvent("SplitBillUpdate", { detail: {
+			total: parseFloat(expenseElement.textContent.replace(/[$,]/g, "")) || 0,
+			source: "summary"
+		} }));
 	} catch (error) {
 		console.error("Error loading stats:", error);
 		container.innerHTML = "<p style=\"color: #d63031;\">Error loading statistics.</p>";

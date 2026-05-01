@@ -385,6 +385,41 @@ async function saveEditTransaction() {
 function notifyTransactionsChanged() {
 	document.dispatchEvent(new CustomEvent("transactionsChanged"));
 }
+function emitSplitBillTotal() {
+	const checkboxes = document.querySelectorAll(".split-select-checkbox");
+	let checked = 0;
+	let unchecked = 0;
+	document.querySelectorAll("tr[data-amount]").forEach((row, index) => {
+		const amount = parseFloat(row.dataset.amount ?? "0");
+		if (isNaN(amount)) {
+			console.error("row: " + index + " amount is NAN");
+			return;
+		}
+		if (checkboxes[index].checked) checked += amount;
+		else unchecked += amount;
+	});
+	const total = checked === 0 ? unchecked : checked;
+	window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
+		total,
+		source: "transactions"
+	} }));
+}
+document.querySelector("#filter-form")?.addEventListener("submit", () => {
+	setTimeout(emitSplitBillTotal, 100);
+});
+document.addEventListener("change", (e) => {
+	if (e.target.classList.contains("split-select-checkbox")) emitSplitBillTotal();
+});
+document.getElementById("split-select-toggle")?.addEventListener("click", () => {
+	const cells = document.querySelectorAll(".split-select-cell");
+	const isHidden = cells[0]?.classList.contains("d-none");
+	cells.forEach((c) => c.classList.toggle("d-none", !isHidden));
+	if (isHidden) emitSplitBillTotal();
+	else {
+		document.querySelectorAll(".split-select-checkbox").forEach((cb) => cb.checked = false);
+		emitSplitBillTotal();
+	}
+});
 window.loadTransactions = loadTransactions;
 window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;

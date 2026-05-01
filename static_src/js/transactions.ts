@@ -3,6 +3,7 @@
  * Handles transaction management, CSV preview/edit/import, and editing.
  */
 import type { Category, ApiResult, ApiError } from "./types";
+import type { SplitBillUpdateEvent } from "./split_bill";
 
 declare const Tagify: typeof import('@yaireo/tagify');
 
@@ -144,8 +145,6 @@ async function handleAddTransaction(e: Event): Promise<void> {
   }
 }
 
-// ── CSV Preview ───────────────────────────────────────────────────────────────
-
 /** Escape HTML special characters for safe innerHTML insertion. */
 function escapeHtml(str: unknown): string {
   return String(str ?? '')
@@ -243,7 +242,7 @@ function renderPreviewTable(rows: PreviewRow[], categories: Category[]): void {
       <td>
         <select class="preview-input" data-field="type" data-idx="${idx}" style="width:94px;">
           <option value="expense" ${row.type === 'expense' ? 'selected' : ''}>Expense</option>
-          <option value="income"  ${row.type === 'income'  ? 'selected' : ''}>Income</option>
+          <option value="income"  ${row.type === 'income' ? 'selected' : ''}>Income</option>
         </select>
       </td>
       <td>
@@ -300,16 +299,16 @@ function updatePreviewBadges(): void {
   let valid = 0, errors = 0, removed = 0;
   tbody.querySelectorAll('tr').forEach(tr => {
     if (tr.classList.contains('preview-row-removed')) { removed++; return; }
-    if (tr.classList.contains('preview-row-error'))   { errors++;  return; }
+    if (tr.classList.contains('preview-row-error')) { errors++; return; }
     valid++;
   });
 
   const bv = document.getElementById('badge-valid');
   const be = document.getElementById('badge-errors');
   const br = document.getElementById('badge-removed');
-  if (bv) bv.textContent = valid   ? `${valid} valid`        : '';
-  if (be) be.textContent = errors  ? `${errors} with errors` : '';
-  if (br) br.textContent = removed ? `${removed} removed`    : '';
+  if (bv) bv.textContent = valid ? `${valid} valid` : '';
+  if (be) be.textContent = errors ? `${errors} with errors` : '';
+  if (br) br.textContent = removed ? `${removed} removed` : '';
 
   const btn = document.querySelector<HTMLElement>('#csv-preview-container .btn:first-child');
   const importable = valid + errors;
@@ -329,11 +328,11 @@ function collectPreviewRows(): object[] {
     };
     rows.push({
       description: val('description'),
-      amount:      val('amount'),
-      type:        val('type'),
-      category:    val('category'),
-      date:        val('date'),
-      tags:        val('tags'),
+      amount: val('amount'),
+      type: val('type'),
+      category: val('category'),
+      date: val('date'),
+      tags: val('tags'),
     });
   });
   return rows;
@@ -397,8 +396,6 @@ function cancelPreview(): void {
   const importResult = document.getElementById('import-result');
   if (importResult) importResult.innerHTML = '';
 }
-
-// ── Edit / Delete ─────────────────────────────────────────────────────────────
 
 async function deleteTransaction(id: string): Promise<void> {
   if (!confirm('Are you sure you want to delete this transaction?')) return;
@@ -501,12 +498,63 @@ function notifyTransactionsChanged(): void {
   document.dispatchEvent(new CustomEvent('transactionsChanged'));
 }
 
-// ── Global exports ────────────────────────────────────────────────────────────
-window.loadTransactions    = loadTransactions;
-window.deleteTransaction   = deleteTransaction;
-window.editTransaction     = editTransaction;
-window.closeEditModal      = closeEditModal;
+function emitSplitBillTotal(): void {
+  const checkboxes = document.querySelectorAll<HTMLInputElement>(
+    '.split-select-checkbox'
+  );
+
+  let checked: number = 0;
+  let unchecked: number = 0;
+
+  document.querySelectorAll<HTMLElement>('tr[data-amount]').forEach((row, index) => {
+    const amount = parseFloat(row.dataset.amount ?? '0');
+    if (isNaN(amount)) {
+      console.error('row: ' + index + ' amount is NAN');
+      return;
+    }
+    if (checkboxes[index].checked) {
+      checked += amount;
+    }
+    else {
+      unchecked += amount;
+    }
+  });
+
+  const total: number = (checked === 0 ? unchecked : checked);
+  window.dispatchEvent(
+    new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
+      detail: { total, source: 'transactions' },
+    })
+  );
+}
+
+document.querySelector('#filter-form')?.addEventListener('submit', () => {
+  setTimeout(emitSplitBillTotal, 100);
+});
+
+document.addEventListener('change', (e) => {
+  if ((e.target as HTMLElement).classList.contains('split-select-checkbox')) {
+    emitSplitBillTotal();
+  }
+});
+
+document.getElementById('split-select-toggle')?.addEventListener('click', () => {
+  const cells = document.querySelectorAll('.split-select-cell');
+  const isHidden = cells[0]?.classList.contains('d-none');
+  cells.forEach((c) => c.classList.toggle('d-none', !isHidden));
+  if (isHidden) {
+    emitSplitBillTotal();
+  } else {
+    document.querySelectorAll<HTMLInputElement>('.split-select-checkbox').forEach((cb) => (cb.checked = false));
+    emitSplitBillTotal();
+  }
+});
+
+window.loadTransactions = loadTransactions;
+window.deleteTransaction = deleteTransaction;
+window.editTransaction = editTransaction;
+window.closeEditModal = closeEditModal;
 window.saveEditTransaction = saveEditTransaction;
-window.commitImport        = commitImport;
-window.cancelPreview       = cancelPreview;
-window.removePreviewRow    = removePreviewRow;
+window.commitImport = commitImport;
+window.cancelPreview = cancelPreview;
+window.removePreviewRow = removePreviewRow;

@@ -2,7 +2,7 @@
 Routes for transaction operations with month-based pagination.
 """
 
-from flask import Blueprint, render_template, request, jsonify, g, Response
+from flask import Blueprint, json, render_template, request, jsonify, g, Response
 import csv
 import itertools
 from io import StringIO
@@ -185,6 +185,9 @@ def add_transaction():
         return _render_transactions_list(result)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        g.db.rollback()
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])

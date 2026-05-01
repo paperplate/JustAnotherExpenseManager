@@ -1,4 +1,4 @@
-import { APIRequestContext, expect } from '@playwright/test';
+import { APIRequestContext } from '@playwright/test';
 
 export const TODAY = new Date().toISOString().split('T')[0];
 
@@ -33,11 +33,20 @@ export async function seedTransactionsViaAPI(
         tags: o.tags ?? '',
       },
     });
-    expect(response.ok(), `API seeding failed for "${o.description}": ${response.status()}`).toBeTruthy();
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `API seeding failed for "${o.description}": HTTP ${response.status()}\n${body}`
+      );
+    }
   }
 }
 
-/** Parse "$1,234.56" or "-$50.00" → float. */
 export function parseDollar(text: string | null): number {
   return parseFloat((text ?? '0').replace(/[$,]/g, ''));
+}
+
+export function parsePercent(text: string | null): number {
+  return parseFloat((text ?? '0').replace('%', '').trim());
 }
