@@ -23,7 +23,7 @@ export class TransactionsPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/transactions', 'Transactions - Expense Manager');
-    this.descriptionInput = page.getByRole('textbox', { name: 'Description' });
+    this.descriptionInput = page.getByRole('textbox', { name: 'Description' }).first();
     this.amountInput = page.getByRole('spinbutton', { name: 'Amount ($)' });
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
     this.dateInput = page.getByRole('textbox', { name: 'Date' });
@@ -37,7 +37,7 @@ export class TransactionsPage extends BasePage {
     this.csvFile = page.getByLabel('CSV File');
     this.importCSVBtn = page.getByRole('button', { name: 'Preview Import' });
     this.importResult = page.locator('#import-result');
-    this.table = page.getByRole('table');
+    this.table = page.getByRole('table').locator(':scope.transactions-table');
     this.filter = new FilterComponent(page);
   }
 

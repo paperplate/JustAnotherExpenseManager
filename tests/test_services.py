@@ -4,6 +4,7 @@ Tests business logic and database operations directly, without HTTP.
 """
 
 import pytest
+from flask import jsonify, Response
 from JustAnotherExpenseManager.models import TransactionType
 from JustAnotherExpenseManager.utils.services import (
     TransactionService,
@@ -20,16 +21,19 @@ def _make_service(db):
     return TransactionService(db)
 
 
-def _create(service, description, amount, trans_type, date, category=None, tags=None):
+def _create(service, description, amount, trans_type, date, category=None, tags=None) -> int | tuple[Response, int]:
     """Thin wrapper that accepts a plain string type for convenience."""
-    return service.create_transaction(
-        description=description,
-        amount_dollars=amount,
-        type=TransactionType(trans_type),
-        date=date,
-        category=category,
-        tags=tags or [],
-    )
+    try:
+        return service.create_transaction(
+            description=description,
+            amount_dollars=amount,
+            type=TransactionType(trans_type),
+            date=date,
+            category=category,
+            tags=tags or [],
+        )
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 
 # ---------------------------------------------------------------------------
@@ -39,34 +43,36 @@ def _create(service, description, amount, trans_type, date, category=None, tags=
 class TestTransactionCRUD:
     """Create / read / update / delete operations."""
 
-    def test_create_returns_positive_id(self, app, db):
+    def test_create_returns_positive_id(self, db):
         service = _make_service(db)
-        trans_id = _create(service, 'Expense', 100.00, 'expense', '2026-02-01',
+        ret = _create(service, 'Expense', 100.00, 'expense', '2026-02-01',
                            category='food', tags=['test'])
-        assert trans_id is not None and trans_id > 0
+        assert type(ret) is int and ret > 0, ret
 
-    def test_create_stores_correct_fields(self, app, db):
+    def test_create_stores_correct_fields(self, db):
         service = _make_service(db)
-        _create(service, 'Salary', 5000.00, 'income', '2026-02-01',
+        ret = _create(service, 'Salary', 5000.00, 'income', '2026-02-01',
                 category='salary', tags=['recurring'])
+
+        assert type(ret) is int and ret > 0, ret
 
         result = service.get_all_transactions()
         t = result['transactions'][0]
         assert t.description == 'Salary'
         assert t.type == TransactionType.INCOME
-        assert t.amount_dollars == 5000.00
+        assert t.amount_cents == 500000
 
-    def test_create_without_category(self, app, db):
+    def test_create_without_category(self, db):
+        '''Dont allow transaction creation without category'''
         service = _make_service(db)
-        _create(service, 'Uncategorised', 50.00, 'expense', '2026-02-01')
+        ret = _create(service, 'Uncategorised', 50.00, 'expense', '2026-02-01')
+        assert type(ret) is tuple and b'validation error' in ret[0].data
 
-        t = service.get_all_transactions()['transactions'][0]
-        assert t.category is None
-
-    def test_create_with_multiple_tags(self, app, db):
+    def test_create_with_multiple_tags(self, db):
         service = _make_service(db)
-        _create(service, 'Tagged', 50.00, 'expense', '2026-02-01',
+        ret = _create(service, 'Tagged', 50.00, 'expense', '2026-02-01',
                 category='food', tags=['tag1', 'tag2', 'tag3'])
+        assert type(ret) is int and ret > 0, ret
 
         t = service.get_all_transactions()['transactions'][0]
         tag_names = [tag.name for tag in t.tags]
@@ -75,13 +81,14 @@ class TestTransactionCRUD:
         assert 'tag3' in tag_names
         assert 'category:food' in tag_names
 
-    def test_update_changes_fields(self, app, db):
+    def test_update_changes_fields(self, db):
         service = _make_service(db)
-        trans_id = _create(service, 'Original', 100.00, 'expense', '2026-02-01',
+        ret = _create(service, 'Original', 100.00, 'expense', '2026-02-01',
                            category='food', tags=['test'])
+        assert type(ret) is int and ret > 0, ret
 
         result = service.update_transaction(
-            transaction_id=trans_id,
+            transaction_id=ret,
             description='Updated',
             amount_dollars=200.00,
             type=TransactionType.EXPENSE,
@@ -93,10 +100,10 @@ class TestTransactionCRUD:
 
         t = service.get_all_transactions()['transactions'][0]
         assert t.description == 'Updated'
-        assert t.amount_dollars == 200.00
+        assert t.amount_cents == 20000
         assert t.category == 'transport'
 
-    def test_update_nonexistent_raises(self, app, db):
+    def test_update_nonexistent_raises(self, db):
         service = _make_service(db)
         with pytest.raises(ValueError):
             service.update_transaction(
@@ -105,16 +112,18 @@ class TestTransactionCRUD:
                 amount_dollars=1.00,
                 type=TransactionType.EXPENSE,
                 date='2026-02-01',
+                category='test'
             )
 
-    def test_delete_removes_transaction(self, app, db):
+    def test_delete_removes_transaction(self, db):
         service = _make_service(db)
-        trans_id = _create(service, 'Delete Me', 100.00, 'expense', '2026-02-01',
+        ret = _create(service, 'Delete Me', 100.00, 'expense', '2026-02-01',
                            category='food')
-        service.delete_transaction(trans_id)
+        assert type(ret) is int and ret > 0, ret
+        service.delete_transaction(ret)
         assert service.get_all_transactions()['total'] == 0
 
-    def test_delete_nonexistent_returns_false(self, app, db):
+    def test_delete_nonexistent_returns_false(self, db):
         service = _make_service(db)
         assert service.delete_transaction(99999) is False
 
@@ -126,7 +135,7 @@ class TestTransactionCRUD:
 class TestTransactionPagination:
     """Month-based pagination behaviour."""
 
-    def test_totals_across_two_months(self, app, db):
+    def test_totals_across_two_months(self, db):
         service = _make_service(db)
         for i in range(3):
             _create(service, f'Jan {i}', 100.00, 'expense', '2026-01-01', category='food')
@@ -137,7 +146,7 @@ class TestTransactionPagination:
         assert result['total'] == 5
         assert result['total_pages'] == 2
 
-    def test_page_1_shows_newest_month(self, app, db):
+    def test_page_1_shows_newest_month(self, db):
         service = _make_service(db)
         for i in range(3):
             _create(service, f'Jan {i}', 100.00, 'expense', '2026-01-01', category='food')
@@ -148,7 +157,7 @@ class TestTransactionPagination:
         assert len(page1['transactions']) == 2
         assert page1['current_month'] == '2026-02'
 
-    def test_page_2_shows_older_month(self, app, db):
+    def test_page_2_shows_older_month(self, db):
         service = _make_service(db)
         for i in range(3):
             _create(service, f'Jan {i}', 100.00, 'expense', '2026-01-01', category='food')
@@ -159,7 +168,7 @@ class TestTransactionPagination:
         assert len(page2['transactions']) == 3
         assert page2['current_month'] == '2026-01'
 
-    def test_months_ordered_newest_first(self, app, db):
+    def test_months_ordered_newest_first(self, db):
         service = _make_service(db)
         _create(service, 'Oldest', 100.00, 'expense', '2026-01-01', category='food')
         _create(service, 'Newest', 100.00, 'expense', '2026-03-01', category='food')
@@ -182,7 +191,7 @@ class TestTransactionPagination:
 class TestTransactionFiltering:
     """Category, tag, and date-range filters."""
 
-    def test_filter_by_single_category(self, app, db):
+    def test_filter_by_single_category(self, db):
         service = _make_service(db)
         _create(service, 'Food', 100.00, 'expense', '2026-02-01', category='food')
         _create(service, 'Transport', 50.00, 'expense', '2026-02-01', category='transport')
@@ -191,7 +200,7 @@ class TestTransactionFiltering:
         assert result['total'] == 1
         assert result['transactions'][0].description == 'Food'
 
-    def test_filter_by_multiple_categories(self, app, db):
+    def test_filter_by_multiple_categories(self, db):
         service = _make_service(db)
         _create(service, 'Food', 100.00, 'expense', '2026-02-01', category='food')
         _create(service, 'Transport', 50.00, 'expense', '2026-02-01', category='transport')
@@ -200,7 +209,7 @@ class TestTransactionFiltering:
         result = service.get_all_transactions(categories='food,transport')
         assert result['total'] == 2
 
-    def test_filter_by_tag(self, app, db):
+    def test_filter_by_tag(self, db):
         service = _make_service(db)
         _create(service, 'Recurring', 100.00, 'expense', '2026-02-01',
                 category='food', tags=['recurring'])
@@ -211,7 +220,7 @@ class TestTransactionFiltering:
         assert result['total'] == 1
         assert result['transactions'][0].description == 'Recurring'
 
-    def test_filter_by_date_range(self, app, db):
+    def test_filter_by_date_range(self, db):
         service = _make_service(db)
         _create(service, 'January', 100.00, 'expense', '2026-01-15', category='food')
         _create(service, 'February', 100.00, 'expense', '2026-02-15', category='food')
@@ -221,7 +230,7 @@ class TestTransactionFiltering:
         assert result['total'] == 1
         assert result['transactions'][0].description == 'February'
 
-    def test_filter_by_category_and_date_range(self, app, db):
+    def test_filter_by_category_and_date_range(self, db):
         service = _make_service(db)
         _create(service, 'Feb Food', 100.00, 'expense', '2026-02-15', category='food')
         _create(service, 'Jan Food', 100.00, 'expense', '2026-01-15', category='food')
@@ -233,7 +242,7 @@ class TestTransactionFiltering:
         assert result['total'] == 1
         assert result['transactions'][0].description == 'Feb Food'
 
-    def test_filter_by_tag_and_date_range(self, app, db):
+    def test_filter_by_tag_and_date_range(self, db):
         service = _make_service(db)
         _create(service, 'Recurring Feb', 100.00, 'expense', '2026-02-15',
                 category='food', tags=['recurring'])
@@ -256,14 +265,14 @@ class TestTransactionFiltering:
 class TestTagDeduplication:
     """Tag reuse and deduplication across transactions."""
 
-    def test_category_tag_is_created(self, app, db):
+    def test_category_tag_is_created(self, db):
         service = _make_service(db)
         _create(service, 'Test', 100.00, 'expense', '2026-02-01', category='food')
 
         t = service.get_all_transactions()['transactions'][0]
         assert 'category:food' in [tag.name for tag in t.tags]
 
-    def test_duplicate_tags_are_deduplicated(self, app, db):
+    def test_duplicate_tags_are_deduplicated(self, db):
         service = _make_service(db)
         _create(service, 'Test', 100.00, 'expense', '2026-02-01',
                 category='food', tags=['dup', 'dup', 'other', 'other'])
@@ -273,7 +282,7 @@ class TestTagDeduplication:
         assert non_cat.count('dup') == 1
         assert non_cat.count('other') == 1
 
-    def test_shared_tag_reused_across_transactions(self, app, db):
+    def test_shared_tag_reused_across_transactions(self, db):
         service = _make_service(db)
         _create(service, 'First', 100.00, 'expense', '2026-02-01',
                 category='food', tags=['recurring'])
@@ -293,13 +302,13 @@ class TestTagDeduplication:
 class TestStatsService:
     """Summary stats, category breakdown, and monthly trends."""
 
-    def test_empty_database_returns_zeros(self, app, db):
+    def test_empty_database_returns_zeros(self, db):
         stats = StatsService(db).get_summary_stats()
         assert stats['income'] == 0.0
         assert stats['expenses'] == 0.0
         assert stats['net'] == 0.0
 
-    def test_income_and_expense_totals(self, app, db):
+    def test_income_and_expense_totals(self, db):
         svc = _make_service(db)
         _create(svc, 'Income', 1000.00, 'income', '2026-02-01', category='salary')
         _create(svc, 'Expense', 300.00, 'expense', '2026-02-01', category='food')
@@ -309,7 +318,7 @@ class TestStatsService:
         assert stats['expenses'] == 300.00
         assert stats['net'] == 700.00
 
-    def test_stats_filtered_by_category(self, app, db):
+    def test_stats_filtered_by_category(self, db):
         svc = _make_service(db)
         _create(svc, 'Food', 200.00, 'expense', '2026-02-01', category='food')
         _create(svc, 'Transport', 100.00, 'expense', '2026-02-01', category='transport')
@@ -317,7 +326,7 @@ class TestStatsService:
         stats = StatsService(db).get_summary_stats(categories='food')
         assert stats['expenses'] == 200.00
 
-    def test_category_breakdown(self, app, db):
+    def test_category_breakdown(self, db):
         svc = _make_service(db)
         _create(svc, 'Food 1', 150.00, 'expense', '2026-02-01', category='food')
         _create(svc, 'Food 2', 50.00, 'expense', '2026-02-01', category='food')
@@ -328,7 +337,7 @@ class TestStatsService:
         assert food_stat is not None
         assert food_stat[1] == 200.00  # (category_name, expenses, income)
 
-    def test_monthly_data_covers_all_months(self, app, db):
+    def test_monthly_data_covers_all_months(self, db):
         svc = _make_service(db)
         _create(svc, 'January', 500.00, 'expense', '2026-01-15', category='food')
         _create(svc, 'February', 300.00, 'expense', '2026-02-15', category='food')
@@ -338,7 +347,7 @@ class TestStatsService:
         assert '2026-01' in months
         assert '2026-02' in months
 
-    def test_stats_filtered_by_tag(self, app, db):
+    def test_stats_filtered_by_tag(self, db):
         svc = _make_service(db)
         _create(svc, 'Tagged', 200.00, 'expense', '2026-02-01',
                 category='food', tags=['mytag'])
@@ -348,30 +357,30 @@ class TestStatsService:
         stats = StatsService(db).get_summary_stats(tags='mytag')
         assert stats['expenses'] == 200.00
 
-    def test_stats_with_current_month_time_range(self, app, db):
+    def test_stats_with_current_month_time_range(self, db):
         """get_summary_stats with time_range='current_month' should not crash."""
         stats = StatsService(db).get_summary_stats(time_range='current_month')
         assert 'income' in stats
         assert 'expenses' in stats
 
-    def test_stats_with_3_months_time_range(self, app, db):
+    def test_stats_with_3_months_time_range(self, db):
         stats = StatsService(db).get_summary_stats(time_range='3_months')
         assert 'net' in stats
 
-    def test_stats_with_6_months_time_range(self, app, db):
+    def test_stats_with_6_months_time_range(self, db):
         stats = StatsService(db).get_summary_stats(time_range='6_months')
         assert 'net' in stats
 
-    def test_stats_with_current_year_time_range(self, app, db):
+    def test_stats_with_current_year_time_range(self, db):
         stats = StatsService(db).get_summary_stats(time_range='current_year')
         assert 'net' in stats
 
-    def test_stats_with_unknown_time_range_does_not_crash(self, app, db):
+    def test_stats_with_unknown_time_range_does_not_crash(self, db):
         """An unknown time_range value should be silently ignored."""
         stats = StatsService(db).get_summary_stats(time_range='not_a_real_range')
         assert 'income' in stats
 
-    def test_stats_with_start_and_end_date(self, app, db):
+    def test_stats_with_start_and_end_date(self, db):
         svc = _make_service(db)
         _create(svc, 'In Range', 300.00, 'expense', '2026-01-15', category='food')
         _create(svc, 'Out of Range', 999.00, 'expense', '2025-06-01', category='food')
@@ -382,7 +391,7 @@ class TestStatsService:
         )
         assert stats['expenses'] == 300.00
 
-    def test_stats_invalid_date_format_ignored(self, app, db):
+    def test_stats_invalid_date_format_ignored(self, db):
         """Invalid date strings in start/end should not raise — just ignored."""
         stats = StatsService(db).get_summary_stats(
             start_date='not-a-date',
@@ -390,7 +399,7 @@ class TestStatsService:
         )
         assert 'income' in stats
 
-    def test_category_breakdown_filtered_by_tag(self, app, db):
+    def test_category_breakdown_filtered_by_tag(self, db):
         svc = _make_service(db)
         _create(svc, 'Tagged Food', 150.00, 'expense', '2026-02-01',
                 category='food', tags=['special'])
@@ -403,7 +412,6 @@ class TestStatsService:
         assert food[1] == 150.00
 
 
-
 # ---------------------------------------------------------------------------
 # CategoryService
 # ---------------------------------------------------------------------------
@@ -411,7 +419,7 @@ class TestStatsService:
 class TestCategoryService:
     """Category CRUD and merge operations via CategoryService."""
 
-    def test_create_category(self, app, db):
+    def test_create_category(self, db):
         svc = CategoryService(db)
         tag, error = svc.add_category('groceries')
         assert error is None
@@ -420,13 +428,13 @@ class TestCategoryService:
         names = [c['category_name'] for c in svc.get_all_categories()]
         assert 'groceries' in names
 
-    def test_create_duplicate_category_returns_error(self, app, db):
+    def test_create_duplicate_category_returns_error(self, db):
         svc = CategoryService(db)
         svc.add_category('groceries')
         _, error = svc.add_category('groceries')
         assert error is not None
 
-    def test_update_category_renames(self, app, db):
+    def test_update_category_renames(self, db):
         svc = CategoryService(db)
         svc.add_category('oldname')
         success, error = svc.update_category('oldname', 'newname')
@@ -437,14 +445,14 @@ class TestCategoryService:
         assert 'newname' in names
         assert 'oldname' not in names
 
-    def test_update_category_to_self_is_noop(self, app, db):
+    def test_update_category_to_self_is_noop(self, db):
         svc = CategoryService(db)
         svc.add_category('alpha')
         success, error = svc.update_category('alpha', 'alpha')
         assert success is True
         assert error is None
 
-    def test_merge_categories_reassigns_transactions(self, app, db):
+    def test_merge_categories_reassigns_transactions(self, db):
         trans_svc = _make_service(db)
         cat_svc = CategoryService(db)
         _create(trans_svc, 'Food item', 50.00, 'expense', '2026-02-01', category='food')
@@ -458,7 +466,7 @@ class TestCategoryService:
         result = trans_svc.get_all_transactions(categories='food')
         assert result['total'] == 2
 
-    def test_merge_categories_removes_source(self, app, db):
+    def test_merge_categories_removes_source(self, db):
         trans_svc = _make_service(db)
         cat_svc = CategoryService(db)
         cat_svc.add_category('groceries')
@@ -468,13 +476,13 @@ class TestCategoryService:
         names = [c['category_name'] for c in cat_svc.get_all_categories()]
         assert 'groceries' not in names
 
-    def test_merge_nonexistent_source_returns_error(self, app, db):
+    def test_merge_nonexistent_source_returns_error(self, db):
         svc = CategoryService(db)
         success, error = svc.update_category('doesnotexist', 'food')
         assert success is False
         assert 'not found' in error.lower()
 
-    def test_delete_category(self, app, db):
+    def test_delete_category(self, db):
         svc = CategoryService(db)
         svc.add_category('temporary')
         success, error = svc.delete_category('temporary')
@@ -484,7 +492,7 @@ class TestCategoryService:
         names = [c['category_name'] for c in svc.get_all_categories()]
         assert 'temporary' not in names
 
-    def test_update_category_to_new_name(self, app, db):
+    def test_update_category_to_new_name(self, db):
         """Renaming to a name that does not yet exist renames in-place."""
         svc = CategoryService(db)
         svc.add_category('oldcat')
@@ -495,7 +503,7 @@ class TestCategoryService:
         assert 'newcat' in names
         assert 'oldcat' not in names
 
-    def test_update_category_to_existing_merges_transactions(self, app, db):
+    def test_update_category_to_existing_merges_transactions(self, db):
         """Renaming onto an existing category merges all transactions."""
         trans_svc = _make_service(db)
         cat_svc = CategoryService(db)
@@ -509,12 +517,11 @@ class TestCategoryService:
         all_tx = trans_svc.get_all_transactions()['transactions']
         assert all(t.category == 'beta' for t in all_tx)
 
-    def test_update_nonexistent_category_returns_error(self, app, db):
+    def test_update_nonexistent_category_returns_error(self, db):
         svc = CategoryService(db)
         success, error = svc.update_category('ghost', 'newname')
         assert success is False
         assert error is not None
-
 
 
 # ---------------------------------------------------------------------------
@@ -532,7 +539,7 @@ class TestTagService:
         _create(svc, 'Trans B', 100.00, 'expense', '2026-02-01',
                 category='other', tags=['important'])
 
-    def test_rename_tag(self, app, db):
+    def test_rename_tag(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.update_tag('important', 'priority')
@@ -541,35 +548,35 @@ class TestTagService:
         assert 'priority' in svc.get_all_tags()
         assert 'important' not in svc.get_all_tags()
 
-    def test_rename_tag_to_self_is_noop(self, app, db):
+    def test_rename_tag_to_self_is_noop(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.update_tag('urgent', 'urgent')
         assert success is True
         assert error is None
 
-    def test_rename_tag_to_category_prefix_rejected(self, app, db):
+    def test_rename_tag_to_category_prefix_rejected(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.update_tag('urgent', 'category:food')
         assert success is False
         assert error is not None
 
-    def test_merge_tags_removes_source(self, app, db):
+    def test_merge_tags_removes_source(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         svc.merge_tag('important', 'urgent')
         assert 'important' not in svc.get_all_tags()
         assert 'urgent' in svc.get_all_tags()
 
-    def test_merge_nonexistent_source_returns_error(self, app, db):
+    def test_merge_nonexistent_source_returns_error(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.update_tag('doesnotexist', 'urgent')
         assert success is False
         assert 'not found' in error.lower()
 
-    def test_delete_tag(self, app, db):
+    def test_delete_tag(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.delete_tag('urgent')
@@ -577,7 +584,7 @@ class TestTagService:
         assert error is None
         assert 'urgent' not in svc.get_all_tags()
 
-    def test_update_tag_to_new_name(self, app, db):
+    def test_update_tag_to_new_name(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.update_tag('important', 'priority')
@@ -586,7 +593,7 @@ class TestTagService:
         assert 'priority' in svc.get_all_tags()
         assert 'important' not in svc.get_all_tags()
 
-    def test_update_tag_to_existing_merges(self, app, db):
+    def test_update_tag_to_existing_merges(self, db):
         self._setup_tags(db)
         svc = CategoryService(db)
         success, error = svc.merge_tag('important', 'urgent')
@@ -595,7 +602,7 @@ class TestTagService:
         assert 'important' not in svc.get_all_tags()
         assert 'urgent' in svc.get_all_tags()
 
-    def test_delete_tag_removes_from_all_transactions(self, app, db):
+    def test_delete_tag_removes_from_all_transactions(self, db):
         self._setup_tags(db)
         trans_svc = _make_service(db)
         cat_svc = CategoryService(db)

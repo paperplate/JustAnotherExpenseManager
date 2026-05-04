@@ -402,7 +402,7 @@ test.describe('Split Bill — total from transactions page', () => {
 
     const toggleBtn = page.getByRole('button', { name: /Select for Split/i });
     await toggleBtn.click();
-    await rows.filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
+    await transactionsPage.table.getByRole('row').filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
 
     const split = new SplitBillComponent(page);
     expect(parseDollar(await split.totalDisplay.textContent())).toBeCloseTo(5, 0);

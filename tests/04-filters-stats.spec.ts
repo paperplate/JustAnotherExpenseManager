@@ -36,7 +36,7 @@ test.describe('Filters and Statistics', () => {
     }
 
     await txPage.scrollToTotals();
-    const tableRows = page.getByRole('row');
+    const tableRows = txPage.table.getByRole('row');
     await expect(tableRows).toHaveCount(transactions.length + 1); // Add 1 for header row
 
     await sumPage.goto();

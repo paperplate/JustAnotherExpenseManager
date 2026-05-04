@@ -224,7 +224,7 @@ test.describe('Transactions page — filter combinations', () => {
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
     // Confirm all 6 rows loaded (header + 6 data rows)
-    await expect(transactionsPage.page.getByRole('row')).toHaveCount(TRANSACTIONS.length + 1);
+    await expect(transactionsPage.table.getByRole('row')).toHaveCount(TRANSACTIONS.length + 1);
   });
 
   // ── Category only ─────────────────────────────────────────────────────────────

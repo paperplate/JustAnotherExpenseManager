@@ -1,3 +1,4 @@
+import "./shared-Dkp2Sup-.js";
 //#region static_src/js/transactions.ts
 var addTagify = null;
 var editTagify = null;

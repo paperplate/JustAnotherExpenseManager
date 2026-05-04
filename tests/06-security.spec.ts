@@ -13,7 +13,7 @@ test.describe('Security', () => {
       await txPage.goto();
     });
 
-    test('should prevent XSS in transaction description', async ({ page, request }) => {
+    test('should prevent XSS in transaction description', async ({ transactionsPage, request }) => {
       await seedTransactionsViaAPI(request, [{
         description: '<script>alert("XSS")</script>',
         amount: 10,
@@ -21,13 +21,13 @@ test.describe('Security', () => {
         category: 'other',
       }]);
 
-      await page.reload();
+      await transactionsPage.page.reload();
 
       // Table should still be visible (no JS crash)
-      await expect(page.getByRole('table')).toBeVisible();
+      await expect(transactionsPage.table).toBeVisible();
 
       // The raw tag should appear as escaped text, not execute
-      const cell = page.getByRole('cell').filter({ hasText: 'script' });
+      const cell = transactionsPage.table.getByRole('cell').filter({ hasText: 'script' });
       const text = await cell.textContent();
       expect(text).toContain('<script>');
     });

@@ -2,8 +2,9 @@
  * Transactions Page
  * Handles transaction management, CSV preview/edit/import, and editing.
  */
-import type { Category, ApiResult, ApiError } from "./types";
+import type { Category, ApiError } from "./types";
 import type { SplitBillUpdateEvent } from "./split_bill";
+import './split_bill';
 
 declare const Tagify: typeof import('@yaireo/tagify');
 

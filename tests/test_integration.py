@@ -14,7 +14,6 @@ from JustAnotherExpenseManager.utils.services import TransactionService
 # ---------------------------------------------------------------------------
 
 class TestCompleteWorkflow:
-
     def test_add_edit_delete_workflow(self, client, db):
         """Full transaction lifecycle via HTTP."""
         # Create

@@ -1,3 +1,4 @@
+import "./shared-Dkp2Sup-.js";
 //#region node_modules/@kurkle/color/dist/color.esm.js
 /*!
 * @kurkle/color v0.3.4

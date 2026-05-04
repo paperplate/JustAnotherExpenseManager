@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, select
 from datetime import datetime, timedelta
 
-from JustAnotherExpenseManager.models import Transaction, Tag, TransactionType
+from JustAnotherExpenseManager.models import Transaction, Tag, TransactionType, DT_FORMAT
+from JustAnotherExpenseManager.models.dtos import TransactionDTO, RowDTO
 
 def _apply_transaction_filters(
     stmt,
@@ -38,13 +39,13 @@ def _apply_transaction_filters(
         start = None
 
         if time_range == 'current_month':
-            start = today.replace(day=1).strftime('%Y-%m-%d')
+            start = today.replace(day=1).strftime(DT_FORMAT)
         elif time_range == '3_months':
-            start = (today - timedelta(days=90)).strftime('%Y-%m-%d')
+            start = (today - timedelta(days=90)).strftime(DT_FORMAT)
         elif time_range == '6_months':
-            start = (today - timedelta(days=180)).strftime('%Y-%m-%d')
+            start = (today - timedelta(days=180)).strftime(DT_FORMAT)
         elif time_range == 'current_year':
-            start = today.replace(month=1, day=1).strftime('%Y-%m-%d')
+            start = today.replace(month=1, day=1).strftime(DT_FORMAT)
 
         if start:
             stmt = stmt.where(Transaction.date >= start)
@@ -70,15 +71,29 @@ class TransactionService:
         amount_dollars: float,
         type: TransactionType,
         date: str,
-        category: Optional[str] = None,
+        category: str,
         tags: Optional[List[str]] = None
     ) -> int:
         """Create a new transaction."""
-        transaction = Transaction(
-            description=description,
+        row = TransactionDTO(
             amount_dollars=amount_dollars,
+            description=description,
             type=type,
-            date=date
+            date=datetime.strptime(date, DT_FORMAT),
+            category=category,
+            tags=tags
+        )
+
+        tagList = [self._get_or_create_tag(row.category)]
+        if row.tags:
+            tagList = tagList + [self._get_or_create_tag(t) for t in row.tags]
+
+        transaction = Transaction(
+            description=row.description,
+            amount_cents=row.amount_cents,
+            type=row.type,
+            date=row.date,
+            tags=tagList
         )
 
         # Add to session first so the object is tracked before any flush()
@@ -129,7 +144,7 @@ class TransactionService:
 
         months: Dict[str, List[Transaction]] = {}
         for trans in all_transactions:
-            month_key = trans.date[:7]
+            month_key = trans.date.strftime('%Y-%m')
             if month_key not in months:
                 months[month_key] = []
             months[month_key].append(trans)
@@ -164,7 +179,7 @@ class TransactionService:
         amount_dollars: float,
         type: TransactionType,
         date: str,
-        category: Optional[str] = None,
+        category: str,
         tags: Optional[List[str]] = None
     ) -> bool:
         """Update an existing transaction."""
@@ -173,10 +188,19 @@ class TransactionService:
         if not transaction:
             raise ValueError("Transaction not found")
 
-        transaction.description = description
-        transaction.amount_dollars = amount_dollars
-        transaction.type = type
-        transaction.date = date
+        row = TransactionDTO(
+            description=description,
+            amount_dollars=amount_dollars,
+            type=type,
+            date=datetime.strptime(date, DT_FORMAT),
+            category=category,
+            tags=tags
+        )
+
+        transaction.description = row.description
+        transaction.amount_cents = row.amount_cents
+        transaction.type = row.type
+        transaction.date = row.date
         transaction.tags = []
 
         if category:
@@ -245,17 +269,17 @@ class StatsService:
         transactions = self.db.scalars(stmt).all()
 
         income = sum(
-            t.amount_dollars for t in transactions
+            t.amount_cents for t in transactions
             if t.type == TransactionType.INCOME
         )
         expenses = sum(
-            t.amount_dollars for t in transactions
+            t.amount_cents for t in transactions
             if t.type == TransactionType.EXPENSE
         )
 
         return {
-            'income': round(income, 2),
-            'expenses': round(expenses, 2),
+            'income': round(income/100.0, 2),
+            'expenses': round(expenses/100.0, 2),
             'net': round(income - expenses, 2),
             'transaction_count': len(transactions)
         }
@@ -281,12 +305,12 @@ class StatsService:
             if cat not in category_totals:
                 category_totals[cat] = {'expenses': 0.0, 'income': 0.0}
             if trans.type == TransactionType.EXPENSE:
-                category_totals[cat]['expenses'] += trans.amount_dollars
+                category_totals[cat]['expenses'] += trans.amount_cents
             else:
-                category_totals[cat]['income'] += trans.amount_dollars
+                category_totals[cat]['income'] += trans.amount_cents
 
         result = [
-            (cat, round(data['expenses'], 2), round(data['income'], 2))
+            (cat, round(data['expenses']/100.0, 2), round(data['income']/100.0, 2))
             for cat, data in category_totals.items()
         ]
         result.sort(key=lambda x: x[1], reverse=True)
@@ -304,16 +328,16 @@ class StatsService:
 
         monthly: Dict[str, Dict[str, float]] = {}
         for trans in transactions:
-            month_key = trans.date[:7]
+            month_key = trans.date.strftime('%Y-%m')
             if month_key not in monthly:
                 monthly[month_key] = {'expenses': 0.0, 'income': 0.0}
             if trans.type == TransactionType.EXPENSE:
-                monthly[month_key]['expenses'] += trans.amount_dollars
+                monthly[month_key]['expenses'] += trans.amount_cents
             else:
-                monthly[month_key]['income'] += trans.amount_dollars
+                monthly[month_key]['income'] += trans.amount_cents
 
         result = [
-            (month, round(data['expenses'], 2), round(data['income'], 2))
+            (month, round(data['expenses']/100.0, 2), round(data['income']/100.0, 2))
             for month, data in monthly.items()
         ]
         result.sort(key=lambda x: x[0])
@@ -332,7 +356,7 @@ class StatsService:
             stmt = _apply_transaction_filters(stmt, categories, time_range, start_date, end_date, tags)
             transactions = self.db.scalars(stmt).all()
 
-            unique_months = set(trans.date[:7] for trans in transactions)
+            unique_months = set(trans.date.strftime('%Y-%m') for trans in transactions)
             return len(unique_months)
 
 class CategoryService:

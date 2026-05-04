@@ -7,6 +7,7 @@
 import { Chart, registerables } from 'chart.js'
 import type { ChartApiData } from "./types";
 import type { SplitBillUpdateEvent } from './split_bill';
+import './split_bill';
 
 Chart.register(...registerables);
 

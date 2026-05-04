@@ -136,7 +136,7 @@ class SplitBillComponent {
   private formatCurrency(amount: number): string {
     return new Intl.NumberFormat(undefined, {
       style: "currency",
-      currency: "USD",
+      currency: "CAD",
       minimumFractionDigits: 2,
     }).format(amount);
   }

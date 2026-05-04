@@ -73,7 +73,7 @@ class TestTransactionLifecycle:
         assert result['total'] == 1
         saved = result['transactions'][0]
         assert saved.description == 'Persistent Test'
-        assert saved.amount_dollars == pytest.approx(99.99, abs=0.01)
+        assert saved.amount_cents == 9999
 
 
 class TestCLICommands:
