@@ -39,7 +39,7 @@ class TestTransactionLifecycle:
             'category': 'food',
             'tags': 'test',
         })
-        assert response.status_code == 200
+        assert response.status_code == 200, response
         assert b'Lifecycle Expense' in client.get('/api/transactions?page=1').data
 
     def test_delete_removes_transaction(self, client, db):

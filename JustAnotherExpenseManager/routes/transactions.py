@@ -42,7 +42,7 @@ def _render_transactions_list(result: Dict[str, Any]) -> str:
         category=t.category,
         date=t.date,
         type=t.type,
-        tags=t.tags
+        tags=[tag for tag in t.tags] if t.tags else []
     ).model_dump() for t in result['transactions']]
     return render_template(
         'transactions_list.html',
@@ -113,7 +113,7 @@ def _parse_csv_row(row: dict, row_num: int) -> Dict[str, Any]:
         return result
 
     try:
-        datetime.strptime(date_str, '%Y-%m-%d')
+        datetime.strptime(date_str, DT_FORMAT)
     except ValueError:
         result['error'] = f'Row {row_num}: Invalid date format "{date_str}" (expected YYYY-MM-DD)'
         return result
@@ -155,7 +155,8 @@ def get_transactions():
                        type=t.type,
                        description=t.description,
                        category=t.category,
-                       tags=[tag.name for tag in t.tags] if t.tags else []) for t in result['transactions']]
+                       tags=[tag.name for tag in t.tags] if t.tags else []).model_dump()
+        for t in result['transactions']]
 
     return _render_transactions_list(result)
 
@@ -187,7 +188,7 @@ def add_transaction():
             description=entry.description,
             amount_dollars=entry.amount_dollars,
             type=entry.type,
-            date=entry.date.strftime('%Y-%M-%d'),
+            date=entry.date.strftime(DT_FORMAT),
             category=entry.category,
             tags=entry.tags
         )

@@ -46,7 +46,7 @@ class BaseTransaction(BaseModel):
     def type_str(self, ts: str) -> None:
         self.type = _parse_transaction_type(ts)
 
-    @model_validator(mode='after')
+    @model_validator(mode='before')
     @classmethod
     def trigger_computation(cls, data: Any) -> Any:
         if isinstance(data, dict):
@@ -112,9 +112,8 @@ class RowDTO(BaseTransaction):
 
     model_config = ConfigDict(from_attributes=True)
 
-    def __init__(self, *, amount_dollars: Optional[float], amount_cents: int = 0, **kwargs: Any):
-        if amount_cents is not None:
-            kwargs['amount_cents'] = amount_cents
-        if amount_dollars is not None:
-            kwargs['amount_dollars'] = amount_dollars
-        super().__init__(**kwargs)
+    @computed_field
+    @property
+    def is_income(self) -> bool:
+        return self.type == TransactionType.INCOME
+

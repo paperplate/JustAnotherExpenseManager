@@ -280,7 +280,7 @@ class StatsService:
         return {
             'income': round(income/100.0, 2),
             'expenses': round(expenses/100.0, 2),
-            'net': round(income - expenses, 2),
+            'net': round((income - expenses)/100.0, 2),
             'transaction_count': len(transactions)
         }
 
@@ -353,7 +353,7 @@ class StatsService:
         ) -> int:
             """Count unique months with transactions."""
             stmt = select(Transaction)
-            stmt = _apply_transaction_filters(stmt, categories, time_range, start_date, end_date, tags)
+            stmt = _apply_transaction_filters(stmt, categories, tags, time_range, start_date, end_date)
             transactions = self.db.scalars(stmt).all()
 
             unique_months = set(trans.date.strftime('%Y-%m') for trans in transactions)

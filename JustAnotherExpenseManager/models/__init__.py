@@ -169,5 +169,5 @@ class Transaction(Base):
     def __repr__(self) -> str:
         return (
             f"<Transaction(id={self.id}, type={self.type.value}, "
-            f"amount=${self.amount_cents * 100.0:.2f})>"
+            f"amount=${self.amount_cents / 100.0:.2f})>"
         )

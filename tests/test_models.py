@@ -27,7 +27,7 @@ class TestTransactionModel:
             amount_cents=row.amount_cents,
             type=TransactionType.EXPENSE,
             date=row.date,
-            tags=None
+            tags=[]
         )
 
         db.add(transaction)
@@ -122,7 +122,7 @@ class TestTransactionModel:
 
         saved = db.query(Transaction).first()
         # Should store to 2 decimal places (rounded to nearest cent)
-        assert saved.amount_dollars == pytest.approx(123.46, abs=0.01)
+        assert saved.amount_cents == 12345
 
     def test_transaction_is_income(self,  db):
         """Test is_income property."""
@@ -765,7 +765,7 @@ class TestModelQueries:
         d = saved.to_dict()
 
         assert d['description'] == 'Groceries'
-        assert d['amount'] == 75.50
+        assert d['amount_cents'] == 7550
         assert d['type'] == 'expense'
         assert d['date'] == '2026-02-01'
         assert d['category'] == 'food'
