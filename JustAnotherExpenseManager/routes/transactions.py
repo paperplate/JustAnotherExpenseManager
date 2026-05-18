@@ -42,7 +42,7 @@ def _render_transactions_list(result: Dict[str, Any]) -> str:
         category=t.category,
         date=t.date,
         type=t.type,
-        tags=[tag for tag in t.tags] if t.tags else []
+        tags=[tag.name for tag in t.tags] if t.tags else []
     ).model_dump() for t in result['transactions']]
     return render_template(
         'transactions_list.html',
@@ -149,15 +149,6 @@ def get_transactions():
         end_date=end_date
     )
 
-    result['transactions'] = [
-        TransactionDTO(amount_cents=t.amount_cents,
-                       date=t.date,
-                       type=t.type,
-                       description=t.description,
-                       category=t.category,
-                       tags=[tag.name for tag in t.tags] if t.tags else []).model_dump()
-        for t in result['transactions']]
-
     return _render_transactions_list(result)
 
 
@@ -174,11 +165,10 @@ def add_transaction():
             tags=request.form.get('tags', '').strip().split(',')
         )
 
-        #trans_type = _parse_transaction_type(entry.type)
     except ValidationError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'Validation Error': str(e)}), 400
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'DTO Value Error': str(e)}), 400
 
     entry.tags = [t.strip() for t in entry.tags] if entry.tags else []
 
@@ -196,7 +186,7 @@ def add_transaction():
         result = service.get_all_transactions(page=1)
         return _render_transactions_list(result)
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'Service Value Error': str(e)}), 400
     except Exception as e:
         g.db.rollback()
         return jsonify({'error': f'Unexpected error: {str(e)}'}), 500

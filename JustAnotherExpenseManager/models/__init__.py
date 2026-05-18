@@ -138,6 +138,8 @@ class Transaction(Base):
         """
         if self.tags and tag not in self.tags:
             self.tags.append(tag)
+        elif self.tags is None:
+            self.tags = []
 
     def remove_tag(self, tag: Tag) -> None:
         """

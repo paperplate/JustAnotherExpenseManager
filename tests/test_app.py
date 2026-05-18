@@ -4,7 +4,7 @@ Covers the app factory, configuration, and end-to-end transaction lifecycle.
 Tests that overlap with test_routes.py (CSV import, stats, filtering) live there.
 """
 
-import pytest
+from tests.conftest import captured_templates
 from JustAnotherExpenseManager.models import TransactionType
 from JustAnotherExpenseManager.utils.services import TransactionService
 
@@ -30,17 +30,20 @@ class TestAppFactory:
 class TestTransactionLifecycle:
     """Full create → retrieve → delete cycle exercised via HTTP and service layer."""
 
-    def test_create_and_retrieve(self, client):
-        response = client.post('/api/transactions', data={
-            'description': 'Lifecycle Expense',
-            'amount': '50.00',
-            'type': 'expense',
-            'date': '2026-02-01',
-            'category': 'food',
-            'tags': 'test',
-        })
-        assert response.status_code == 200, response
-        assert b'Lifecycle Expense' in client.get('/api/transactions?page=1').data
+    def test_create_and_retrieve(self, app, client):
+        with captured_templates(app) as templates:
+            response = client.post('/api/transactions', data={
+                'description': 'Lifecycle Expense',
+                'amount': '50.00',
+                'type': 'expense',
+                'date': '2026-02-01',
+                'category': 'food',
+                'tags': 'test',
+            })
+            assert response.status_code == 200, response.data
+            client.get('/api/transactions?page=1')
+            _, context = templates[0]
+            assert context['transactions'][0]['description'] == 'Lifecycle Expense'
 
     def test_delete_removes_transaction(self, client, db):
         service = TransactionService(db)
