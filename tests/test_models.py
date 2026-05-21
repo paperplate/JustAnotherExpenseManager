@@ -366,8 +366,8 @@ class TestTransactionTagRelationship:
         db.commit()
 
         # Verify both transactions share the same tag
-        trans1 = db.query(Transaction).filter_by(description='First').first()
-        trans2 = db.query(Transaction).filter_by(description='Second').first()
+        trans1 = db.query(Transaction).filter_by(description='Test Transaction1').first()
+        trans2 = db.query(Transaction).filter_by(description='Test Transaction2').first()
 
         assert trans1.tags[0].id == trans2.tags[0].id
         assert trans1.tags[0].name == 'shared'
