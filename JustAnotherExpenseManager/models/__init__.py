@@ -136,10 +136,11 @@ class Transaction(Base):
         Args:
             tag: Tag instance to add
         """
-        if self.tags and tag not in self.tags:
-            self.tags.append(tag)
-        elif self.tags is None:
+        if self.tags is None:
             self.tags = []
+
+        if tag not in self.tags:
+            self.tags.append(tag)
 
     def remove_tag(self, tag: Tag) -> None:
         """
@@ -160,7 +161,7 @@ class Transaction(Base):
             'description': self.description,
             'amount_cents': self.amount_cents,
             'type': self.type.value,
-            'date': self.date,
+            'date': self.date.strftime('%Y-%m-%d') if self.date else None,
             'tags': [tag.name for tag in self.tags] if self.tags else [],
             'category': self.category,
             'non_category_tags': self.non_category_tags,

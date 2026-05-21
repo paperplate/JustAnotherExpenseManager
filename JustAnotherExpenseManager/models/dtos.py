@@ -35,6 +35,8 @@ class BaseTransaction(BaseModel):
 
     @amount_dollars.setter
     def amount_dollars(self, value: float) -> None:
+        if value < 0:
+            raise ValueError("Amount cannot be negative")
         self.amount_cents = int(value * 100)
 
     @computed_field
@@ -86,8 +88,12 @@ class TransactionDTO(BaseTransaction):
             type_str: Optional[str] = None,
             **kwargs: Unpack[TransactionKwargs]):
         if amount_cents is not None:
+            if amount_cents < 0:
+                raise ValueError("Amount cannot be negative")
             kwargs['amount_cents'] = amount_cents # type: ignore
         if amount_dollars is not None:
+            if amount_dollars < 0:
+                raise ValueError("Amount cannot be negative")
             kwargs['amount_dollars'] = amount_dollars # type: ignore
         if type is not None:
             kwargs['type'] = type # type: ignore

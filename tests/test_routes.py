@@ -40,13 +40,13 @@ class TestTransactionAPI:
         response = client.get('/api/transactions')
         assert response.status_code == 200
 
-    def test_get_transactions_page1_shows_newest_month(self, client):
+    def test_get_transactions_page1_shows_newest_month(self, client, sample_transactions):
         # sample_transactions puts Restaurant in Feb 2026 (page 1)
         response = client.get('/api/transactions?page=1')
         assert response.status_code == 200
         assert b'Restaurant' in response.data
 
-    def test_get_transactions_page2_shows_older_month(self, client):
+    def test_get_transactions_page2_shows_older_month(self, client, sample_transactions):
         response = client.get('/api/transactions?page=2')
         assert response.status_code == 200
         assert b'Grocery shopping' in response.data
@@ -127,31 +127,31 @@ class TestTransactionAPI:
 
 class TestTransactionFiltering:
 
-    def test_filter_by_category_page1(self, client):
+    def test_filter_by_category_page1(self, client, sample_transactions):
         # Restaurant (food, Feb) is on page 1
         response = client.get('/api/transactions?categories=food&page=1')
         assert response.status_code == 200
         assert b'Restaurant' in response.data
 
-    def test_filter_by_category_page2(self, client):
+    def test_filter_by_category_page2(self, client, sample_transactions):
         # Grocery shopping (food, Jan) is on page 2
         response = client.get('/api/transactions?categories=food&page=2')
         assert response.status_code == 200
         assert b'Grocery shopping' in response.data
 
-    def test_filter_by_tag(self, client):
+    def test_filter_by_tag(self, client, sample_transactions):
         # 'recurring' tag is on Jan transactions
         response = client.get('/api/transactions?tags=recurring&page=2')
         assert response.status_code == 200
         assert b'Grocery shopping' in response.data or b'Salary' in response.data
 
-    def test_filter_by_date_range_includes_matching(self, client):
+    def test_filter_by_date_range_includes_matching(self, client, sample_transactions):
         response = client.get('/api/transactions?start_date=2026-01-01&end_date=2026-01-31')
         assert response.status_code == 200
         assert b'Grocery shopping' in response.data
         assert b'Salary' in response.data
 
-    def test_filter_by_date_range_excludes_outside(self, client):
+    def test_filter_by_date_range_excludes_outside(self, client, sample_transactions):
         response = client.get('/api/transactions?start_date=2026-01-01&end_date=2026-01-31')
         assert b'Restaurant' not in response.data
 
@@ -191,7 +191,7 @@ class TestCategoryAPI:
         assert response.status_code == 200
         assert isinstance(response.get_json(), list)
 
-    def test_get_categories_with_data_returns_dicts(self, client):
+    def test_get_categories_with_data_returns_dicts(self, client, sample_transactions):
         response = client.get('/api/categories')
         data = response.get_json()
         assert len(data) > 0
@@ -452,6 +452,7 @@ class TestSettingsAPI:
 
     def test_populate_test_data_requires_debug_mode(self, client):
         response = client.post('/api/populate-test-data')
+        print("ERROR RESPONSE:", response.data)
         assert response.status_code == 200
 
     def test_settings_page_accessible(self, client):
@@ -495,14 +496,16 @@ class TestCategoryMerge:
 
     def _setup(self, client):
         """Create one food and one groceries transaction."""
-        client.post('/api/transactions', data={
+        r = client.post('/api/transactions', data={
             'description': 'Food transaction', 'amount': '50.00',
             'type': 'expense', 'date': '2026-03-01', 'category': 'food',
         })
-        client.post('/api/transactions', data={
+        assert r.status_code == 200, r.data
+        r = client.post('/api/transactions', data={
             'description': 'Groceries transaction', 'amount': '30.00',
             'type': 'expense', 'date': '2026-03-02', 'category': 'groceries',
         })
+        assert r.status_code == 200, r.data
 
     def test_rename_to_new_name_succeeds(self, client):
         self._setup(client)

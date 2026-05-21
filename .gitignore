@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# ai
+.antigravitycli
+
 # test databases
 *.db
 
@@ -56,6 +59,7 @@ coverage.xml
 cover/
 test-results/
 playwright-report/
+*.xml
 
 # Translations
 *.mo

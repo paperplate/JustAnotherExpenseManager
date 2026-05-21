@@ -162,7 +162,7 @@ def add_transaction():
             type_str=request.form.get('type', 'expense'),
             date=datetime.strptime(request.form.get('date', '').split('T')[0], DT_FORMAT),
             category=request.form.get('category', '').lower().strip(),
-            tags=request.form.get('tags', '').strip().split(',')
+            tags=[t.strip() for t in request.form.get('tags', '').split(',') if t.strip()]
         )
 
     except ValidationError as e:

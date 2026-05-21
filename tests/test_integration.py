@@ -44,16 +44,17 @@ class TestCompleteWorkflow:
                 'tags': 'updated',
             })
             assert r.status_code == 200, r.data
-            _, context = templates[0]
+            _, context = templates[-1]
             assert context['transactions'][0]['description'] == 'Updated Transaction'
             #assert b'Updated Transaction' in client.get('/api/transactions?page=1').data
 
             # Delete
             assert client.delete(f'/api/transactions/{trans_id}').status_code == 200
+            _, context = templates[-1]
             assert len(context['transactions']) == 0
             #assert b'Updated Transaction' not in client.get('/api/transactions?page=1').data
 
-    def test_filtering_workflow(self, client):
+    def test_filtering_workflow(self, client, sample_transactions):
         """Apply and combine filters across pages."""
         # Page 2 = January = Grocery, Salary, Gas
         r = client.get('/api/transactions?page=2')

@@ -63,15 +63,15 @@ class TestDataService:
 
                     transaction = Transaction(
                         description=desc,
-                        amount_dollars=amount,
+                        amount_cents=int(amount * 100),
                         type=TransactionType.EXPENSE,
-                        date=date
+                        date=datetime.strptime(date, '%Y-%m-%d'),
+                        tags=[]
                     )
+                    self.db.add(transaction)
 
                     category_tag = self._get_or_create_tag(f'category:{category}')
                     transaction.add_tag(category_tag)
-
-                    self.db.add(transaction)
                     transaction_count += 1
 
                 if random.random() < 0.1:  # 10% chance per day
@@ -80,10 +80,12 @@ class TestDataService:
 
                     transaction = Transaction(
                         description=desc,
-                        amount_dollars=amount,
+                        amount_cents=int(amount * 100),
                         type=TransactionType.INCOME,
-                        date=date
+                        date=datetime.strptime(date, '%Y-%m-%d'),
+                        tags=[]
                     )
+                    self.db.add(transaction)
 
                     category_tag = self._get_or_create_tag(f'category:{category}')
                     transaction.add_tag(category_tag)
@@ -91,8 +93,6 @@ class TestDataService:
                     if random.random() < 0.3:
                         tag = self._get_or_create_tag('recurring')
                         transaction.add_tag(tag)
-
-                    self.db.add(transaction)
                     transaction_count += 1
 
             self.db.commit()
