@@ -223,7 +223,7 @@ async function loadStats(): Promise<void> {
     const expenseElement = container.querySelector<HTMLElement>('.summary-card.expense .summary-value');
     if (expenseElement) {
       window.dispatchEvent(
-        new CustomEvent<SplitBillUpdateEvent>('SplitBillUpdate', {
+        new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
           detail: {
             total: parseFloat(expenseElement.textContent.replace(/[$,]/g, '')) || 0,
             source: 'summary'

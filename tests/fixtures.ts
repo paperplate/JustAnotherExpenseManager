@@ -69,6 +69,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
           FLASK_RUN_PORT: String(port),
           FLASK_RUN_HOST: '127.0.0.1',
           SQLITE_PATH: dbPath,
+          FLASK_TESTING: '1',
         },
         stdio: ['ignore', 'pipe', 'pipe'], // prevent buffer block
       });

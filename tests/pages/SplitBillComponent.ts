@@ -1,4 +1,4 @@
-import { Page, Locator } from '@playwright/test';
+import { Page, Locator, expect } from '@playwright/test';
 
 export class SplitBillComponent {
   readonly page: Page;
@@ -57,9 +57,24 @@ export class SplitBillComponent {
     const input = this.percentageInput(name);
     await input.fill(String(pct));
     await input.dispatchEvent('input');
+    await input.blur();
   }
 
   async clearSessionStorage(): Promise<void> {
     await this.page.evaluate(() => sessionStorage.removeItem('splitBillPeople'));
+  }
+
+  async expectTotal(amount: number): Promise<void> {
+    await expect.poll(async () => {
+      const text = await this.totalDisplay.textContent();
+      return parseFloat(text?.replace(/[^0-9.-]+/g, '') || '0');
+    }).toBeCloseTo(amount, 2);
+  }
+
+  async expectAmount(name: string, amount: number): Promise<void> {
+    await expect.poll(async () => {
+      const text = await this.amountCell(name).textContent();
+      return parseFloat(text?.replace(/[^0-9.-]+/g, '') || '0');
+    }).toBeCloseTo(amount, 2);
   }
 }

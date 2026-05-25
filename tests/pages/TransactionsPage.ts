@@ -71,8 +71,8 @@ export class TransactionsPage extends BasePage {
    * detaches any pre-bound Locator references.
    */
   async scrollToTotals(): Promise<void> {
-    await this.page.waitForLoadState('networkidle');
-    await expect(this.page.locator('.monthly-totals')).toBeVisible({ timeout: 8_000 });
+    await expect(this.monthlyTotals).toBeVisible({ timeout: 8_000 });
+    await this.monthlyTotals.scrollIntoViewIfNeeded();
   }
 
   /** Convenience aliases for the monthly-total cells. */

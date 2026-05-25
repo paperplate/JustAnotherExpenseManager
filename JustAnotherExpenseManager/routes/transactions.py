@@ -40,7 +40,8 @@ def _render_transactions_list(result: Dict[str, Any]) -> str:
         description=t.description,
         amount_cents=t.amount_cents,
         category=t.category,
-        date=t.date,
+        id=t.id,
+        date=t.date.strftime('%Y-%m-%d'),
         type=t.type,
         tags=[tag.name for tag in t.tags] if t.tags else []
     ).model_dump() for t in result['transactions']]

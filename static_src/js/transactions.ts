@@ -92,6 +92,7 @@ async function loadTransactions(page: number): Promise<void> {
     const response = await fetch('/api/transactions?' + params.toString());
     const html = await response.text();
     listEl.innerHTML = html;
+    setTimeout(emitSplitBillTotal, 0);
   } catch (error) {
     console.error('Error loading transactions:', error);
     listEl.innerHTML = '<p style="color: #d63031;">Error loading transactions.</p>';
@@ -513,11 +514,16 @@ function emitSplitBillTotal(): void {
       console.error('row: ' + index + ' amount is NAN');
       return;
     }
+    
+    const typeBtn = row.querySelector('[data-type]');
+    const isIncome = typeBtn && (typeBtn as HTMLElement).dataset.type === 'income';
+    const signedAmount = isIncome ? -amount : amount;
+
     if (checkboxes[index].checked) {
-      checked += amount;
+      checked += signedAmount;
     }
     else {
-      unchecked += amount;
+      unchecked += signedAmount;
     }
   });
 
@@ -539,15 +545,19 @@ document.addEventListener('change', (e) => {
   }
 });
 
-document.getElementById('split-select-toggle')?.addEventListener('click', () => {
-  const cells = document.querySelectorAll('.split-select-cell');
-  const isHidden = cells[0]?.classList.contains('d-none');
-  cells.forEach((c) => c.classList.toggle('d-none', !isHidden));
-  if (isHidden) {
-    emitSplitBillTotal();
-  } else {
-    document.querySelectorAll<HTMLInputElement>('.split-select-checkbox').forEach((cb) => (cb.checked = false));
-    emitSplitBillTotal();
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  const toggleBtn = target.closest('#split-select-toggle');
+  if (toggleBtn) {
+    const cells = document.querySelectorAll('.split-select-cell');
+    const isHidden = cells[0]?.classList.contains('d-none');
+    cells.forEach((c) => c.classList.toggle('d-none', !isHidden));
+    if (isHidden) {
+      emitSplitBillTotal();
+    } else {
+      document.querySelectorAll<HTMLInputElement>('.split-select-checkbox').forEach((cb) => (cb.checked = false));
+      emitSplitBillTotal();
+    }
   }
 });
 

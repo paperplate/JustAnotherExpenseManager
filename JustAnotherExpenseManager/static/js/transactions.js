@@ -1,4 +1,4 @@
-import "./shared-Dkp2Sup-.js";
+import "./split_bill.js";
 //#region static_src/js/transactions.ts
 var addTagify = null;
 var editTagify = null;
@@ -48,6 +48,7 @@ async function loadTransactions(page) {
 	if (!listEl) return;
 	try {
 		listEl.innerHTML = await (await fetch("/api/transactions?" + params.toString())).text();
+		setTimeout(emitSplitBillTotal, 0);
 	} catch (error) {
 		console.error("Error loading transactions:", error);
 		listEl.innerHTML = "<p style=\"color: #d63031;\">Error loading transactions.</p>";
@@ -396,8 +397,10 @@ function emitSplitBillTotal() {
 			console.error("row: " + index + " amount is NAN");
 			return;
 		}
-		if (checkboxes[index].checked) checked += amount;
-		else unchecked += amount;
+		const typeBtn = row.querySelector("[data-type]");
+		const signedAmount = typeBtn && typeBtn.dataset.type === "income" ? -amount : amount;
+		if (checkboxes[index].checked) checked += signedAmount;
+		else unchecked += signedAmount;
 	});
 	const total = checked === 0 ? unchecked : checked;
 	window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
@@ -411,14 +414,16 @@ document.querySelector("#filter-form")?.addEventListener("submit", () => {
 document.addEventListener("change", (e) => {
 	if (e.target.classList.contains("split-select-checkbox")) emitSplitBillTotal();
 });
-document.getElementById("split-select-toggle")?.addEventListener("click", () => {
-	const cells = document.querySelectorAll(".split-select-cell");
-	const isHidden = cells[0]?.classList.contains("d-none");
-	cells.forEach((c) => c.classList.toggle("d-none", !isHidden));
-	if (isHidden) emitSplitBillTotal();
-	else {
-		document.querySelectorAll(".split-select-checkbox").forEach((cb) => cb.checked = false);
-		emitSplitBillTotal();
+document.addEventListener("click", (e) => {
+	if (e.target.closest("#split-select-toggle")) {
+		const cells = document.querySelectorAll(".split-select-cell");
+		const isHidden = cells[0]?.classList.contains("d-none");
+		cells.forEach((c) => c.classList.toggle("d-none", !isHidden));
+		if (isHidden) emitSplitBillTotal();
+		else {
+			document.querySelectorAll(".split-select-checkbox").forEach((cb) => cb.checked = false);
+			emitSplitBillTotal();
+		}
 	}
 });
 window.loadTransactions = loadTransactions;

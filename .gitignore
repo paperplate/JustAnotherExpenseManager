@@ -6,6 +6,9 @@ __pycache__/
 # ai
 .antigravitycli
 
+# playwright
+.playwright-cli
+
 # test databases
 *.db
 

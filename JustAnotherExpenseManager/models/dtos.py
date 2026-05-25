@@ -65,20 +65,21 @@ CategoryStr = Annotated[str,
 
 class TransactionKwargs(TypedDict, total=False):
     category: CategoryStr
-    date: datetime #Annotated[str, StringConstraints(pattern=r'^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$')]
+    date: datetime
     description: str
-    tags: Optional[List[CategoryStr]]
+    tags: Optional[List[str]]
 
 
 class TransactionDTO(BaseTransaction):
     '''What the frontend sends.'''
+    id: Optional[int] = None
     category: CategoryStr
 # Source - https://stackoverflow.com/a/22061879
 # Posted by Vinod, modified by community. See post 'Timeline' for change history
 # Retrieved 2026-05-02, License - CC BY-SA 4.0
-    date: datetime #Annotated[str, StringConstraints(pattern=r'^\d{4}\-(0[1-9]|1[012])\-(0[1-9]|[12][0-9]|3[01])$')]
+    date: datetime
     description: str = Field(min_length=1)
-    tags: Optional[List[CategoryStr]] = None
+    tags: Optional[List[str]] = None
 
     def __init__(
             self, *,

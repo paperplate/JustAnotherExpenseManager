@@ -1,4 +1,4 @@
-import "./shared-Dkp2Sup-.js";
+import "./split_bill.js";
 //#region node_modules/@kurkle/color/dist/color.esm.js
 /*!
 * @kurkle/color v0.3.4
@@ -12911,7 +12911,7 @@ async function loadStats() {
 		container.innerHTML = await (await fetch("/api/stats" + window.location.search)).text();
 		refreshCharts(window.location.search.slice(1));
 		const expenseElement = container.querySelector(".summary-card.expense .summary-value");
-		if (expenseElement) window.dispatchEvent(new CustomEvent("SplitBillUpdate", { detail: {
+		if (expenseElement) window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
 			total: parseFloat(expenseElement.textContent.replace(/[$,]/g, "")) || 0,
 			source: "summary"
 		} }));

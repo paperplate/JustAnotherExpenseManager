@@ -103,7 +103,7 @@ var SplitBillComponent = class {
 	formatCurrency(amount) {
 		return new Intl.NumberFormat(void 0, {
 			style: "currency",
-			currency: "USD",
+			currency: "CAD",
 			minimumFractionDigits: 2
 		}).format(amount);
 	}
@@ -219,10 +219,6 @@ var SplitBillComponent = class {
 			if (action === "lock") this.toggleLock(id);
 		});
 		tbody.addEventListener("change", (e) => {
-			const target = e.target;
-			if (target.dataset.action === "pct" && target.dataset.id) this.updatePercentage(target.dataset.id, parseFloat(target.value) || 0);
-		});
-		tbody.addEventListener("input", (e) => {
 			const target = e.target;
 			if (target.dataset.action === "pct" && target.dataset.id) this.updatePercentage(target.dataset.id, parseFloat(target.value) || 0);
 		});

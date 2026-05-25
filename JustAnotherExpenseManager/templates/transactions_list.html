@@ -35,13 +35,13 @@
                 </td>
                 <td>
                     {% for tag in trans.tags %}
-                        {% if tag.is_category %}
+                        {% if tag.startswith('category:') %}
                             <span class="tag-badge category-tag">
-                                {{ tag.category_name|capitalize }}
+                                {{ tag[9:]|capitalize }}
                             </span>
                         {% else %}
                             <span class="tag-badge">
-                                {{ tag.name }}
+                                {{ tag }}
                             </span>
                         {% endif %}
                     {% endfor %}
@@ -55,7 +55,7 @@
                             data-description="{{ trans.description|escape }}"
                             data-amount="{{ trans.amount_dollars }}"
                             data-type="{{ trans.type.value }}"
-                            data-date="{{ trans.date }}"
+                            data-date="{{ trans.date|string|truncate(10, True, '') }}"
                             data-category="{{ trans.category or '' }}"
                             data-tags="{{ trans.non_category_tags|join(',') }}"
                             onclick="editTransaction(this)">

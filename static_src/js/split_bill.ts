@@ -295,12 +295,7 @@ class SplitBillComponent {
       }
     });
 
-    tbody.addEventListener("input", (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.dataset.action === "pct" && target.dataset.id) {
-        this.updatePercentage(target.dataset.id, parseFloat(target.value) || 0);
-      }
-    });
+
   }
 }
 

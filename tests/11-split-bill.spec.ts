@@ -188,10 +188,8 @@ test.describe('Split Bill — manual percentage adjustment', () => {
     await split.addPerson('Bob');
     await split.setPct('Alice', 75);
 
-    const aliceAmount = parseDollar(await split.amountCell('Alice').textContent());
-    const bobAmount = parseDollar(await split.amountCell('Bob').textContent());
-    expect(aliceAmount).toBeCloseTo(75, 0);
-    expect(bobAmount).toBeCloseTo(25, 0);
+    await split.expectAmount('Alice', 75);
+    await split.expectAmount('Bob', 25);
   });
 
   test('remainder row shows zero when percentages sum to 100', async ({ summaryPage }) => {
@@ -209,9 +207,7 @@ test.describe('Split Bill — manual percentage adjustment', () => {
     await split.addPerson('Bob');
     // Manually set both to 40 — leaves 20% unallocated
     await split.setPct('Alice', 40);
-    await split.lockBtn('Alice').click();
     await split.setPct('Bob', 40);
-    await split.lockBtn('Bob').click();
 
     await expect(split.remainderRow()).toHaveClass(/split-remainder-nonzero/);
   });
@@ -235,7 +231,6 @@ test.describe('Split Bill — lock toggle', () => {
 
     // Lock Bob at 20
     await split.setPct('Bob', 20);
-    await split.lockBtn('Bob').click();
     await expect(split.lockBtn('Bob')).toHaveClass(/locked/);
 
     // Now adjust Alice — Bob should stay at 20
@@ -251,7 +246,6 @@ test.describe('Split Bill — lock toggle', () => {
     await split.addPerson('Bob');
 
     await split.setPct('Alice', 70);
-    await split.lockBtn('Alice').click();
     // Unlock
     await split.lockBtn('Alice').click();
     await expect(split.lockBtn('Alice')).not.toHaveClass(/locked/);
@@ -285,8 +279,7 @@ test.describe('Split Bill — total from summary page', () => {
     await summaryPage.scrollToSummary();
 
     // expenses = 800 + 150 = 950
-    const totalText = await split.totalDisplay.textContent();
-    expect(parseDollar(totalText)).toBeCloseTo(950, 0);
+    await split.expectTotal(950);
   });
 
   test('total updates when category filter is applied', async ({ request, page, summaryPage }) => {
@@ -303,10 +296,7 @@ test.describe('Split Bill — total from summary page', () => {
     await summaryPage.scrollToSummary();
 
     await summaryPage.filter.selectCategory('food');
-    await page.waitForLoadState('networkidle');
-
-    const totalText = await split.totalDisplay.textContent();
-    expect(parseDollar(totalText)).toBeCloseTo(150, 0);
+    await split.expectTotal(150);
   });
 });
 
@@ -317,7 +307,7 @@ test.describe('Split Bill — total from transactions page', () => {
     await clearDatabase(request);
   });
 
-  test('total is sum of all visible expense rows (no selection)', async ({
+  test('total is sum of all visible expense rows minus income rows (no selection)', async ({
     request, transactionsPage,
   }) => {
     await seedTransactionsViaAPI(request, [
@@ -334,9 +324,8 @@ test.describe('Split Bill — total from transactions page', () => {
     await transactionsPage.page.reload();
     await transactionsPage.scrollToTotals();
 
-    // Only expenses: 5 + 20 = 25
-    const totalText = await split.totalDisplay.textContent();
-    expect(parseDollar(totalText)).toBeCloseTo(25, 0);
+    // Expenses = 25, Income = 500. Total = 25 - 500 = -475
+    await split.expectTotal(-475);
   });
 
   test('total updates to only checked rows when selection mode active', async ({
@@ -361,8 +350,28 @@ test.describe('Split Bill — total from transactions page', () => {
     await rows.filter({ hasText: 'Lunch' }).locator('.split-select-checkbox').check();
 
     const split = new SplitBillComponent(page);
-    const totalText = await split.totalDisplay.textContent();
-    expect(parseDollar(totalText)).toBeCloseTo(35, 0);
+    await split.expectTotal(35);
+  });
+
+  test('total subtracts checked income rows when selection mode active', async ({
+    request, page, transactionsPage,
+  }) => {
+    await seedTransactionsViaAPI(request, [
+      { description: 'Coffee', amount: 5, type: 'expense', category: 'food' },
+      { description: 'Refund', amount: 2, type: 'income', category: 'other' },
+    ]);
+
+    await transactionsPage.goto();
+    await transactionsPage.scrollToTotals();
+
+    await page.getByRole('button', { name: /Select for Split/i }).click();
+
+    const rows = page.locator('tr[data-amount]');
+    await rows.filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
+    await rows.filter({ hasText: 'Refund' }).locator('.split-select-checkbox').check();
+
+    const split = new SplitBillComponent(page);
+    await split.expectTotal(3);
   });
 
   test('deselecting all rows reverts to full visible total', async ({
@@ -383,10 +392,10 @@ test.describe('Split Bill — total from transactions page', () => {
     await checkbox.check();
 
     const split = new SplitBillComponent(page);
-    expect(parseDollar(await split.totalDisplay.textContent())).toBeCloseTo(5, 0);
+    await split.expectTotal(5);
 
     await checkbox.uncheck();
-    expect(parseDollar(await split.totalDisplay.textContent())).toBeCloseTo(35, 0);
+    await split.expectTotal(35);
   });
 
   test('disabling selection mode reverts to full visible total', async ({
@@ -405,11 +414,11 @@ test.describe('Split Bill — total from transactions page', () => {
     await transactionsPage.table.getByRole('row').filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
 
     const split = new SplitBillComponent(page);
-    expect(parseDollar(await split.totalDisplay.textContent())).toBeCloseTo(5, 0);
+    await split.expectTotal(5);
 
     // Disable selection — reverts to full total
     await toggleBtn.click();
-    expect(parseDollar(await split.totalDisplay.textContent())).toBeCloseTo(35, 0);
+    await split.expectTotal(35);
   });
 });
 
@@ -494,8 +503,7 @@ test.describe('Split Bill — edge cases', () => {
     await summaryPage.scrollToSummary();
 
     const split = new SplitBillComponent(summaryPage.page);
-    const totalText = await split.totalDisplay.textContent();
-    expect(parseDollar(totalText)).toBeCloseTo(0, 0);
+    await split.expectTotal(0);
   });
 
   test('adding a person with only whitespace is ignored', async ({ summaryPage }) => {

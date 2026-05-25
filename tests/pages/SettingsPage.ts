@@ -49,30 +49,36 @@ export class SettingsPage extends BasePage {
     await this.categoryItem.filter({ hasText: categoryName })
       .getByRole('button', { name: 'Edit' })
       .click();
-    expect(this.editCategoryModal).toBeVisible();
+    await expect(this.editCategoryModal).toBeVisible();
   }
 
   async submitRename(newName: string, accept: Boolean = true): Promise<void> {
     await this.editCategoryName.fill(newName);
     this.page.once('dialog', dialog => (accept ? dialog.accept() : dialog.dismiss())); // only emitted when dialog appears
-    await this.editCategorySave.click();
+    
+    let responsePromise;
     if (accept) {
-      const responsePromise = this.page.waitForResponse(
+      responsePromise = this.page.waitForResponse(
         res => res.url().includes('/api/categories') &&
           ((res.status() === 200) || (res.status() === 400)));
+    }
+    
+    await this.editCategorySave.click();
+    
+    if (accept && responsePromise) {
       await responsePromise;
     }
     else {
       await this.editCategoryCancel.click();
     }
-    expect(this.editCategoryModal).not.toBeVisible();
+    await expect(this.editCategoryModal).not.toBeVisible();
   }
 
   async deleteCategory(name: string): Promise<void> {
     this.page.once('dialog', dialog => dialog.accept());
     const item = this.categoryItem.filter({ hasText: name });
-    item.getByRole('button', { name: "Delete" }).click();
-    expect(item).not.toBeVisible();
+    await item.getByRole('button', { name: "Delete" }).click();
+    await expect(item).not.toBeVisible();
   }
 
   async deleteTag(name: string): Promise<void> {

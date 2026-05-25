@@ -84,16 +84,12 @@ class TransactionService:
             tags=tags
         )
 
-        tagList = [self._get_or_create_tag(row.category)]
-        if row.tags:
-            tagList = tagList + [self._get_or_create_tag(t) for t in row.tags]
-
         transaction = Transaction(
             description=row.description,
             amount_cents=row.amount_cents,
             type=row.type,
             date=row.date,
-            tags=tagList
+            tags=[]
         )
 
         # Add to session first so the object is tracked before any flush()
