@@ -161,7 +161,16 @@ function applyFilters() {
 	if (typeof window.refreshCharts === "function") window.refreshCharts(params.join("&"));
 	fetch(url).then((response) => response.text()).then((html) => {
 		const target = document.querySelector(targetElement);
-		if (target) target.innerHTML = html;
+		if (target) {
+			target.innerHTML = html;
+			if (targetElement === "#stats-container") {
+				const expenseElement = target.querySelector(".summary-card.expense .summary-value");
+				if (expenseElement) window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
+					total: parseFloat(expenseElement.textContent?.replace(/[$,]/g, "") || "0") || 0,
+					source: "summary"
+				} }));
+			} else if (targetElement === ".transactions-container") window.dispatchEvent(new CustomEvent("transactionsUpdated"));
+		}
 	}).catch((error) => console.error("Error applying filters:", error));
 }
 document.addEventListener("DOMContentLoaded", () => {

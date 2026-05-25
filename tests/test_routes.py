@@ -155,10 +155,10 @@ class TestTransactionFiltering:
         response = client.get('/api/transactions?start_date=2026-01-01&end_date=2026-01-31')
         assert b'Restaurant' not in response.data
 
-    def test_filter_by_time_range_param(self, client, sample_transactions):
+    def test_filter_by_time_range_param(self, client):
         assert client.get('/api/transactions?range=current_month').status_code == 200
 
-    def test_pagination_out_of_bounds_returns_last_page(self, client, sample_transactions):
+    def test_pagination_out_of_bounds_returns_last_page(self, client):
         assert client.get('/api/transactions?page=999').status_code == 200
 
 
@@ -171,12 +171,12 @@ class TestStatsAPI:
     def test_stats_empty_database(self, client):
         assert client.get('/api/stats').status_code == 200
 
-    def test_stats_with_data(self, client, sample_transactions):
+    def test_stats_with_data(self, client):
         response = client.get('/api/stats')
         assert response.status_code == 200
         assert b'$' in response.data or b'0' in response.data
 
-    def test_stats_filtered_by_category(self, client, sample_transactions):
+    def test_stats_filtered_by_category(self, client):
         assert client.get('/api/stats?categories=food').status_code == 200
 
 
@@ -203,7 +203,7 @@ class TestCategoryAPI:
         assert response.status_code == 200
         assert response.get_json()['success'] is True
 
-    def test_add_duplicate_category_returns_400(self, client, sample_transactions):
+    def test_add_duplicate_category_returns_400(self, client):
         client.post('/api/categories', json={'name': 'groceries'})
         response = client.post('/api/categories', json={'name': 'groceries'})
         assert response.status_code == 400
@@ -236,7 +236,7 @@ class TestCategoryAPI:
         response = client.post('/api/categories', json={'name': 'bad name!'})
         assert response.status_code == 400
 
-    def test_update_category_no_json_body_returns_error(self, client, sample_transactions):
+    def test_update_category_no_json_body_returns_error(self, client):
         response = client.put(
             '/api/categories',
             data='not-json',
@@ -244,7 +244,7 @@ class TestCategoryAPI:
         )
         assert response.status_code in (400, 415)
 
-    def test_update_category_missing_new_name_returns_400(self, client, sample_transactions):
+    def test_update_category_missing_new_name_returns_400(self, client):
         # Provide old name but omit new_name
         response = client.put('/api/categories', json={'name': 'food'})
         assert response.status_code == 400
@@ -286,7 +286,7 @@ class TestTagAPI:
         assert response.status_code == 200
         assert isinstance(response.get_json(), list)
 
-    def test_get_tags_excludes_category_tags(self, client, sample_transactions):
+    def test_get_tags_excludes_category_tags(self, client):
         data = client.get('/api/tags').get_json()
         assert not any(tag.startswith('category:') for tag in data)
 
@@ -452,6 +452,7 @@ class TestSettingsAPI:
 
     def test_populate_test_data_requires_debug_mode(self, client):
         response = client.post('/api/populate-test-data')
+        print("ERROR RESPONSE:", response.data)
         assert response.status_code == 200
 
     def test_settings_page_accessible(self, client):
@@ -495,14 +496,16 @@ class TestCategoryMerge:
 
     def _setup(self, client):
         """Create one food and one groceries transaction."""
-        client.post('/api/transactions', data={
+        r = client.post('/api/transactions', data={
             'description': 'Food transaction', 'amount': '50.00',
             'type': 'expense', 'date': '2026-03-01', 'category': 'food',
         })
-        client.post('/api/transactions', data={
+        assert r.status_code == 200, r.data
+        r = client.post('/api/transactions', data={
             'description': 'Groceries transaction', 'amount': '30.00',
             'type': 'expense', 'date': '2026-03-02', 'category': 'groceries',
         })
+        assert r.status_code == 200, r.data
 
     def test_rename_to_new_name_succeeds(self, client):
         self._setup(client)

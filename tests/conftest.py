@@ -9,11 +9,25 @@ under [tool.pytest.ini_options]. This file only contains fixtures.
 import os
 import tempfile
 import pytest
+from flask import template_rendered
+from contextlib import contextmanager
 from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
 from JustAnotherExpenseManager.config import TestingConfig
 from JustAnotherExpenseManager.utils.database import db as _db
 from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
+
+
+@contextmanager
+def captured_templates(app):
+    recorded = []
+    def record(sender, template, context, **extra):
+        recorded.append((template, context))
+    template_rendered.connect(record, app)
+    try:
+        yield recorded
+    finally:
+        template_rendered.disconnect(record, app)
 
 
 def _clear_tables(session):

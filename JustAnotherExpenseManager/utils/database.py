@@ -8,10 +8,13 @@ from typing import Optional
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect as sa_inspect
+from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass
 
-# The single shared Flask-SQLAlchemy extension instance.
-# Import this object in models and wherever a session is needed directly.
-db = SQLAlchemy()
+class Base(DeclarativeBase, MappedAsDataclass):
+    pass
+
+
+db = SQLAlchemy(model_class=Base)
 
 
 def build_database_url(

@@ -6,6 +6,8 @@
  */
 import { Chart, registerables } from 'chart.js'
 import type { ChartApiData } from "./types";
+import type { SplitBillUpdateEvent } from './split_bill';
+import './split_bill';
 
 Chart.register(...registerables);
 
@@ -107,8 +109,6 @@ function updateCategoryChart(data: CategoryData): void {
         tooltip: {
           callbacks: {
             label: (context) => `${context.label || ''}: $${(context.parsed as number).toFixed(2)}`,
-            //label: (context: { label: string; parsed: number }) =>
-            //  `${context.label}: $${context.parsed.toFixed(2)}`,
           },
         },
       },
@@ -170,8 +170,6 @@ function updateMonthlyChart(data: MonthlyData): void {
         tooltip: {
           callbacks: {
             label: (context) => `${context.dataset.label || ''}: $${context.parsed.y?.toFixed(2)}`,
-            //label: (context: { dataset: { label: string }; parsed: { y: number } }) =>
-            //  `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`,
           },
         },
       },
@@ -221,6 +219,18 @@ async function loadStats(): Promise<void> {
 
     const params = window.location.search.slice(1);
     refreshCharts(params);
+
+    const expenseElement = container.querySelector<HTMLElement>('.summary-card.expense .summary-value');
+    if (expenseElement) {
+      window.dispatchEvent(
+        new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
+          detail: {
+            total: parseFloat(expenseElement.textContent.replace(/[$,]/g, '')) || 0,
+            source: 'summary'
+          },
+        })
+      );
+    }
   } catch (error) {
     console.error('Error loading stats:', error);
     container.innerHTML = '<p style="color: #d63031;">Error loading statistics.</p>';

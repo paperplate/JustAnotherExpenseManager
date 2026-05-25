@@ -7,22 +7,13 @@ import csv
 import itertools
 from io import StringIO
 from datetime import datetime
+from pydantic import ValidationError
 from typing import Optional, Dict, Any, List
-from JustAnotherExpenseManager.models import TransactionType
+from JustAnotherExpenseManager.models.dtos import TransactionDTO, _parse_transaction_type
 from JustAnotherExpenseManager.utils.services import TransactionService
+from JustAnotherExpenseManager.models import DT_FORMAT
 
 transaction_bp = Blueprint('transactions', __name__)
-
-
-def _parse_transaction_type(type_str: str) -> TransactionType:
-    """Convert string to TransactionType enum."""
-    type_str = type_str.lower().strip()
-    if type_str == 'income' or type_str == 'credit':
-        return TransactionType.INCOME
-    elif type_str == 'expense' or type_str == 'debit':
-        return TransactionType.EXPENSE
-    else:
-        raise ValueError(f"Invalid transaction type: {type_str}")
 
 
 def _compute_month_totals(transactions: List) -> Dict[str, float]:
@@ -37,14 +28,23 @@ def _compute_month_totals(transactions: List) -> Dict[str, float]:
     Returns:
         dict with keys 'month_income' and 'month_expense' (both floats)
     """
-    month_income = sum(t.amount_dollars for t in transactions if t.is_income)
-    month_expense = sum(t.amount_dollars for t in transactions if not t.is_income)
+    month_income = sum(t.amount_cents for t in transactions if t.is_income)/100.0
+    month_expense = sum(t.amount_cents for t in transactions if not t.is_income)/100.0
     return {'month_income': month_income, 'month_expense': month_expense}
 
 
 def _render_transactions_list(result: Dict[str, Any]) -> str:
     """Render transactions_list.html from a service result dict."""
     totals = _compute_month_totals(result['transactions'])
+    result['transactions'] = [TransactionDTO(
+        description=t.description,
+        amount_cents=t.amount_cents,
+        category=t.category,
+        id=t.id,
+        date=t.date.strftime('%Y-%m-%d'),
+        type=t.type,
+        tags=[tag.name for tag in t.tags] if t.tags else []
+    ).model_dump() for t in result['transactions']]
     return render_template(
         'transactions_list.html',
         transactions=result['transactions'],
@@ -114,7 +114,7 @@ def _parse_csv_row(row: dict, row_num: int) -> Dict[str, Any]:
         return result
 
     try:
-        datetime.strptime(date_str, '%Y-%m-%d')
+        datetime.strptime(date_str, DT_FORMAT)
     except ValueError:
         result['error'] = f'Row {row_num}: Invalid date format "{date_str}" (expected YYYY-MM-DD)'
         return result
@@ -156,35 +156,41 @@ def get_transactions():
 @transaction_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     """Add a new transaction."""
-    description = request.form.get('description', '').strip()
-    amount = request.form.get('amount', 0, type=float)
-    type_str = request.form.get('type', 'expense')
-    date = request.form.get('date', '')
-    category = request.form.get('category', '').lower().strip()
-    tags_str = request.form.get('tags', '').strip()
-
     try:
-        trans_type = _parse_transaction_type(type_str)
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        entry = TransactionDTO(
+            description=request.form.get('description', '').strip(),
+            amount_dollars=request.form.get('amount', 0, type=float),
+            type_str=request.form.get('type', 'expense'),
+            date=datetime.strptime(request.form.get('date', '').split('T')[0], DT_FORMAT),
+            category=request.form.get('category', '').lower().strip(),
+            tags=[t.strip() for t in request.form.get('tags', '').split(',') if t.strip()]
+        )
 
-    tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
+    except ValidationError as e:
+        return jsonify({'Validation Error': str(e)}), 400
+    except ValueError as e:
+        return jsonify({'DTO Value Error': str(e)}), 400
+
+    entry.tags = [t.strip() for t in entry.tags] if entry.tags else []
 
     service = TransactionService(g.db)
     try:
         service.create_transaction(
-            description=description,
-            amount_dollars=amount,
-            type=trans_type,
-            date=date,
-            category=category if category else None,
-            tags=tags
+            description=entry.description,
+            amount_dollars=entry.amount_dollars,
+            type=entry.type,
+            date=entry.date.strftime(DT_FORMAT),
+            category=entry.category,
+            tags=entry.tags
         )
 
         result = service.get_all_transactions(page=1)
         return _render_transactions_list(result)
     except ValueError as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'Service Value Error': str(e)}), 400
+    except Exception as e:
+        g.db.rollback()
+        return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
@@ -212,7 +218,7 @@ def update_transaction(transaction_id):
             amount_dollars=amount,
             type=trans_type,
             date=date,
-            category=category if category else None,
+            category=category,
             tags=tags
         )
 
@@ -308,7 +314,7 @@ def preview_csv():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    if not file.filename.endswith('.csv'):
+    if file.filename and not file.filename.endswith('.csv'):
         return jsonify({'error': 'File must be a CSV'}), 400
 
     try:
@@ -383,7 +389,7 @@ def commit_import():
                 amount_dollars=amount,
                 type=trans_type,
                 date=date_str,
-                category=category if category else None,
+                category=category,
                 tags=tags,
             )
             imported_count += 1
@@ -417,7 +423,7 @@ def import_transactions():
     if file.filename == '':
         return jsonify({'error': 'No file selected'}), 400
 
-    if not file.filename.endswith('.csv'):
+    if file.filename and not file.filename.endswith('.csv'):
         return jsonify({'error': 'File must be a CSV'}), 400
 
     try:
@@ -442,7 +448,7 @@ def import_transactions():
                     amount_dollars=float(parsed['amount']),
                     type=_parse_transaction_type(parsed['type']),
                     date=parsed['date'],
-                    category=parsed['category'] if parsed['category'] else None,
+                    category=parsed['category'],
                     tags=tags,
                 )
                 imported_count += 1

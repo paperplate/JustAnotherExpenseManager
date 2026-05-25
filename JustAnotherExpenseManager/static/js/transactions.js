@@ -1,3 +1,4 @@
+import "./split_bill.js";
 //#region static_src/js/transactions.ts
 var addTagify = null;
 var editTagify = null;
@@ -47,6 +48,7 @@ async function loadTransactions(page) {
 	if (!listEl) return;
 	try {
 		listEl.innerHTML = await (await fetch("/api/transactions?" + params.toString())).text();
+		setTimeout(emitSplitBillTotal, 0);
 	} catch (error) {
 		console.error("Error loading transactions:", error);
 		listEl.innerHTML = "<p style=\"color: #d63031;\">Error loading transactions.</p>";
@@ -385,6 +387,45 @@ async function saveEditTransaction() {
 function notifyTransactionsChanged() {
 	document.dispatchEvent(new CustomEvent("transactionsChanged"));
 }
+function emitSplitBillTotal() {
+	const checkboxes = document.querySelectorAll(".split-select-checkbox");
+	let checked = 0;
+	let unchecked = 0;
+	document.querySelectorAll("tr[data-amount]").forEach((row, index) => {
+		const amount = parseFloat(row.dataset.amount ?? "0");
+		if (isNaN(amount)) {
+			console.error("row: " + index + " amount is NAN");
+			return;
+		}
+		const typeBtn = row.querySelector("[data-type]");
+		const signedAmount = typeBtn && typeBtn.dataset.type === "income" ? -amount : amount;
+		if (checkboxes[index].checked) checked += signedAmount;
+		else unchecked += signedAmount;
+	});
+	const total = checked === 0 ? unchecked : checked;
+	window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
+		total,
+		source: "transactions"
+	} }));
+}
+document.querySelector("#filter-form")?.addEventListener("submit", () => {
+	setTimeout(emitSplitBillTotal, 100);
+});
+document.addEventListener("change", (e) => {
+	if (e.target.classList.contains("split-select-checkbox")) emitSplitBillTotal();
+});
+document.addEventListener("click", (e) => {
+	if (e.target.closest("#split-select-toggle")) {
+		const cells = document.querySelectorAll(".split-select-cell");
+		const isHidden = cells[0]?.classList.contains("d-none");
+		cells.forEach((c) => c.classList.toggle("d-none", !isHidden));
+		if (isHidden) emitSplitBillTotal();
+		else {
+			document.querySelectorAll(".split-select-checkbox").forEach((cb) => cb.checked = false);
+			emitSplitBillTotal();
+		}
+	}
+});
 window.loadTransactions = loadTransactions;
 window.deleteTransaction = deleteTransaction;
 window.editTransaction = editTransaction;

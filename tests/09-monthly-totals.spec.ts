@@ -15,7 +15,7 @@ test.describe('Transactions list rendering', () => {
 
   test('empty state is shown when there are no transactions', async ({ page }) => {
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(page.getByRole('table')).not.toBeVisible();
+    await expect(page.getByRole('table').locator(':scope.transactions-table')).not.toBeVisible();
   });
 
   test('table appears after adding a transaction', async ({ }) => {
@@ -37,7 +37,7 @@ test.describe('Transactions list rendering', () => {
     await page.getByRole('button', { name: 'Delete' }).first().click();
     await page.waitForLoadState('networkidle');
 
-    await expect(page.getByRole('table')).not.toBeVisible();
+    await expect(page.getByRole('table').locator(':scope.transactions-table')).not.toBeVisible();
     await expect(page.locator('.empty-state')).toBeVisible();
   });
 });
@@ -235,14 +235,14 @@ test.describe('Monthly transaction count', () => {
     txPage.goto();
   });
 
-  test('transaction count matches the number of rows in the table', async ({ page }) => {
+  test('transaction count matches the number of rows in the table', async ({ }) => {
     await txPage.addTransactionViaUI({ description: 'A', amount: 10, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'B', amount: 20, type: 'expense', category: 'food' });
     await txPage.addTransactionViaUI({ description: 'C', amount: 30, type: 'income', category: 'salary' });
 
     await txPage.scrollToTotals();
 
-    const rows = await page.getByRole('row').count() - 1; // subtract header row
+    const rows = await txPage.table.getByRole('row').count() - 1; // subtract header row
     expect(rows).toEqual(3);
   });
 });

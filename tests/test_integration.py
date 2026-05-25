@@ -3,10 +3,10 @@ Integration tests for the expense manager application.
 Tests complete workflows and cross-feature interactions.
 """
 
-import pytest
 from io import BytesIO
 from JustAnotherExpenseManager.models import TransactionType, Tag
 from JustAnotherExpenseManager.utils.services import TransactionService
+from tests.conftest import captured_templates
 
 
 # ---------------------------------------------------------------------------
@@ -14,40 +14,45 @@ from JustAnotherExpenseManager.utils.services import TransactionService
 # ---------------------------------------------------------------------------
 
 class TestCompleteWorkflow:
-
-    def test_add_edit_delete_workflow(self, client, db):
+    def test_add_edit_delete_workflow(self, app, client, db):
         """Full transaction lifecycle via HTTP."""
-        # Create
-        r = client.post('/api/transactions', data={
-            'description': 'Initial Transaction',
-            'amount': '100.00',
-            'type': 'expense',
-            'date': '2026-02-01',
-            'category': 'food',
-            'tags': 'test',
-        })
-        assert r.status_code == 200
-        assert b'Initial Transaction' in client.get('/api/transactions?page=1').data
+        with captured_templates(app) as templates:
+            # Create
+            r = client.post('/api/transactions', data={
+                'description': 'Initial Transaction',
+                'amount': '100.00',
+                'type': 'expense',
+                'date': '2026-02-01',
+                'category': 'food',
+                'tags': 'test',
+            })
+            assert r.status_code == 200
+            _, context = templates[0]
+            assert context['transactions'][0]['description'] == 'Initial Transaction'
 
-        # Retrieve ID via service
-        service = TransactionService(db)
-        trans_id = service.get_all_transactions()['transactions'][0].id
+            # Retrieve ID via service
+            service = TransactionService(db)
+            trans_id = service.get_all_transactions()['transactions'][0].id
 
-        # Edit
-        r = client.put(f'/api/transactions/{trans_id}', data={
-            'description': 'Updated Transaction',
-            'amount': '150.00',
-            'type': 'expense',
-            'date': '2026-02-02',
-            'category': 'transport',
-            'tags': 'updated',
-        })
-        assert r.status_code == 200
-        assert b'Updated Transaction' in client.get('/api/transactions?page=1').data
+            # Edit
+            r = client.put(f'/api/transactions/{trans_id}', data={
+                'description': 'Updated Transaction',
+                'amount': '150.00',
+                'type': 'expense',
+                'date': '2026-02-02',
+                'category': 'transport',
+                'tags': 'updated',
+            })
+            assert r.status_code == 200, r.data
+            _, context = templates[-1]
+            assert context['transactions'][0]['description'] == 'Updated Transaction'
+            #assert b'Updated Transaction' in client.get('/api/transactions?page=1').data
 
-        # Delete
-        assert client.delete(f'/api/transactions/{trans_id}').status_code == 200
-        assert b'Updated Transaction' not in client.get('/api/transactions?page=1').data
+            # Delete
+            assert client.delete(f'/api/transactions/{trans_id}').status_code == 200
+            _, context = templates[-1]
+            assert len(context['transactions']) == 0
+            #assert b'Updated Transaction' not in client.get('/api/transactions?page=1').data
 
     def test_filtering_workflow(self, client, sample_transactions):
         """Apply and combine filters across pages."""
@@ -67,7 +72,7 @@ class TestCompleteWorkflow:
         assert b'Salary' in r.data
         assert b'Restaurant' not in r.data
 
-    def test_stats_update_after_adding_transactions(self, client):
+    def test_stats_update_after_adding_transactions(self, app, client):
         """Stats endpoint reflects newly added transactions."""
         assert client.get('/api/stats').status_code == 200
 
@@ -79,10 +84,15 @@ class TestCompleteWorkflow:
             'description': 'Rent', 'amount': '1500.00', 'type': 'expense',
             'date': '2026-02-01', 'category': 'housing', 'tags': '',
         })
-
-        r = client.get('/api/stats')
-        assert r.status_code == 200
-        assert b'5000' in r.data or b'1500' in r.data
+        
+        with captured_templates(app) as templates:
+            r = client.get('/api/stats')
+            assert r.status_code == 200
+            assert len(templates) == 1
+            template, context = templates[0]
+            assert template.name == 'stats.html'
+            assert context['expenses'] == 1500.00
+            assert context['income'] == 5000.00
 
     def test_csv_import_workflow(self, client):
         """Import CSV and verify transactions appear in the list."""

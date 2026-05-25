@@ -59,12 +59,6 @@ def get_stats() -> str:
         categories_param, tags_param
     )
 
-    # Calculate pagination for monthly data
-    total_months: int = service.count_months(
-        categories_param, time_range, start_date, end_date, tags_param
-    )
-    #total_pages: int = (total_months + per_page - 1) // per_page if total_months > 0 else 1
-
     return render_template(
         'stats.html',
         income=stats['income'],
@@ -77,8 +71,7 @@ def get_stats() -> str:
         end_date=end_date,
         category_breakdown=category_breakdown,
         monthly=monthly,
-        pagination={'page': page#, 'total_pages': total_pages
-                    }
+        pagination={'page': page}
     )
 
 

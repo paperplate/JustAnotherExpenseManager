@@ -12,18 +12,20 @@ export class FilterComponent {
   readonly categoryFilterOption: Locator;
   readonly tagFilterOption: Locator;
   readonly timeRange: Locator;
+  readonly customRangePicker: Locator;
 
   constructor(page: Page) {
     this.page = page;
-    this.categoryOptionsList = page.locator('#category-options-list');
-    this.categoryDetails    = page.locator('#category-details');
-    this.categorySummary    = page.locator('#category-summary');
-    this.tagDetails         = page.locator('#tag-details');
-    this.tagOptionsList     = page.locator('#tag-options-list');
-    this.tagSummary         = page.locator('#tag-summary');
+    this.categoryOptionsList = page.locator('#category-options-list .filter-option');
+    this.categoryDetails = page.locator('#category-details');
+    this.categorySummary = page.locator('#category-summary');
+    this.tagDetails = page.locator('#tag-details');
+    this.tagOptionsList = page.locator('#tag-options-list .filter-option');
+    this.tagSummary = page.locator('#tag-summary');
     this.categoryFilterOption = page.locator('#category-options-list .filter-option');
-    this.tagFilterOption      = page.locator('#tag-options-list .filter-option');
-    this.timeRange          = page.getByLabel('Time Range:');
+    this.tagFilterOption = page.locator('#tag-options-list .filter-option');
+    this.timeRange = page.getByRole('combobox', { name: 'Time Range:' });
+    this.customRangePicker = page.locator('#custom-range-picker');
   }
 
   // ── Open helpers ────────────────────────────────────────────────────────────
@@ -41,7 +43,7 @@ export class FilterComponent {
       await this.tagDetails.locator('summary').click();
     }
     // Wait for async loadTags() fetch — may be empty if no tags exist yet.
-    await this.tagOptionsList.waitFor({ state: 'visible', timeout: 5_000 });
+    await expect(this.tagFilterOption.first()).toBeVisible({ timeout: 5_000 });
   }
 
   // ── Filter actions ──────────────────────────────────────────────────────────
@@ -50,9 +52,7 @@ export class FilterComponent {
     await this.openCategoryFilter();
     const opt = this.categoryFilterOption.filter({ hasText: new RegExp(`^${name}$`, 'i') });
     await expect(opt).toBeVisible({ timeout: 5_000 });
-    const responsePromise = this.waitForFilterResponse();
     await opt.click();
-    await responsePromise;
   }
 
   async selectTag(name: string): Promise<void> {
@@ -60,32 +60,32 @@ export class FilterComponent {
     // tagFilterOption is scoped to #tag-options-list — not the category list.
     const opt = this.tagFilterOption.filter({ hasText: new RegExp(`^${name}$`, 'i') });
     await expect(opt).toBeVisible({ timeout: 5_000 });
-    const responsePromise = this.waitForFilterResponse();
     await opt.click();
-    await responsePromise;
   }
 
   async resetCategoryFilter(): Promise<void> {
     await this.openCategoryFilter();
-    const responsePromise = this.waitForFilterResponse();
     await this.page.locator('#category-details .filter-option[data-value=""]').click();
-    await responsePromise;
   }
 
   async resetTagFilter(): Promise<void> {
     await this.openTagFilter();
-    const responsePromise = this.waitForFilterResponse();
     await this.page.locator('#tag-details .filter-option[data-value=""]').click();
-    await responsePromise;
   }
 
-  // ── Private ─────────────────────────────────────────────────────────────────
-
-  private waitForFilterResponse(): Promise<Response> {
-    return this.page.waitForResponse(
-      res =>
-        (res.url().includes('/api/transactions') || res.url().includes('/api/stats')) &&
-        res.status() === 200,
-    );
+  async selectTime(option: string, start?: string, end?: string): Promise<void> {
+    if (option !== "custom") {
+      await this.timeRange.selectOption(option);
+    }
+    else if (!start || !end) {
+      throw new Error('missing start or end parameter');
+    }
+    else {
+      await this.timeRange.selectOption(option);
+      await this.customRangePicker.waitFor({ state: 'visible', timeout: 5_000 });
+      await this.page.getByLabel('Start Date:').fill(start);
+      await this.page.getByLabel('End Date:').fill(end);
+      await this.page.getByRole('button', { name: 'Apply' }).click();
+    }
   }
 }
