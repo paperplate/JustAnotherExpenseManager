@@ -5,7 +5,6 @@ export class SplitBillComponent {
   readonly root: Locator;
   readonly nameInput: Locator;
   readonly addBtn: Locator;
-  readonly evenBtn: Locator;
   readonly totalDisplay: Locator;
   readonly tbody: Locator;
 
@@ -14,18 +13,17 @@ export class SplitBillComponent {
     this.root = page.locator('[data-split-bill]');
     this.nameInput = this.root.locator('[data-action="name-input"]');
     this.addBtn = this.root.locator('[data-action="add"]');
-    this.evenBtn = this.root.locator('[data-action="even"]');
     this.totalDisplay = this.root.locator('[data-split-total]');
     this.tbody = this.root.locator('[data-split-tbody]');
   }
 
   async addPerson(name: string): Promise<void> {
-    await this.nameInput.fill(name);
+    await this.nameInput.selectOption(name);
     await this.addBtn.click();
   }
 
   async addPersonViaEnter(name: string): Promise<void> {
-    await this.nameInput.fill(name);
+    await this.nameInput.selectOption(name);
     await this.nameInput.press('Enter');
   }
 
@@ -33,16 +31,8 @@ export class SplitBillComponent {
     return this.tbody.locator('.split-row').filter({ hasText: name });
   }
 
-  percentageInput(name: string): Locator {
-    return this.row(name).locator('[data-action="pct"]');
-  }
-
   amountCell(name: string): Locator {
     return this.row(name).locator('.split-amount');
-  }
-
-  lockBtn(name: string): Locator {
-    return this.row(name).locator('[data-action="lock"]');
   }
 
   removeBtn(name: string): Locator {
@@ -51,13 +41,6 @@ export class SplitBillComponent {
 
   remainderRow(): Locator {
     return this.tbody.locator('.split-remainder-row');
-  }
-
-  async setPct(name: string, pct: number): Promise<void> {
-    const input = this.percentageInput(name);
-    await input.fill(String(pct));
-    await input.dispatchEvent('input');
-    await input.blur();
   }
 
   async clearSessionStorage(): Promise<void> {

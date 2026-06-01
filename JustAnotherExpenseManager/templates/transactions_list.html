@@ -5,11 +5,12 @@
         {{ current_month|replace('-', ' ')|title }}
     </h3>
     <button id="split-select-toggle" class="btn btn-outline-secondary btn-sm" type="button">
-      Select for split
+      Reset selection
       </button>
     <table class="transactions-table">
         <thead>
             <tr>
+                <th></th>
                 <th>Date</th>
                 <th>Description</th>
                 <th>Type</th>
@@ -57,7 +58,7 @@
                             data-type="{{ trans.type.value }}"
                             data-date="{{ trans.date|string|truncate(10, True, '') }}"
                             data-category="{{ trans.category or '' }}"
-                            data-tags="{{ trans.non_category_tags|join(',') }}"
+                            data-tags="{{ trans.tags|join(',') }}"
                             onclick="editTransaction(this)">
                         Edit
                     </button>
