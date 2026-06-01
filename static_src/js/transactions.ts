@@ -60,7 +60,7 @@ async function initTagify() {
     originalInputValueFormat: (values: { value: string }[]) => values.map(v => v.value).join(','),
     dropdown: {
       maxItems: 10,
-      enbled: 1,
+      enabled: 0,
       closeOnSelect: false,
     },
   };
@@ -514,7 +514,7 @@ function emitSplitBillTotal(): void {
       console.error('row: ' + index + ' amount is NAN');
       return;
     }
-    
+
     const typeBtn = row.querySelector('[data-type]');
     const isIncome = typeBtn && (typeBtn as HTMLElement).dataset.type === 'income';
     const signedAmount = isIncome ? -amount : amount;

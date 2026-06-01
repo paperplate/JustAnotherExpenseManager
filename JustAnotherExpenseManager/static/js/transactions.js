@@ -25,7 +25,7 @@ async function initTagify() {
 		originalInputValueFormat: (values) => values.map((v) => v.value).join(","),
 		dropdown: {
 			maxItems: 10,
-			enbled: 1,
+			enabled: 0,
 			closeOnSelect: false
 		}
 	};
