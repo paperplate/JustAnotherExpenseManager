@@ -2,6 +2,7 @@ import { Page, Locator, expect } from '@playwright/test';
 import { TransactionOptions } from '../helpers';
 import { BasePage } from './base';
 import { FilterComponent } from './FilterComponent';
+import { SplitBillComponent } from './SplitBillComponent';
 
 export class TransactionsPage extends BasePage {
   readonly descriptionInput: Locator;
@@ -20,6 +21,7 @@ export class TransactionsPage extends BasePage {
   readonly importResult: Locator;
   readonly table: Locator;
   filter: FilterComponent;
+  split: SplitBillComponent;
 
   constructor(page: Page) {
     super(page, '/transactions', 'Transactions - Expense Manager');
@@ -39,6 +41,7 @@ export class TransactionsPage extends BasePage {
     this.importResult = page.locator('#import-result');
     this.table = page.getByRole('table').locator(':scope.transactions-table');
     this.filter = new FilterComponent(page);
+    this.split = new SplitBillComponent(page);
   }
 
   async addTransactionViaUI(opts: TransactionOptions): Promise<void> {

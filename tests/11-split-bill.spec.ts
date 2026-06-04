@@ -248,8 +248,6 @@ test.describe('Split Bill', () => {
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
 
-    // Enable selection mode
-    await page.getByRole('button', { name: /Select for Split/i }).click();
     await expect(page.locator('.split-select-cell').first()).toBeVisible();
 
     // Check only Coffee ($5) and Lunch ($30)
@@ -257,8 +255,7 @@ test.describe('Split Bill', () => {
     await rows.filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
     await rows.filter({ hasText: 'Lunch' }).locator('.split-select-checkbox').check();
 
-    const split = new SplitBillComponent(page);
-    await split.expectTotal(35);
+    await transactionsPage.split.expectTotal(35);
   });
 
   test('total subtracts checked income rows when selection mode active', async ({
@@ -272,14 +269,11 @@ test.describe('Split Bill', () => {
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
 
-    await page.getByRole('button', { name: /Select for Split/i }).click();
-
     const rows = page.locator('tr[data-amount]');
     await rows.filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
     await rows.filter({ hasText: 'Refund' }).locator('.split-select-checkbox').check();
 
-    const split = new SplitBillComponent(page);
-    await split.expectTotal(3);
+    await transactionsPage.split.expectTotal(3);
   });
 
   test('deselecting all rows reverts to full visible total', async ({
@@ -293,21 +287,18 @@ test.describe('Split Bill', () => {
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
 
-    await page.getByRole('button', { name: /Select for Split/i }).click();
-
     const rows = page.locator('tr[data-amount]');
     const checkbox = rows.filter({ hasText: 'Coffee' }).locator('.split-select-checkbox');
     await checkbox.check();
 
-    const split = new SplitBillComponent(page);
-    await split.expectTotal(5);
+    await transactionsPage.split.expectTotal(5);
 
     await checkbox.uncheck();
-    await split.expectTotal(35);
+    await transactionsPage.split.expectTotal(35);
   });
 
   test('disabling selection mode reverts to full visible total', async ({
-    request, page, transactionsPage,
+    request, transactionsPage,
   }) => {
     await seedTransactionsViaAPI(request, [
       { description: 'Coffee', amount: 5, type: 'expense', category: 'food' },
@@ -317,16 +308,14 @@ test.describe('Split Bill', () => {
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
 
-    const toggleBtn = page.getByRole('button', { name: /Select for Split/i });
-    await toggleBtn.click();
+    await transactionsPage.split.resetSelection.click();
     await transactionsPage.table.getByRole('row').filter({ hasText: 'Coffee' }).locator('.split-select-checkbox').check();
 
-    const split = new SplitBillComponent(page);
-    await split.expectTotal(5);
+    await transactionsPage.split.expectTotal(5);
 
     // Disable selection — reverts to full total
-    await toggleBtn.click();
-    await split.expectTotal(35);
+    await transactionsPage.split.resetSelection.click();
+    await transactionsPage.split.expectTotal(35);
   });
 
   // ── sessionStorage persistence ────────────────────────────────────────────────

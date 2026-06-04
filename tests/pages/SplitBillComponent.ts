@@ -7,6 +7,7 @@ export class SplitBillComponent {
   readonly addBtn: Locator;
   readonly totalDisplay: Locator;
   readonly tbody: Locator;
+  readonly resetSelection: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -15,6 +16,7 @@ export class SplitBillComponent {
     this.addBtn = this.root.locator('[data-action="add"]');
     this.totalDisplay = this.root.locator('[data-split-total]');
     this.tbody = this.root.locator('[data-split-tbody]');
+    this.resetSelection = this.page.getByRole('button', { name: 'Reset selection' });
   }
 
   async addPerson(name: string): Promise<void> {
