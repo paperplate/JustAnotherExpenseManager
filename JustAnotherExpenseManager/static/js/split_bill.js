@@ -42,10 +42,13 @@ var SplitBillComponent = class {
 	}
 	bindGlobalEvent() {
 		window.addEventListener("splitBillUpdate", (e) => {
-			const detail = e.detail;
-			this.total = detail.total;
+			const detail = e.detail ?? {};
+			this.total = detail.total || 0;
 			console.log("Received splitBillUpdate:", detail);
-			if (detail.source === "transactions") this.transactions = detail.transactions || [];
+			if (detail.source === "transactions") this.transactions = (Array.isArray(detail.transactions) ? detail.transactions : []).map((tx) => ({
+				amount: Number(tx?.amount) || 0,
+				tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === "string") : []
+			}));
 			this.renderTotalAndTable();
 		});
 	}
@@ -53,11 +56,12 @@ var SplitBillComponent = class {
 		return String(this.nextId++);
 	}
 	addPerson(name) {
-		if (!name.trim()) return;
-		if (this.people.some((p) => p.name === name.trim())) return;
+		const normalizedName = name.trim().toLowerCase();
+		if (!normalizedName) return;
+		if (this.people.some((p) => p.name.toLowerCase() === normalizedName)) return;
 		this.people.push({
 			id: this.generateId(),
-			name: name.trim()
+			name: normalizedName
 		});
 		this.savePeople();
 		this.renderTotalAndTable();
@@ -116,9 +120,9 @@ var SplitBillComponent = class {
           <span class="tag-badge">${this.escapeHtml(p.name)}</span>
         </td>
         <td class="split-amount">${this.formatCurrency(amount)}</td>
-        <td class="split-diff" style="${diff > .005 ? "color: var(--bs-danger, red);" : diff < -.005 ? "color: var(--bs-success, green); text-align: \"center\";" : ""}">${diffStr}</td>
+        <td class="split-diff" style="${diff > .005 ? "color: var(--bs-danger, red);" : diff < -.005 ? "color: var(--bs-success, green); " : ""}">${diffStr}</td>
         <td class="split-remove-cell">
-          <button class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
+          <button type="button" class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
         </td>
       </tr>`;
 		}).join("");

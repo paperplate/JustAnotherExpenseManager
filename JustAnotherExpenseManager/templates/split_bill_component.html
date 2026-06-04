@@ -10,10 +10,11 @@
     </div>
     <div class="card-body">
       <div class="split-add-row" style="display: flex; gap: 10px; margin-bottom: 15px;">
-        <select class="form-control split-name-input" data-action="name-input">
+        <label for="split-name-input" class="visually-hidden">Tag to split by</label>
+        <select id="split-name-input" class="form-control split-name-input" data-action="name-input">
           <option value="">Select a tag...</option>
         </select>
-        <button class="btn btn-primary split-add-btn" data-action="add" style="white-space: nowrap;">+ Add
+        <button type="button" class="btn btn-primary split-add-btn" data-action="add" style="white-space: nowrap;">+ Add
           Person</button>
       </div>
       <div class="split-table-wrap">

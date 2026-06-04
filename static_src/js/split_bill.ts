@@ -66,11 +66,16 @@ class SplitBillComponent {
 
   private bindGlobalEvent(): void {
     window.addEventListener("splitBillUpdate", (e: Event) => {
-      const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail;
-      this.total = detail.total;
+      const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail ?? {};
+      this.total = detail.total || 0;
       console.log('Received splitBillUpdate:', detail);
       if (detail.source === 'transactions') {
-        this.transactions = detail.transactions || [];
+        const txs = Array.isArray(detail.transactions) ? detail.transactions : [];
+        //this.transactions = detail.transactions || [];
+        this.transactions = txs.map((tx) => ({
+          amount: Number(tx?.amount) || 0,
+          tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
+        }));
       }
       this.renderTotalAndTable();
     });
@@ -81,13 +86,14 @@ class SplitBillComponent {
   }
 
   private addPerson(name: string): void {
-    if (!name.trim()) return;
+    const normalizedName: string = name.trim().toLowerCase();
+    if (!normalizedName) { return; }
     // Don't add duplicate tags
-    if (this.people.some(p => p.name === name.trim())) return;
+    if (this.people.some(p => p.name.toLowerCase() === normalizedName)) { return; }
 
     this.people.push({
       id: this.generateId(),
-      name: name.trim(),
+      name: normalizedName,
     });
     this.savePeople();
     this.renderTotalAndTable();
@@ -175,7 +181,7 @@ class SplitBillComponent {
         <td class="split-amount">${this.formatCurrency(amount)}</td>
         <td class="split-diff" style="${diff > 0.005 ? 'color: var(--bs-danger, red);' : diff < -0.005 ? 'color: var(--bs-success, green); ' : ''}">${diffStr}</td>
         <td class="split-remove-cell">
-          <button class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
+          <button type="button" class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
         </td>
       </tr>`;
       })
