@@ -49,7 +49,8 @@ jobs:
         run: npm install
 
       - name: Install Playwright browsers
-        #run: npx playwright install --with-deps chromium
+        env:
+          PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: 1000
         run: |
           npx playwright install chromium
           sudo apt-get update
