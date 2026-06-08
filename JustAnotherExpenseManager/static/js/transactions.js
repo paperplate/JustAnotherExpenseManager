@@ -389,8 +389,10 @@ function notifyTransactionsChanged() {
 }
 function emitSplitBillTotal() {
 	const checkboxes = document.querySelectorAll(".split-select-checkbox");
-	let checked = 0;
-	let unchecked = 0;
+	let checkedTotal = 0;
+	let uncheckedTotal = 0;
+	const checkedTx = [];
+	const uncheckedTx = [];
 	document.querySelectorAll("tr[data-amount]").forEach((row, index) => {
 		const amount = parseFloat(row.dataset.amount ?? "0");
 		if (isNaN(amount)) {
@@ -398,14 +400,31 @@ function emitSplitBillTotal() {
 			return;
 		}
 		const typeBtn = row.querySelector("[data-type]");
-		const signedAmount = typeBtn && typeBtn.dataset.type === "income" ? -amount : amount;
-		if (checkboxes[index].checked) checked += signedAmount;
-		else unchecked += signedAmount;
+		const editBtn = row.querySelector(".btn-edit");
+		const signedAmount = (typeBtn ? typeBtn.dataset.type === "income" : editBtn?.dataset.type === "income") ? -amount : amount;
+		const tagsStr = editBtn?.getAttribute("data-tags") ?? "";
+		const tags = tagsStr ? tagsStr.split(",").map((t) => t.trim()) : [];
+		if (checkboxes[index].checked) {
+			checkedTotal += signedAmount;
+			checkedTx.push({
+				amount: signedAmount,
+				tags
+			});
+		} else {
+			uncheckedTotal += signedAmount;
+			uncheckedTx.push({
+				amount: signedAmount,
+				tags
+			});
+		}
 	});
-	const total = checked === 0 ? unchecked : checked;
+	const useChecked = checkedTx.length > 0;
+	const total = useChecked ? checkedTotal : uncheckedTotal;
+	const transactions = useChecked ? checkedTx : uncheckedTx;
 	window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
 		total,
-		source: "transactions"
+		source: "transactions",
+		transactions
 	} }));
 }
 document.querySelector("#filter-form")?.addEventListener("submit", () => {

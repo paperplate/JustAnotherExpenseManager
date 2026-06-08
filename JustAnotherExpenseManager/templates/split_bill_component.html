@@ -1,1 +1,35 @@
-<div data-split-bill class="split-bill-mount mb-4"></div>
+<div data-split-bill class="split-bill-mount mb-4">
+  <div class="split-bill-card card">
+    <div class="card-header split-card-header">
+      <h5 class="mb-0">
+        <span class="split-bill-icon">🧾</span> Split Bill
+      </h5>
+      <div class="split-total-display">
+        Total: <strong data-split-total>$0.00</strong>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="split-add-row" style="display: flex; gap: 10px; margin-bottom: 15px;">
+        <label for="split-name-input" class="visually-hidden">Tag to split by</label>
+        <select id="split-name-input" class="form-control split-name-input" data-action="name-input">
+          <option value="">Select a tag...</option>
+        </select>
+        <button type="button" class="btn btn-primary split-add-btn" data-action="add" style="white-space: nowrap;">+ Add
+          Person</button>
+      </div>
+      <div class="split-table-wrap">
+        <table class="split-table">
+          <thead>
+            <tr>
+              <th>Person (Tag)</th>
+              <th>Amount</th>
+              <th>Split</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody data-split-tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

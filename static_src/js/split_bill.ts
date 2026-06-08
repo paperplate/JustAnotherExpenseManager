@@ -1,13 +1,17 @@
 interface Person {
   id: string;
   name: string;
-  percentage: number;
-  locked: boolean;
+}
+
+interface SplitBillTransaction {
+  amount: number;
+  tags: string[];
 }
 
 interface SplitBillUpdateEvent {
   total: number;
   source: "summary" | "transactions";
+  transactions?: SplitBillTransaction[];
 }
 
 const STORAGE_KEY = "splitBillPeople";
@@ -15,14 +19,27 @@ const STORAGE_KEY = "splitBillPeople";
 class SplitBillComponent {
   private container: HTMLElement;
   private total: number = 0;
+  private transactions: SplitBillTransaction[] = [];
   private people: Person[] = [];
+  private availableTags: string[] = [];
   private nextId: number = 1;
 
   constructor(container: HTMLElement) {
     this.container = container;
     this.loadPeople();
-    this.render();
+    this.loadTags().then(() => this.render());
     this.bindGlobalEvent();
+  }
+
+  private async loadTags(): Promise<void> {
+    try {
+      const response = await fetch('/api/tags');
+      if (response.ok) {
+        this.availableTags = await response.json();
+      }
+    } catch {
+      this.availableTags = [];
+    }
   }
 
   private loadPeople(): void {
@@ -30,9 +47,9 @@ class SplitBillComponent {
       const stored = sessionStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as Person[];
-        this.people = parsed;
+        this.people = parsed.map(p => ({ id: String(p.id), name: p.name }));
         this.nextId =
-          Math.max(0, ...parsed.map((p) => parseInt(p.id, 10))) + 1;
+          Math.max(0, ...this.people.map((p) => parseInt(p.id, 10) || 0)) + 1;
       }
     } catch {
       this.people = [];
@@ -49,8 +66,17 @@ class SplitBillComponent {
 
   private bindGlobalEvent(): void {
     window.addEventListener("splitBillUpdate", (e: Event) => {
-      const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail;
-      this.total = detail.total;
+      const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail ?? {};
+      this.total = detail.total || 0;
+      console.log('Received splitBillUpdate:', detail);
+      if (detail.source === 'transactions') {
+        const txs = Array.isArray(detail.transactions) ? detail.transactions : [];
+        //this.transactions = detail.transactions || [];
+        this.transactions = txs.map((tx) => ({
+          amount: Number(tx?.amount) || 0,
+          tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
+        }));
+      }
       this.renderTotalAndTable();
     });
   }
@@ -59,78 +85,24 @@ class SplitBillComponent {
     return String(this.nextId++);
   }
 
-  private evenSplit(): void {
-    if (this.people.length === 0) return;
-    const each = Math.round((100 / this.people.length) * 10) / 10;
-    const remainder =
-      Math.round((100 - each * (this.people.length - 1)) * 10) / 10;
-    this.people = this.people.map((p, i) => ({
-      ...p,
-      percentage: i === this.people.length - 1 ? remainder : each,
-      locked: false,
-    }));
-    this.savePeople();
-    this.renderTotalAndTable();
-  }
-
-  private rebalanceUnlocked(): void {
-    const locked = this.people.filter((p) => p.locked);
-    const unlocked = this.people.filter((p) => !p.locked);
-    if (unlocked.length === 0) return;
-    const lockedSum = locked.reduce((s, p) => s + p.percentage, 0);
-    const available = Math.max(0, 100 - lockedSum);
-    const each = Math.round((available / unlocked.length) * 10) / 10;
-    const lastShare =
-      Math.round((available - each * (unlocked.length - 1)) * 10) / 10;
-    unlocked.forEach((p, i) => {
-      const person = this.people.find((x) => x.id === p.id)!;
-      person.percentage = i === unlocked.length - 1 ? lastShare : each;
-    });
-    this.savePeople();
-  }
-
   private addPerson(name: string): void {
-    if (!name.trim()) return;
+    const normalizedName: string = name.trim().toLowerCase();
+    if (!normalizedName) { return; }
+    // Don't add duplicate tags
+    if (this.people.some(p => p.name.toLowerCase() === normalizedName)) { return; }
+
     this.people.push({
       id: this.generateId(),
-      name: name.trim(),
-      percentage: 0,
-      locked: false,
+      name: normalizedName,
     });
-    this.evenSplit();
+    this.savePeople();
+    this.renderTotalAndTable();
   }
 
   private removePerson(id: string): void {
     this.people = this.people.filter((p) => p.id !== id);
-    if (this.people.length > 0) this.evenSplit();
-    else {
-      this.savePeople();
-      this.renderTotalAndTable();
-    }
-  }
-
-  private updatePercentage(id: string, value: number): void {
-    const person = this.people.find((p) => p.id === id);
-    if (!person) return;
-    person.percentage = Math.min(100, Math.max(0, value));
-    person.locked = true;
-    this.rebalanceUnlocked();
     this.savePeople();
     this.renderTotalAndTable();
-  }
-
-  private toggleLock(id: string): void {
-    const person = this.people.find((p) => p.id === id);
-    if (!person) return;
-    person.locked = !person.locked;
-    this.savePeople();
-    this.renderTotalAndTable();
-  }
-
-  private totalPercentage(): number {
-    return Math.round(
-      this.people.reduce((s, p) => s + p.percentage, 0) * 10
-    ) / 10;
   }
 
   private formatCurrency(amount: number): string {
@@ -139,6 +111,32 @@ class SplitBillComponent {
       currency: "CAD",
       minimumFractionDigits: 2,
     }).format(amount);
+  }
+
+  private calculateSplits() {
+    const tagAmounts = new Map<string, number>();
+    this.people.forEach(p => tagAmounts.set(p.name, 0));
+
+    let unallocatedAmount = 0;
+    console.log('Calculating splits with transactions:', this.transactions, 'and people:', this.people);
+
+    for (const tx of this.transactions) {
+      const matchedPeople = this.people.filter(p =>
+        tx.tags.some(t => t.toLowerCase() === p.name.toLowerCase())
+      );
+
+      if (matchedPeople.length > 0) {
+        const split = tx.amount / matchedPeople.length;
+        for (const p of matchedPeople) {
+          tagAmounts.set(p.name, tagAmounts.get(p.name)! + split);
+        }
+      } else {
+        unallocatedAmount += tx.amount;
+      }
+    }
+
+    console.log('Calculated tagAmounts:', Object.fromEntries(tagAmounts), 'unallocatedAmount:', unallocatedAmount);
+    return { tagAmounts, unallocatedAmount };
   }
 
   private renderTotalAndTable(): void {
@@ -155,51 +153,51 @@ class SplitBillComponent {
     if (!tableBody) return;
 
     if (this.people.length === 0) {
-      tableBody.innerHTML = `<tr><td colspan="4" class="split-empty">Add people above to split the bill.</td></tr>`;
+      tableBody.innerHTML = `<tr><td colspan="4" class="split-empty">Add people (tags) above to split the bill based on transaction tags.</td></tr>`;
       return;
     }
 
-    const totalPct = this.totalPercentage();
-    const remainderPct = Math.round((100 - totalPct) * 10) / 10;
-    const remainderAmount = (this.total * remainderPct) / 100;
+    const { tagAmounts, unallocatedAmount } = this.calculateSplits();
+    const evenSplitAmount = this.people.length > 0 ? this.total / this.people.length : 0;
 
     tableBody.innerHTML = this.people
-      .map(
-        (p) => `
+      .map((p) => {
+        const amount = tagAmounts.get(p.name) || 0;
+        const diff = evenSplitAmount - amount;
+        let diffStr = this.formatCurrency(Math.abs(diff));
+        if (diff > 0.005) {
+          diffStr = "+" + diffStr;
+        } else if (diff < -0.005) {
+          diffStr = "-" + diffStr;
+        } else {
+          diffStr = this.formatCurrency(0);
+        }
+
+        return `
       <tr class="split-row" data-person-id="${p.id}">
-        <td class="split-name">${this.escapeHtml(p.name)}</td>
-        <td class="split-pct-cell">
-          <div class="split-pct-wrap">
-            <input
-              type="number"
-              class="split-pct-input"
-              data-action="pct"
-              data-id="${p.id}"
-              value="${p.percentage}"
-              min="0" max="100" step="0.1"
-            />
-            <span class="split-pct-symbol">%</span>
-            <button class="split-lock-btn ${p.locked ? "locked" : ""}" data-action="lock" data-id="${p.id}" title="${p.locked ? "Unlock" : "Lock"} percentage">
-              ${p.locked ? "🔒" : "🔓"}
-            </button>
-          </div>
+        <td class="split-name">
+          <span class="tag-badge">${this.escapeHtml(p.name)}</span>
         </td>
-        <td class="split-amount">${this.formatCurrency((this.total * p.percentage) / 100)}</td>
+        <td class="split-amount">${this.formatCurrency(amount)}</td>
+        <td class="split-diff" style="${diff > 0.005 ? 'color: var(--bs-danger, red);' : diff < -0.005 ? 'color: var(--bs-success, green); ' : ''}">${diffStr}</td>
         <td class="split-remove-cell">
-          <button class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
+          <button type="button" class="split-remove-btn" data-action="remove" data-id="${p.id}" title="Remove">×</button>
         </td>
-      </tr>`
-      )
+      </tr>`;
+      })
       .join("");
 
     // Remainder row
-    const remainderRow = document.createElement("tr");
-    remainderRow.className = `split-remainder-row ${Math.abs(remainderPct) > 0.05 ? "split-remainder-nonzero" : ""}`;
-    remainderRow.innerHTML = `
-      <td colspan="2" class="split-remainder-label">Unallocated (${remainderPct}%)</td>
-      <td class="split-remainder-amount">${this.formatCurrency(remainderAmount)}</td>
-      <td></td>`;
-    tableBody.appendChild(remainderRow);
+    if (this.transactions.length > 0) {
+      const remainderRow = document.createElement("tr");
+      remainderRow.className = `split-remainder-row ${Math.abs(unallocatedAmount) > 0.05 ? "split-remainder-nonzero" : ""}`;
+      remainderRow.innerHTML = `
+        <td class="split-remainder-label">Unallocated</td>
+        <td class="split-remainder-amount">${this.formatCurrency(unallocatedAmount)}</td>
+        <td></td>
+        <td></td>`;
+      tableBody.appendChild(remainderRow);
+    }
   }
 
   private escapeHtml(s: string): string {
@@ -211,50 +209,21 @@ class SplitBillComponent {
   }
 
   private render(): void {
-    this.container.innerHTML = `
-      <div class="split-bill-card card">
-        <div class="card-header split-card-header">
-          <h5 class="mb-0">
-            <span class="split-bill-icon">🧾</span> Split Bill
-          </h5>
-          <div class="split-total-display">
-            Total: <strong data-split-total>${this.formatCurrency(this.total)}</strong>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="split-add-row">
-            <input
-              type="text"
-              class="form-control split-name-input"
-              placeholder="Person name…"
-              maxlength="40"
-              data-action="name-input"
-            />
-            <button class="btn btn-primary split-add-btn" data-action="add">+ Add Person</button>
-            <button class="btn btn-outline-secondary split-even-btn" data-action="even">↺ Even Split</button>
-          </div>
-          <div class="split-table-wrap">
-            <table class="split-table">
-              <thead>
-                <tr>
-                  <th>Person</th>
-                  <th>Split %</th>
-                  <th>Amount</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody data-split-tbody></tbody>
-            </table>
-          </div>
-        </div>
-      </div>`;
+    const optionsHtml = this.availableTags
+      .map(t => `<option value="${this.escapeHtml(t)}">${this.escapeHtml(t)}</option>`)
+      .join("");
+
+    const nameInput = this.container.querySelector<HTMLSelectElement>("[data-action='name-input']");
+    if (nameInput) {
+      nameInput.innerHTML = `<option value="">Select a tag...</option>\n${optionsHtml}`;
+    }
 
     this.renderTotalAndTable();
     this.bindEvents();
   }
 
   private bindEvents(): void {
-    const nameInput = this.container.querySelector<HTMLInputElement>(
+    const nameInput = this.container.querySelector<HTMLSelectElement>(
       "[data-action='name-input']"
     )!;
 
@@ -263,19 +232,7 @@ class SplitBillComponent {
       .addEventListener("click", () => {
         this.addPerson(nameInput.value);
         nameInput.value = "";
-        nameInput.focus();
       });
-
-    nameInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        this.addPerson(nameInput.value);
-        nameInput.value = "";
-      }
-    });
-
-    this.container
-      .querySelector("[data-action='even']")!
-      .addEventListener("click", () => this.evenSplit());
 
     // Delegate tbody events
     const tbody = this.container.querySelector<HTMLElement>("[data-split-tbody]")!;
@@ -285,17 +242,7 @@ class SplitBillComponent {
       const id = target.dataset.id;
       if (!id) return;
       if (action === "remove") this.removePerson(id);
-      if (action === "lock") this.toggleLock(id);
     });
-
-    tbody.addEventListener("change", (e) => {
-      const target = e.target as HTMLInputElement;
-      if (target.dataset.action === "pct" && target.dataset.id) {
-        this.updatePercentage(target.dataset.id, parseFloat(target.value) || 0);
-      }
-    });
-
-
   }
 }
 
@@ -316,3 +263,4 @@ if (document.readyState === 'loading') {
 }
 
 export { SplitBillComponent, SplitBillUpdateEvent };
+

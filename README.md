@@ -2,6 +2,10 @@
 
 A modern, dockerized expense tracking application built with Flask, SQLAlchemy, and Chart.js.
 
+## Background
+
+I was originally using [expenseowl](https://github.com/tanq16/expenseowl) but there was some functionality I needed that was missing. Since it doesn't seem to be actively developed anymore, I decided to brush off my web-dev skills and make my own. This project is also my first try at using LLMs to assist with coding.
+
 ## Features
 
 - ✨ **Real-time Updates**: Add, edit, and delete transactions without page refreshes
