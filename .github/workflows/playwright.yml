@@ -51,10 +51,7 @@ jobs:
       - name: Install Playwright browsers
         env:
           PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT: 1000
-        run: |
-          npx playwright install chromium --no-shell
-          sudo apt-get update
-          sudo apt-get install -y libnss3 libatk-bridge2.0-0 libdrm2 libxcomposite1 libxdamage1 libxrandr2 libgbm1
+        run: npx playwright install chromium --with-deps
 
 
       - name: Run Playwright tests
