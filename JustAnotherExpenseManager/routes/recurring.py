@@ -9,7 +9,7 @@ from JustAnotherExpenseManager.utils.services import TransactionService
 
 recurring_bp = Blueprint('recurring', __name__, url_prefix='/recurring')
 
-@recurring_bp.route('/', methods=['GET'])
+@recurring_bp.route('', methods=['GET'])
 def index():
     return render_template('recurring.html')
 
@@ -56,7 +56,7 @@ def create_recurring():
 
 @recurring_bp.route('/api/<int:tx_id>', methods=['DELETE'])
 def delete_recurring(tx_id):
-    tx = db.session.query(RecurringTransaction).get(tx_id)
+    tx = db.session.get(RecurringTransaction, tx_id)
     if not tx:
         return jsonify({"error": "Not found"}), 404
     db.session.delete(tx)

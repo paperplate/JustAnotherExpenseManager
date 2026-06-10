@@ -97,7 +97,8 @@ class Transaction(Base):
     tags: Mapped[Optional[List['Tag']]] = relationship(
         secondary=transaction_tags,
         back_populates='transactions',
-        lazy='select'
+        lazy='select',
+        default_factory=list
     )
 
     recurring_id: Mapped[Optional[int]] = mapped_column(ForeignKey('recurring_transactions.id', ondelete='SET NULL'), nullable=True, default=None)

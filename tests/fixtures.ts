@@ -19,6 +19,7 @@ import * as path from 'path';
 import { SettingsPage } from './pages/SettingsPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 import { SummaryPage } from './pages/SummaryPage';
+import { RecurringPage } from './pages/RecurringPage';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +32,7 @@ type TestFixtures = {
   settingsPage: SettingsPage;
   transactionsPage: TransactionsPage;
   summaryPage: SummaryPage;
+  recurringPage: RecurringPage;
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -109,6 +111,9 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
   },
   summaryPage: async ({ page }, use) => {
     await use(new SummaryPage(page));
+  },
+  recurringPage: async ({ page }, use) => {
+    await use(new RecurringPage(page));
   },
 });
 
