@@ -107,11 +107,14 @@ class TestTransactionAPI:
 
     def test_update_transaction_invalid_type_returns_400(self, client, db):
         from JustAnotherExpenseManager.utils.services import TransactionService
-        from JustAnotherExpenseManager.models import TransactionType
-        trans_id = TransactionService(db).create_transaction(
+        from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT
+        from JustAnotherExpenseManager.models.dtos import TransactionDTO
+        from datetime import datetime
+        dto = TransactionDTO(
             description='Original', amount_dollars=10.0,
-            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+            type=TransactionType.EXPENSE, date=datetime.strptime('2026-01-01', DT_FORMAT), category='food', tags=[],
         )
+        trans_id = TransactionService(db).create_transaction(dto)
         response = client.put(f'/api/transactions/{trans_id}', data={
             'description': 'Updated',
             'amount': '20.00',
@@ -321,8 +324,8 @@ class TestCSVImport:
     def test_import_valid_csv(self, client):
         csv_content = (
             b'description,amount,type,category,date,tags\n'
-            b'Imported Expense,100.00,expense,food,2026-02-01,test\n'
-            b'Imported Income,500.00,income,salary,2026-02-01,monthly'
+            b'Imported Expense,100.00,expense,food,2026-02-01 00:00:00,test\n'
+            b'Imported Income,500.00,income,salary,2026-02-01T00:00:00,monthly'
         )
         response = client.post(
             '/api/transactions/import',
@@ -468,11 +471,14 @@ class TestSettingsAPI:
     def test_clear_all_transactions_succeeds_in_testing_mode(self, client, db):
         """clear-all is allowed when app.testing is True (even without debug)."""
         from JustAnotherExpenseManager.utils.services import TransactionService
-        from JustAnotherExpenseManager.models import TransactionType
-        TransactionService(db).create_transaction(
+        from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT
+        from JustAnotherExpenseManager.models.dtos import TransactionDTO
+        from datetime import datetime
+        dto = TransactionDTO(
             description='To Clear', amount_dollars=10.0,
-            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+            type=TransactionType.EXPENSE, date=datetime.strptime('2026-01-01', DT_FORMAT), category='food', tags=[],
         )
+        TransactionService(db).create_transaction(dto)
         response = client.post('/api/transactions/clear-all')
         assert response.status_code == 200
         assert response.get_json()['success'] is True
@@ -480,16 +486,20 @@ class TestSettingsAPI:
     def test_clear_all_leaves_database_empty(self, client, db):
         """After clear-all, no transactions remain."""
         from JustAnotherExpenseManager.utils.services import TransactionService
-        from JustAnotherExpenseManager.models import TransactionType
+        from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT
+        from JustAnotherExpenseManager.models.dtos import TransactionDTO
+        from datetime import datetime
         svc = TransactionService(db)
-        svc.create_transaction(
+        dto1 = TransactionDTO(
             description='T1', amount_dollars=10.0,
-            type=TransactionType.EXPENSE, date='2026-01-01', category='food', tags=[],
+            type=TransactionType.EXPENSE, date=datetime.strptime('2026-01-01', DT_FORMAT), category='food', tags=[],
         )
-        svc.create_transaction(
+        svc.create_transaction(dto1)
+        dto2 = TransactionDTO(
             description='T2', amount_dollars=20.0,
-            type=TransactionType.INCOME, date='2026-01-02', category='salary', tags=[],
+            type=TransactionType.INCOME, date=datetime.strptime('2026-01-02', DT_FORMAT), category='salary', tags=[],
         )
+        svc.create_transaction(dto2)
         client.post('/api/transactions/clear-all')
         db.expire_all()
         assert svc.get_all_transactions()['total'] == 0

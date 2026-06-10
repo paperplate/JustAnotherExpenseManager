@@ -3,6 +3,7 @@ WORKDIR /app
 COPY pyproject.toml .
 COPY README.md .
 ENV FLASK_APP=JustAnotherExpenseManager
+ENV PYTHONUNBUFFERED=1
 RUN pip install --upgrade pip
 COPY JustAnotherExpenseManager/ JustAnotherExpenseManager/
 

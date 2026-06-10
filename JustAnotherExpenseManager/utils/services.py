@@ -8,7 +8,7 @@ from sqlalchemy import func, select
 from datetime import datetime, timedelta
 
 from JustAnotherExpenseManager.models import Transaction, Tag, TransactionType, DT_FORMAT
-from JustAnotherExpenseManager.models.dtos import TransactionDTO, RowDTO
+from JustAnotherExpenseManager.models.dtos import TransactionDTO
 
 def _apply_transaction_filters(
     stmt,
@@ -65,30 +65,13 @@ class TransactionService:
         """
         self.db = db_session
 
-    def create_transaction(
-        self,
-        description: str,
-        amount_dollars: float,
-        type: TransactionType,
-        date: str,
-        category: str,
-        tags: Optional[List[str]] = None
-    ) -> int:
+    def create_transaction(self, dto: TransactionDTO) -> int:
         """Create a new transaction."""
-        row = TransactionDTO(
-            amount_dollars=amount_dollars,
-            description=description,
-            type=type,
-            date=datetime.strptime(date, DT_FORMAT),
-            category=category,
-            tags=tags
-        )
-
         transaction = Transaction(
-            description=row.description,
-            amount_cents=row.amount_cents,
-            type=row.type,
-            date=row.date,
+            description=dto.description,
+            amount_cents=dto.amount_cents,
+            type=dto.type,
+            date=dto.date,
             tags=[]
         )
 
@@ -98,15 +81,15 @@ class TransactionService:
         self.db.add(transaction)
 
         # Add category tag if provided
-        if category:
-            category_tag = self._get_or_create_tag(f'category:{category}')
+        if dto.category:
+            category_tag = self._get_or_create_tag(f'category:{dto.category}')
             transaction.add_tag(category_tag)
 
         # Add additional tags
-        if tags:
+        if dto.tags:
             tag_names = [
                 t.strip()
-                for t in tags
+                for t in dto.tags
                 if t.strip() and not t.strip().startswith('category:')
             ]
             for tag_name in tag_names:
@@ -157,7 +140,7 @@ class TransactionService:
         current_month = None
         if total_months > 0 and page <= total_months:
             current_month = sorted_months[page - 1]
-            transactions = months[current_month]
+            transactions = [TransactionDTO.model_validate(t.to_dict()) for t in months[current_month]]
 
         return {
             'transactions': transactions,
@@ -171,12 +154,7 @@ class TransactionService:
     def update_transaction(
         self,
         transaction_id: int,
-        description: str,
-        amount_dollars: float,
-        type: TransactionType,
-        date: str,
-        category: str,
-        tags: Optional[List[str]] = None
+        dto: TransactionDTO
     ) -> bool:
         """Update an existing transaction."""
         transaction = self.db.get(Transaction, transaction_id)
@@ -184,29 +162,20 @@ class TransactionService:
         if not transaction:
             raise ValueError("Transaction not found")
 
-        row = TransactionDTO(
-            description=description,
-            amount_dollars=amount_dollars,
-            type=type,
-            date=datetime.strptime(date, DT_FORMAT),
-            category=category,
-            tags=tags
-        )
-
-        transaction.description = row.description
-        transaction.amount_cents = row.amount_cents
-        transaction.type = row.type
-        transaction.date = row.date
+        transaction.description = dto.description
+        transaction.amount_cents = dto.amount_cents
+        transaction.type = dto.type
+        transaction.date = dto.date
         transaction.tags = []
 
-        if category:
-            category_tag = self._get_or_create_tag(f'category:{category}')
+        if dto.category:
+            category_tag = self._get_or_create_tag(f'category:{dto.category}')
             transaction.add_tag(category_tag)
 
-        if tags:
+        if dto.tags:
             tag_names = [
                 t.strip()
-                for t in tags
+                for t in dto.tags
                 if t.strip() and not t.strip().startswith('category:')
             ]
             for tag_name in tag_names:

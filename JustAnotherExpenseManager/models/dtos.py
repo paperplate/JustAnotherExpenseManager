@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
-from typing import Annotated, Any, Optional, List, TypedDict, Unpack
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, computed_field, model_validator
+from typing import Annotated, Any, Optional, List
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, computed_field, model_validator, field_serializer
 
 
 class TransactionType(enum.Enum):
@@ -53,25 +53,42 @@ class BaseTransaction(BaseModel):
     def trigger_computation(cls, data: Any) -> Any:
         if isinstance(data, dict):
             if 'amount_dollars' in data:
-                data['amount_cents'] = int(data.pop('amount_dollars') * 100)
+                val = data.pop('amount_dollars')
+                if val is not None:
+                    try:
+                        parsed_val = float(val)
+                    except (ValueError, TypeError):
+                        raise ValueError("Amount must be a valid number")
+                    if parsed_val < 0:
+                        raise ValueError("Amount cannot be negative")
+                    data['amount_cents'] = int(parsed_val * 100)
+                else:
+                    data['amount_cents'] = 0
+            if 'amount_cents' in data:
+                val = data['amount_cents']
+                if val is not None:
+                    try:
+                        parsed_val = float(val)
+                    except (ValueError, TypeError):
+                        raise ValueError("Amount must be a valid number")
+                    if parsed_val < 0:
+                        raise ValueError("Amount cannot be negative")
             if 'type_str' in data:
                 data['type'] = _parse_transaction_type(data.pop('type_str'))
         return data
+
+    @computed_field
+    @property
+    def is_income(self) -> bool:
+        return self.type == TransactionType.INCOME
 
 
 CategoryStr = Annotated[str,
     StringConstraints(min_length=1, strip_whitespace=True, to_lower=True, ascii_only=False)]
 
 
-class TransactionKwargs(TypedDict, total=False):
-    category: CategoryStr
-    date: datetime
-    description: str
-    tags: Optional[List[str]]
-
-
 class TransactionDTO(BaseTransaction):
-    '''What the frontend sends.'''
+    '''Unified DTO for frontend request and backend response.'''
     id: Optional[int] = None
     category: CategoryStr
 # Source - https://stackoverflow.com/a/22061879
@@ -81,46 +98,9 @@ class TransactionDTO(BaseTransaction):
     description: str = Field(min_length=1)
     tags: Optional[List[str]] = None
 
-    def __init__(
-            self, *,
-            amount_dollars: Optional[float] = None,
-            amount_cents: int = 0,
-            type: Optional[TransactionType] = None,
-            type_str: Optional[str] = None,
-            **kwargs: Unpack[TransactionKwargs]):
-        if amount_cents is not None:
-            if amount_cents < 0:
-                raise ValueError("Amount cannot be negative")
-            kwargs['amount_cents'] = amount_cents # type: ignore
-        if amount_dollars is not None:
-            if amount_dollars < 0:
-                raise ValueError("Amount cannot be negative")
-            kwargs['amount_dollars'] = amount_dollars # type: ignore
-        if type is not None:
-            kwargs['type'] = type # type: ignore
-        elif type_str is not None:
-            kwargs['type_str'] = type_str # type: ignore
-
-        super().__init__(**kwargs) # type: ignore
-
-    @computed_field
-    @property
-    def is_income(self) -> bool:
-        return self.type == TransactionType.INCOME
-
-
-class RowDTO(BaseTransaction):
-    '''What the backend returns to the frontend.'''
-    id: int
-    category: CategoryStr
-    date: datetime
-    description: str
-    tags: str
-
     model_config = ConfigDict(from_attributes=True)
 
-    @computed_field
-    @property
-    def is_income(self) -> bool:
-        return self.type == TransactionType.INCOME
+    @field_serializer('date')
+    def serialize_date(self, date: datetime):
+        return date.strftime('%Y-%m-%d')
 

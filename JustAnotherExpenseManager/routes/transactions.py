@@ -2,7 +2,7 @@
 Routes for transaction operations with month-based pagination.
 """
 
-from flask import Blueprint, render_template, request, jsonify, g, Response
+from flask import Blueprint, render_template, request, jsonify, g, Response, current_app
 import csv
 import itertools
 from io import StringIO
@@ -36,15 +36,7 @@ def _compute_month_totals(transactions: List) -> Dict[str, float]:
 def _render_transactions_list(result: Dict[str, Any]) -> str:
     """Render transactions_list.html from a service result dict."""
     totals = _compute_month_totals(result['transactions'])
-    result['transactions'] = [TransactionDTO(
-        description=t.description,
-        amount_cents=t.amount_cents,
-        category=t.category,
-        id=t.id,
-        date=t.date.strftime('%Y-%m-%d'),
-        type=t.type,
-        tags=[tag.name for tag in t.tags] if t.tags else []
-    ).model_dump() for t in result['transactions']]
+    result['transactions'] = [t.model_dump() for t in result['transactions']]
     return render_template(
         'transactions_list.html',
         transactions=result['transactions'],
@@ -70,6 +62,8 @@ def _parse_csv_row(row: dict, row_num: int) -> Dict[str, Any]:
     date_str = (row.get('date', '').strip() or row.get('transaction date', '').strip())
     if 'T' in date_str:
         date_str = date_str[:date_str.find('T')]
+    elif ' ' in date_str:
+        date_str = date_str[:date_str.find(' ')]
     tags_str = row.get('tags', '').strip()
 
     result: Dict[str, Any] = {
@@ -167,22 +161,17 @@ def add_transaction():
         )
 
     except ValidationError as e:
+        current_app.logger.error(f'Validation Error: {str(e)}')
         return jsonify({'Validation Error': str(e)}), 400
     except ValueError as e:
+        current_app.logger.error(f'DTO Value Error: {str(e)}')
         return jsonify({'DTO Value Error': str(e)}), 400
 
     entry.tags = [t.strip() for t in entry.tags] if entry.tags else []
 
     service = TransactionService(g.db)
     try:
-        service.create_transaction(
-            description=entry.description,
-            amount_dollars=entry.amount_dollars,
-            type=entry.type,
-            date=entry.date.strftime(DT_FORMAT),
-            category=entry.category,
-            tags=entry.tags
-        )
+        service.create_transaction(entry)
 
         result = service.get_all_transactions(page=1)
         return _render_transactions_list(result)
@@ -196,31 +185,23 @@ def add_transaction():
 @transaction_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
     """Update a transaction."""
-    description = request.form.get('description', '').strip()
-    amount = request.form.get('amount', 0, type=float)
-    type_str = request.form.get('type', 'expense')
-    date = request.form.get('date', '')
-    category = request.form.get('category', '').lower().strip()
-    tags_str = request.form.get('tags', '').strip()
-
     try:
-        trans_type = _parse_transaction_type(type_str)
+        dto = TransactionDTO(
+            description=request.form.get('description', '').strip(),
+            amount_dollars=request.form.get('amount', 0, type=float),
+            type_str=request.form.get('type', 'expense'),
+            date=datetime.strptime(request.form.get('date', '').split('T')[0], DT_FORMAT),
+            category=request.form.get('category', '').lower().strip(),
+            tags=[t.strip() for t in request.form.get('tags', '').strip().split(',')] if request.form.get('tags', '').strip() else []
+        )
+    except ValidationError as e:
+        return jsonify({'Validation Error': str(e)}), 400
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
-    tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
-
     service = TransactionService(g.db)
     try:
-        service.update_transaction(
-            transaction_id=transaction_id,
-            description=description,
-            amount_dollars=amount,
-            type=trans_type,
-            date=date,
-            category=category,
-            tags=tags
-        )
+        service.update_transaction(transaction_id, dto)
 
         result = service.get_all_transactions(page=1)
         return _render_transactions_list(result)
@@ -274,13 +255,14 @@ def export_transactions() -> Response:
     writer.writerow(['description', 'amount', 'type', 'category', 'date', 'tags'])
 
     for trans in all_transactions:
+        non_cat_tags = [t for t in (trans.tags or []) if not t.startswith('category:')]
         writer.writerow([
             trans.description,
             f'{(trans.amount_cents / 100):.2f}',
             trans.type.value,
             trans.category or '',
-            trans.date,
-            ','.join(trans.non_category_tags),
+            trans.date.strftime(DT_FORMAT) if trans.date else '',
+            ','.join(non_cat_tags),
         ])
 
     filename = 'transactions.csv'
@@ -384,17 +366,22 @@ def commit_import():
             tags_str = str(row.get('tags', '') or '').strip()
             tags = [t.strip() for t in tags_str.split(',') if t.strip()] if tags_str else []
 
-            service.create_transaction(
+            dto = TransactionDTO(
                 description=description,
                 amount_dollars=amount,
                 type=trans_type,
-                date=date_str,
+                date=datetime.strptime(date_str, DT_FORMAT),
                 category=category,
                 tags=tags,
             )
+            service.create_transaction(dto)
             imported_count += 1
 
+        except ValidationError as e:
+            current_app.logger.error(f'Row: {idx}\t Error: {e}')
+            errors.append(f'Row {idx}: {str(e)}')
         except Exception as e:  # pylint: disable=broad-except
+            current_app.logger.error(f'Row: {idx}\t Error: {e}')
             errors.append(f'Row {idx}: {str(e)}')
 
     response_data: Dict[str, Any] = {
@@ -439,21 +426,25 @@ def import_transactions():
 
             if parsed['error']:
                 errors.append(parsed['error'])
+                current_app.logger.warning(f"CSV import failed at row {row_num}: {parsed['error']}")
                 continue
 
             try:
                 tags = [t.strip() for t in parsed['tags'].split(',') if t.strip()] if parsed['tags'] else []
-                service.create_transaction(
+                dto = TransactionDTO(
                     description=parsed['description'],
                     amount_dollars=float(parsed['amount']),
                     type=_parse_transaction_type(parsed['type']),
-                    date=parsed['date'],
+                    date=datetime.strptime(parsed['date'], DT_FORMAT),
                     category=parsed['category'],
                     tags=tags,
                 )
+                service.create_transaction(dto)
                 imported_count += 1
             except Exception as e:  # pylint: disable=broad-except
-                errors.append(f'Row {row_num}: {str(e)}')
+                error_msg = f'Row {row_num}: {str(e)}'
+                errors.append(error_msg)
+                current_app.logger.error(f"CSV import failed at {error_msg}")
 
         response_data: Dict[str, Any] = {
             'success': True,
