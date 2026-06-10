@@ -27,7 +27,8 @@ from JustAnotherExpenseManager.routes.transactions import transaction_bp
 from JustAnotherExpenseManager.routes.stats import stats_bp
 from JustAnotherExpenseManager.routes.categories import categories_bp
 from JustAnotherExpenseManager.routes.settings import settings_bp
-
+from JustAnotherExpenseManager.routes.recurring import recurring_bp
+from JustAnotherExpenseManager.utils.scheduler import init_scheduler
 
 def create_app(
     config_class: type[Config] | None = None,
@@ -112,6 +113,9 @@ def create_app(
     app.register_blueprint(transaction_bp)
     app.register_blueprint(categories_bp)
     app.register_blueprint(settings_bp)
+    app.register_blueprint(recurring_bp)
+
+    init_scheduler(app)
 
     @app.before_request
     def _set_g_db():

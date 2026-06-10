@@ -33,6 +33,11 @@
                     <span class="type-badge type-{{ trans.type.value }}">
                         {{ trans.type.value|capitalize }}
                     </span>
+                    {% if trans.recurring_id %}
+                    <span class="type-badge type-recurring" style="background: #0984e3; color: white;">
+                        Recurring
+                    </span>
+                    {% endif %}
                 </td>
                 <td>
                     {% for tag in trans.tags %}

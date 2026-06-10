@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Recurring Transactions - Expense Manager{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h2>Add Recurring Transaction</h2>
+    </div>
+    <form id="recurring-form" onsubmit="window.submitRecurring(event)">
+        <div class="form-group">
+            <label for="description">Description</label>
+            <input type="text" id="description" name="description" class="form-control" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="amount">Amount</label>
+            <input type="number" id="amount" name="amount" class="form-control" step="0.01" min="0.01" required>
+        </div>
+
+        <div class="form-group">
+            <label for="type">Type</label>
+            <select id="type" name="type" class="form-control" required>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="category">Category</label>
+            <input type="text" id="category" name="category" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="frequency">Frequency</label>
+            <select id="frequency" name="frequency" class="form-control" required>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="start_date">Start Date</label>
+            <input type="date" id="start_date" name="start_date" class="form-control" required>
+        </div>
+
+        <div class="form-group">
+            <label for="end_date">End Date (Optional)</label>
+            <input type="date" id="end_date" name="end_date" class="form-control">
+        </div>
+
+        <button type="submit" class="btn">Add Recurring Transaction</button>
+    </form>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <div class="card-header">
+        <h2>Active Recurring Transactions</h2>
+    </div>
+    <div id="recurring-list">
+        <!-- Loaded via JS -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module" src="{{ url_for('static', filename='js/recurring.js') }}"></script>
+{% endblock %}

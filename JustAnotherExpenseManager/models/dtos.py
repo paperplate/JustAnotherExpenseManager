@@ -13,6 +13,17 @@ class TransactionType(enum.Enum):
         return self.value
 
 
+class RecurringFrequency(enum.Enum):
+    """Enum for recurring transaction frequencies."""
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    MONTHLY = "monthly"
+    YEARLY = "yearly"
+
+    def __str__(self):
+        return self.value
+
+
 def _parse_transaction_type(type_str: str) -> TransactionType:
     """Convert string to TransactionType enum."""
     type_str = type_str.lower().strip()
