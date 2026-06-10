@@ -45,7 +45,7 @@ class Tag(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, init=False)
     name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     sort_order: Mapped[int] = mapped_column(nullable=False, default=0, server_default='0')
-    created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(default_factory=utcnow, nullable=False, init=False)
 
     @property
     def is_category(self) -> bool:
@@ -91,15 +91,16 @@ class Transaction(Base):
     amount_cents: Mapped[int] = mapped_column(nullable=False)
     type: Mapped[TransactionType] = mapped_column(nullable=False, index=True)
     date: Mapped[datetime] = mapped_column(nullable=False, index=True)  # YYYY-MM-DD format
-    recurring_id: Mapped[Optional[int]] = mapped_column(ForeignKey('recurring_transactions.id', ondelete='SET NULL'), nullable=True, default=None)
-    created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False, init=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(default_factory=utcnow, nullable=False, init=False)
+    updated_at: Mapped[datetime] = mapped_column(default_factory=utcnow, onupdate=utcnow, nullable=False, init=False)
 
     tags: Mapped[Optional[List['Tag']]] = relationship(
         secondary=transaction_tags,
         back_populates='transactions',
         lazy='select'
     )
+
+    recurring_id: Mapped[Optional[int]] = mapped_column(ForeignKey('recurring_transactions.id', ondelete='SET NULL'), nullable=True, default=None)
 
     @property
     def category(self) -> Optional[str]:
@@ -194,12 +195,14 @@ class RecurringTransaction(Base):
 
     tags: Mapped[Optional[List['Tag']]] = relationship(
         secondary=recurring_transaction_tags,
-        lazy='select'
+        lazy='select',
+        init=False
     )
 
     transactions: Mapped[List['Transaction']] = relationship(
         backref='recurring_source',
-        lazy='select'
+        lazy='select',
+        init=False
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, init=False)
@@ -208,12 +211,12 @@ class RecurringTransaction(Base):
     type: Mapped[TransactionType] = mapped_column(nullable=False)
     frequency: Mapped[RecurringFrequency] = mapped_column(nullable=False)
     start_date: Mapped[datetime] = mapped_column(nullable=False)
-    end_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
-    last_processed_date: Mapped[Optional[datetime]] = mapped_column(nullable=True)
     next_date: Mapped[datetime] = mapped_column(nullable=False)
+    end_date: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
+    last_processed_date: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False, init=False)
-    updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow, nullable=False, init=False)
+    created_at: Mapped[datetime] = mapped_column(default_factory=utcnow, nullable=False, init=False)
+    updated_at: Mapped[datetime] = mapped_column(default_factory=utcnow, onupdate=utcnow, nullable=False, init=False)
 
 
     @property
