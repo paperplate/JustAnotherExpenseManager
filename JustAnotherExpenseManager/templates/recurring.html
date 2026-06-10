@@ -2,6 +2,51 @@
 
 {% block title %}Recurring Transactions - Expense Manager{% endblock %}
 
+{% block extra_styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
+<style>
+  /* ── Tagify theme — match existing input style ── */
+  .tagify {
+      --tags-border-color: #e0e0e0;
+      --tags-hover-border-color: #667eea;
+      --tags-focus-border-color: #667eea;
+      --tag-bg: #e8f4f8;
+      --tag-hover: #d0eaf4;
+      --tag-text-color: #0984e3;
+      --tag-remove-btn-color: #0984e3;
+      --tag-remove-btn-bg--hover: #d0eaf4;
+      --tag-pad: 0.3em 0.6em;
+      --tagify-dd-bg-color: #fff;
+      --tagify-dd-color-primary: #667eea;
+
+      border: 2px solid var(--tags-border-color);
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 16px;
+      min-height: 44px;
+      transition: border-color 0.3s;
+      width: 100%;
+      box-sizing: border-box;
+  }
+  .tagify:hover        { border-color: var(--tags-hover-border-color); }
+  .tagify:focus-within { border-color: var(--tags-focus-border-color); outline: none; }
+
+  .tagify__tag > div          { border-radius: 12px; }
+  .tagify__tag > div::before  { box-shadow: 0 0 0 1.1em var(--tag-bg) inset !important; border-radius: 12px; }
+  .tagify__tag:hover > div::before { box-shadow: 0 0 0 1.1em var(--tag-hover) inset !important; }
+
+  .tagify__input::before { color: #aaa; } /* placeholder */
+
+  .tagify__dropdown {
+      border: 2px solid #667eea;
+      border-radius: 0 0 6px 6px;
+      box-shadow: 0 6px 16px rgba(102,126,234,0.15);
+  }
+  .tagify__dropdown__item--active { background: #667eea; color: #fff; }
+  .tagify__dropdown__item:hover   { background: #f0f2ff; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
@@ -28,7 +73,14 @@
         
         <div class="form-group">
             <label for="category">Category</label>
-            <input type="text" id="category" name="category" class="form-control" required>
+            <select id="category" name="category" class="form-control" required>
+                <option value="">Select category...</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="tags">Tags</label>
+            <input type="text" id="tags" name="tags" placeholder="monthly, bills">
         </div>
 
         <div class="form-group">
@@ -66,5 +118,6 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
 <script type="module" src="{{ url_for('static', filename='js/recurring.js') }}"></script>
 {% endblock %}

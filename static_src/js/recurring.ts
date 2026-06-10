@@ -1,4 +1,47 @@
-import { RecurringTransaction } from './types';
+import { RecurringTransaction, Category } from './types';
+
+declare const Tagify: any;
+
+let addTagify: any = null;
+
+async function loadCategorySelect(): Promise<void> {
+    try {
+        const response = await fetch('/api/categories');
+        const categories: Category[] = await response.json();
+        const select = document.getElementById('category') as HTMLSelectElement | null;
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select category...</option>';
+        categories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.category_name;
+            option.textContent = cat.category_name.charAt(0).toUpperCase() + cat.category_name.slice(1);
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading categories:', error);
+    }
+}
+
+async function initTagify() {
+    let whitelist: string[] = [];
+    try {
+        const response = await fetch('/api/tags');
+        whitelist = await response.json();
+    } catch (error) {
+        console.error('Error fetching tags:', error);
+    }
+
+    const input = document.getElementById('tags') as HTMLInputElement;
+    if (input) {
+        addTagify = new Tagify(input, {
+            whitelist,
+            enforceWhitelist: false,
+            originalInputValueFormat: (values: any) => values.map((v: any) => v.value).join(','),
+            dropdown: { maxItems: 10, enabled: 0, closeOnSelect: false }
+        });
+    }
+}
 
 export const loadRecurring = async (): Promise<void> => {
     try {
@@ -59,15 +102,19 @@ export const submitRecurring = async (e: Event): Promise<void> => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     
-    const data = {
+    const data: any = {
         description: (form.querySelector('#description') as HTMLInputElement).value,
         amount_dollars: parseFloat((form.querySelector('#amount') as HTMLInputElement).value),
         type: (form.querySelector('#type') as HTMLSelectElement).value,
-        category: (form.querySelector('#category') as HTMLInputElement).value,
+        category: (form.querySelector('#category') as HTMLSelectElement).value,
         frequency: (form.querySelector('#frequency') as HTMLSelectElement).value,
         start_date: (form.querySelector('#start_date') as HTMLInputElement).value,
         end_date: (form.querySelector('#end_date') as HTMLInputElement).value || null
     };
+    
+    if (addTagify && addTagify.value) {
+        data.tags = addTagify.value.map((t: any) => t.value);
+    }
 
     try {
         const response = await fetch('/recurring/api', {
@@ -98,5 +145,9 @@ window.submitRecurring = submitRecurring;
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('recurring-list')) {
         loadRecurring();
+        loadCategorySelect();
+        initTagify();
+        const dateInput = document.getElementById('start_date') as HTMLInputElement | null;
+        if (dateInput) dateInput.valueAsDate = new Date();
     }
 });

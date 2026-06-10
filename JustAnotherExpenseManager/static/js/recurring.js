@@ -1,4 +1,40 @@
 //#region static_src/js/recurring.ts
+var addTagify = null;
+async function loadCategorySelect() {
+	try {
+		const categories = await (await fetch("/api/categories")).json();
+		const select = document.getElementById("category");
+		if (!select) return;
+		select.innerHTML = "<option value=\"\">Select category...</option>";
+		categories.forEach((cat) => {
+			const option = document.createElement("option");
+			option.value = cat.category_name;
+			option.textContent = cat.category_name.charAt(0).toUpperCase() + cat.category_name.slice(1);
+			select.appendChild(option);
+		});
+	} catch (error) {
+		console.error("Error loading categories:", error);
+	}
+}
+async function initTagify() {
+	let whitelist = [];
+	try {
+		whitelist = await (await fetch("/api/tags")).json();
+	} catch (error) {
+		console.error("Error fetching tags:", error);
+	}
+	const input = document.getElementById("tags");
+	if (input) addTagify = new Tagify(input, {
+		whitelist,
+		enforceWhitelist: false,
+		originalInputValueFormat: (values) => values.map((v) => v.value).join(","),
+		dropdown: {
+			maxItems: 10,
+			enabled: 0,
+			closeOnSelect: false
+		}
+	});
+}
 var loadRecurring = async () => {
 	try {
 		const data = await (await fetch("/recurring/api")).json();
@@ -50,6 +86,7 @@ var submitRecurring = async (e) => {
 		start_date: form.querySelector("#start_date").value,
 		end_date: form.querySelector("#end_date").value || null
 	};
+	if (addTagify && addTagify.value) data.tags = addTagify.value.map((t) => t.value);
 	try {
 		const response = await fetch("/recurring/api", {
 			method: "POST",
@@ -71,6 +108,12 @@ window.loadRecurring = loadRecurring;
 window.deleteRecurring = deleteRecurring;
 window.submitRecurring = submitRecurring;
 document.addEventListener("DOMContentLoaded", () => {
-	if (document.getElementById("recurring-list")) loadRecurring();
+	if (document.getElementById("recurring-list")) {
+		loadRecurring();
+		loadCategorySelect();
+		initTagify();
+		const dateInput = document.getElementById("start_date");
+		if (dateInput) dateInput.valueAsDate = /* @__PURE__ */ new Date();
+	}
 });
 //#endregion

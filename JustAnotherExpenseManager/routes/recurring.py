@@ -39,6 +39,12 @@ def create_recurring():
             tag = svc._get_or_create_tag(f"category:{data['category']}")
             tx.tags.append(tag)
             
+        if 'tags' in data and data['tags']:
+            svc = TransactionService(db.session)
+            for t in data['tags']:
+                tag = svc._get_or_create_tag(t)
+                tx.tags.append(tag)
+            
         db.session.add(tx)
         db.session.commit()
         return jsonify(tx.to_dict()), 201
