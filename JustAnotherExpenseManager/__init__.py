@@ -10,8 +10,12 @@ This application follows SOLID principles with separation of concerns:
 """
 
 import sys
+import logging
 import click
 from flask import Flask, g
+from pydantic import ValidationError
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
 
 from JustAnotherExpenseManager.config import Config, get_config_class
 from JustAnotherExpenseManager.utils.database import (
@@ -50,6 +54,11 @@ def create_app(
         Configured :class:`flask.Flask` application instance.
     """
     app = Flask(__name__)
+
+    app.logger.setLevel(logging.INFO)
+    stream_handler = logging.StreamHandler(sys.stdout)
+    stream_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s: %(message)s'))
+    app.logger.addHandler(stream_handler)
 
     # ------------------------------------------------------------------ #
     # Load configuration                                                   #
@@ -110,6 +119,11 @@ def create_app(
     def _set_g_db():
         """Expose db.session as g.db to make use of Flask's g global variable."""
         g.db = db.session
+
+    @app.errorhandler(ValidationError)
+    def handle_pydantic_error(e):
+        app.logger.error("Pydantic fail: %s", e.errors())
+        return {"error": "Validation failed", "details": e.errors()}, 400
 
     register_cli_commands(app)
 

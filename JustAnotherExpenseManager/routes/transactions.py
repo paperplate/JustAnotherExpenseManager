@@ -2,7 +2,7 @@
 Routes for transaction operations with month-based pagination.
 """
 
-from flask import Blueprint, render_template, request, jsonify, g, Response
+from flask import Blueprint, render_template, request, jsonify, g, Response, current_app
 import csv
 import itertools
 from io import StringIO
@@ -161,8 +161,10 @@ def add_transaction():
         )
 
     except ValidationError as e:
+        current_app.logger.error(f'Validation Error: {str(e)}')
         return jsonify({'Validation Error': str(e)}), 400
     except ValueError as e:
+        current_app.logger.error(f'DTO Value Error: {str(e)}')
         return jsonify({'DTO Value Error': str(e)}), 400
 
     entry.tags = [t.strip() for t in entry.tags] if entry.tags else []
@@ -375,6 +377,8 @@ def commit_import():
             service.create_transaction(dto)
             imported_count += 1
 
+        except ValidationError as e:
+            current_app.logger.error(f'Row: {idx}\t Error: {e}')
         except Exception as e:  # pylint: disable=broad-except
             errors.append(f'Row {idx}: {str(e)}')
 
@@ -420,6 +424,7 @@ def import_transactions():
 
             if parsed['error']:
                 errors.append(parsed['error'])
+                current_app.logger.warning(f"CSV import failed at row {row_num}: {parsed['error']}")
                 continue
 
             try:
@@ -435,7 +440,9 @@ def import_transactions():
                 service.create_transaction(dto)
                 imported_count += 1
             except Exception as e:  # pylint: disable=broad-except
-                errors.append(f'Row {row_num}: {str(e)}')
+                error_msg = f'Row {row_num}: {str(e)}'
+                errors.append(error_msg)
+                current_app.logger.error(f"CSV import failed at {error_msg}")
 
         response_data: Dict[str, Any] = {
             'success': True,

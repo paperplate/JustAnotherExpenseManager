@@ -89,6 +89,6 @@ class TransactionDTO(BaseTransaction):
     model_config = ConfigDict(from_attributes=True)
 
     @field_serializer('date')
-    def serialize_date(self, date: datetime, _info):
+    def serialize_date(self, date: datetime):
         return date.strftime('%Y-%m-%d')
 

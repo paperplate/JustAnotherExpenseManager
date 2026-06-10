@@ -324,8 +324,8 @@ class TestCSVImport:
     def test_import_valid_csv(self, client):
         csv_content = (
             b'description,amount,type,category,date,tags\n'
-            b'Imported Expense,100.00,expense,food,2026-02-01,test\n'
-            b'Imported Income,500.00,income,salary,2026-02-01,monthly'
+                b'Imported Expense,100.00,expense,food,2026-02-01 00:00:00,test\n'
+                b'Imported Income,500.00,income,salary,2026-02-01T00:00:00,monthly'
         )
         response = client.post(
             '/api/transactions/import',
