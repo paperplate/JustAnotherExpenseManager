@@ -379,7 +379,9 @@ def commit_import():
 
         except ValidationError as e:
             current_app.logger.error(f'Row: {idx}\t Error: {e}')
+            errors.append(f'Row {idx}: {str(e)}')
         except Exception as e:  # pylint: disable=broad-except
+            current_app.logger.error(f'Row: {idx}\t Error: {e}')
             errors.append(f'Row {idx}: {str(e)}')
 
     response_data: Dict[str, Any] = {

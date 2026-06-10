@@ -15,8 +15,6 @@ import click
 from flask import Flask, g
 from pydantic import ValidationError
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
-
 from JustAnotherExpenseManager.config import Config, get_config_class
 from JustAnotherExpenseManager.utils.database import (
     db,

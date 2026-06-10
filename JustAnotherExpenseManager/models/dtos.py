@@ -54,13 +54,25 @@ class BaseTransaction(BaseModel):
         if isinstance(data, dict):
             if 'amount_dollars' in data:
                 val = data.pop('amount_dollars')
-                if val is not None and val < 0:
-                    raise ValueError("Amount cannot be negative")
-                data['amount_cents'] = int(val * 100) if val is not None else 0
+                if val is not None:
+                    try:
+                        parsed_val = float(val)
+                    except (ValueError, TypeError):
+                        raise ValueError("Amount must be a valid number")
+                    if parsed_val < 0:
+                        raise ValueError("Amount cannot be negative")
+                    data['amount_cents'] = int(parsed_val * 100)
+                else:
+                    data['amount_cents'] = 0
             if 'amount_cents' in data:
                 val = data['amount_cents']
-                if val is not None and val < 0:
-                    raise ValueError("Amount cannot be negative")
+                if val is not None:
+                    try:
+                        parsed_val = float(val)
+                    except (ValueError, TypeError):
+                        raise ValueError("Amount must be a valid number")
+                    if parsed_val < 0:
+                        raise ValueError("Amount cannot be negative")
             if 'type_str' in data:
                 data['type'] = _parse_transaction_type(data.pop('type_str'))
         return data
