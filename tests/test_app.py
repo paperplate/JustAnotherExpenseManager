@@ -5,8 +5,10 @@ Tests that overlap with test_routes.py (CSV import, stats, filtering) live there
 """
 
 from tests.conftest import captured_templates
-from JustAnotherExpenseManager.models import TransactionType
+from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT
 from JustAnotherExpenseManager.utils.services import TransactionService
+from JustAnotherExpenseManager.models.dtos import TransactionDTO
+from datetime import datetime
 
 
 class TestAppFactory:
@@ -47,14 +49,15 @@ class TestTransactionLifecycle:
 
     def test_delete_removes_transaction(self, client, db):
         service = TransactionService(db)
-        trans_id = service.create_transaction(
+        dto = TransactionDTO(
             description='To Delete',
             amount_dollars=25.00,
             type=TransactionType.EXPENSE,
-            date='2026-02-01',
+            date=datetime.strptime('2026-02-01', DT_FORMAT),
             category='other',
             tags=[],
         )
+        trans_id = service.create_transaction(dto)
 
         assert client.delete(f'/api/transactions/{trans_id}').status_code == 200
 
@@ -63,14 +66,15 @@ class TestTransactionLifecycle:
 
     def test_database_persistence_within_session(self, db):
         service = TransactionService(db)
-        service.create_transaction(
+        dto = TransactionDTO(
             description='Persistent Test',
             amount_dollars=99.99,
             type=TransactionType.EXPENSE,
-            date='2026-02-01',
+            date=datetime.strptime('2026-02-01', DT_FORMAT),
             category='other',
             tags=[],
         )
+        service.create_transaction(dto)
 
         result = service.get_all_transactions()
         assert result['total'] == 1

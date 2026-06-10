@@ -5,7 +5,10 @@ Tests business logic and database operations directly, without HTTP.
 
 import pytest
 from flask import jsonify, Response
-from JustAnotherExpenseManager.models import TransactionType
+from datetime import datetime
+from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT, Tag
+from sqlalchemy import select
+from JustAnotherExpenseManager.models.dtos import TransactionDTO
 from JustAnotherExpenseManager.utils.services import (
     TransactionService,
     StatsService,
@@ -24,14 +27,15 @@ def _make_service(db):
 def _create(service, description, amount, trans_type, date, category=None, tags=None) -> int | tuple[Response, int]:
     """Thin wrapper that accepts a plain string type for convenience."""
     try:
-        return service.create_transaction(
+        dto = TransactionDTO(
             description=description,
             amount_dollars=amount,
             type=TransactionType(trans_type),
-            date=date,
-            category=category,
+            date=datetime.strptime(date, DT_FORMAT),
+            category=category or '',
             tags=tags or [],
         )
+        return service.create_transaction(dto)
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
@@ -75,7 +79,7 @@ class TestTransactionCRUD:
         assert type(ret) is int and ret > 0, ret
 
         t = service.get_all_transactions()['transactions'][0]
-        tag_names = [tag.name for tag in t.tags]
+        tag_names = t.tags or []
         assert 'tag1' in tag_names
         assert 'tag2' in tag_names
         assert 'tag3' in tag_names
@@ -87,15 +91,15 @@ class TestTransactionCRUD:
                            category='food', tags=['test'])
         assert type(ret) is int and ret > 0, ret
 
-        result = service.update_transaction(
-            transaction_id=ret,
+        dto = TransactionDTO(
             description='Updated',
             amount_dollars=200.00,
             type=TransactionType.EXPENSE,
-            date='2026-02-02',
+            date=datetime.strptime('2026-02-02', DT_FORMAT),
             category='transport',
             tags=['new-tag'],
         )
+        result = service.update_transaction(transaction_id=ret, dto=dto)
         assert result is True
 
         t = service.get_all_transactions()['transactions'][0]
@@ -105,15 +109,15 @@ class TestTransactionCRUD:
 
     def test_update_nonexistent_raises(self, db):
         service = _make_service(db)
+        dto = TransactionDTO(
+            description='X',
+            amount_dollars=1.00,
+            type=TransactionType.EXPENSE,
+            date=datetime.strptime('2026-02-01', DT_FORMAT),
+            category='test'
+        )
         with pytest.raises(ValueError):
-            service.update_transaction(
-                transaction_id=99999,
-                description='X',
-                amount_dollars=1.00,
-                type=TransactionType.EXPENSE,
-                date='2026-02-01',
-                category='test'
-            )
+            service.update_transaction(transaction_id=99999, dto=dto)
 
     def test_delete_removes_transaction(self, db):
         service = _make_service(db)
@@ -270,7 +274,7 @@ class TestTagDeduplication:
         _create(service, 'Test', 100.00, 'expense', '2026-02-01', category='food')
 
         t = service.get_all_transactions()['transactions'][0]
-        assert 'category:food' in [tag.name for tag in t.tags]
+        assert 'category:food' in (t.tags or [])
 
     def test_duplicate_tags_are_deduplicated(self, db):
         service = _make_service(db)
@@ -278,7 +282,7 @@ class TestTagDeduplication:
                 category='food', tags=['dup', 'dup', 'other', 'other'])
 
         t = service.get_all_transactions()['transactions'][0]
-        non_cat = [tag.name for tag in t.tags if not tag.name.startswith('category:')]
+        non_cat = [tag for tag in (t.tags or []) if not tag.startswith('category:')]
         assert non_cat.count('dup') == 1
         assert non_cat.count('other') == 1
 
@@ -289,10 +293,8 @@ class TestTagDeduplication:
         _create(service, 'Second', 100.00, 'expense', '2026-02-01',
                 category='food', tags=['recurring'])
 
-        result = service.get_all_transactions()['transactions']
-        tag1 = next(tag for tag in result[0].tags if tag.name == 'recurring')
-        tag2 = next(tag for tag in result[1].tags if tag.name == 'recurring')
-        assert tag1.id == tag2.id
+        tags = db.scalars(select(Tag).where(Tag.name == 'recurring')).all()
+        assert len(tags) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -611,6 +613,6 @@ class TestTagService:
         assert error is None
 
         tx = trans_svc.get_all_transactions()['transactions']
-        all_tag_names = [t.name for tx_item in tx for t in tx_item.tags]
+        all_tag_names = [t for tx_item in tx for t in (tx_item.tags or [])]
         assert 'urgent' not in all_tag_names
 

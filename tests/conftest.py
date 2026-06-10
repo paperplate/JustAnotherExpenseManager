@@ -98,7 +98,9 @@ def sample_transactions(app, db):
     This fixture populates the database with test data.
     """
     from JustAnotherExpenseManager.utils.services import TransactionService
-    from JustAnotherExpenseManager.models import TransactionType
+    from JustAnotherExpenseManager.models import TransactionType, DT_FORMAT
+    from JustAnotherExpenseManager.models.dtos import TransactionDTO
+    from datetime import datetime
 
     service = TransactionService(db)
 
@@ -107,7 +109,7 @@ def sample_transactions(app, db):
             'description': 'Grocery shopping',
             'amount_dollars': 150.50,
             'type': TransactionType.EXPENSE,
-            'date': '2026-01-15',
+            'date': datetime.strptime('2026-01-15', DT_FORMAT),
             'category': 'food',
             'tags': ['recurring', 'planned'],
         },
@@ -115,7 +117,7 @@ def sample_transactions(app, db):
             'description': 'Salary',
             'amount_dollars': 5000.00,
             'type': TransactionType.INCOME,
-            'date': '2026-01-01',
+            'date': datetime.strptime('2026-01-01', DT_FORMAT),
             'category': 'salary',
             'tags': ['recurring'],
         },
@@ -123,7 +125,7 @@ def sample_transactions(app, db):
             'description': 'Gas',
             'amount_dollars': 45.00,
             'type': TransactionType.EXPENSE,
-            'date': '2026-01-20',
+            'date': datetime.strptime('2026-01-20', DT_FORMAT),
             'category': 'transport',
             'tags': [],
         },
@@ -131,7 +133,7 @@ def sample_transactions(app, db):
             'description': 'Restaurant',
             'amount_dollars': 75.25,
             'type': TransactionType.EXPENSE,
-            'date': '2026-02-01',
+            'date': datetime.strptime('2026-02-01', DT_FORMAT),
             'category': 'food',
             'tags': ['dining'],
         },
@@ -139,7 +141,8 @@ def sample_transactions(app, db):
 
     created_transactions = []
     for trans_data in transactions_data:
-        trans_id = service.create_transaction(**trans_data)
+        dto = TransactionDTO(**trans_data)
+        trans_id = service.create_transaction(dto)
         created_transactions.append(trans_id)
 
     db.commit()
