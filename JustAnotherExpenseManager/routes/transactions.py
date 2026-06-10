@@ -276,7 +276,7 @@ def export_transactions() -> Response:
     for trans in all_transactions:
         writer.writerow([
             trans.description,
-            f'{trans.amount_dollars:.2f}',
+            f'{(trans.amount_cents / 100):.2f}',
             trans.type.value,
             trans.category or '',
             trans.date,

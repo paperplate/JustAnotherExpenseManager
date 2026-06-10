@@ -120,6 +120,13 @@ class TestTransactionAPI:
         })
         assert response.status_code == 400
 
+    def test_export_transactions_csv(self, client, sample_transactions):
+        response = client.get('/api/transactions/export')
+        assert response.status_code == 200
+        assert response.headers['Content-Disposition'].startswith('attachment; filename=')
+        assert b'description,amount,type,category,date,tags' in response.data
+        assert b'Restaurant' in response.data
+
 
 # ---------------------------------------------------------------------------
 # Transaction filtering and pagination
