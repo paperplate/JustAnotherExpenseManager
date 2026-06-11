@@ -152,3 +152,82 @@ class TestRecurringService:
             # And it should become inactive
             db.refresh(tx)
             assert not tx.is_active
+
+    def test_process_weekly_transactions(self, app, db):
+        with app.app_context():
+            today = datetime.now()
+            past_date = today - timedelta(days=14)
+
+            tx = RecurringTransaction(
+                description="Weekly sub",
+                amount_cents=1500,
+                type=TransactionType.EXPENSE,
+                frequency=RecurringFrequency.WEEKLY,
+                start_date=past_date,
+                next_date=past_date,
+                is_active=True
+            )
+            db.add(tx)
+            db.commit()
+
+            process_recurring_transactions()
+
+            spawned_txs = db.query(Transaction).filter_by(description="Weekly sub").all()
+            assert len(spawned_txs) == 3
+            
+            db.refresh(tx)
+            assert tx.next_date > today or tx.next_date.date() > today.date()
+
+    def test_process_monthly_transactions_edge_case(self, app, db):
+        with app.app_context():
+            start_date = datetime(2023, 1, 31, 10, 0, 0)
+            end_date = datetime(2023, 4, 1, 10, 0, 0)
+            
+            tx = RecurringTransaction(
+                description="Monthly Edge",
+                amount_cents=2000,
+                type=TransactionType.EXPENSE,
+                frequency=RecurringFrequency.MONTHLY,
+                start_date=start_date,
+                next_date=start_date,
+                end_date=end_date,
+                is_active=True
+            )
+            db.add(tx)
+            db.commit()
+
+            process_recurring_transactions()
+
+            spawned_txs = db.query(Transaction).filter_by(description="Monthly Edge").order_by(Transaction.date).all()
+            assert len(spawned_txs) == 3
+            assert spawned_txs[0].date == datetime(2023, 1, 31, 10, 0, 0)
+            assert spawned_txs[1].date == datetime(2023, 2, 28, 10, 0, 0)
+            assert spawned_txs[2].date == datetime(2023, 3, 28, 10, 0, 0)
+
+    def test_process_yearly_leap_year(self, app, db):
+        with app.app_context():
+            start_date = datetime(2020, 2, 29, 10, 0, 0)
+            end_date = datetime(2024, 3, 1, 10, 0, 0)
+            
+            tx = RecurringTransaction(
+                description="Yearly Leap",
+                amount_cents=5000,
+                type=TransactionType.EXPENSE,
+                frequency=RecurringFrequency.YEARLY,
+                start_date=start_date,
+                next_date=start_date,
+                end_date=end_date,
+                is_active=True
+            )
+            db.add(tx)
+            db.commit()
+
+            process_recurring_transactions()
+
+            spawned_txs = db.query(Transaction).filter_by(description="Yearly Leap").order_by(Transaction.date).all()
+            assert len(spawned_txs) == 5
+            assert spawned_txs[0].date == datetime(2020, 2, 29, 10, 0, 0)
+            assert spawned_txs[1].date == datetime(2021, 2, 28, 10, 0, 0)
+            assert spawned_txs[2].date == datetime(2022, 2, 28, 10, 0, 0)
+            assert spawned_txs[3].date == datetime(2023, 2, 28, 10, 0, 0)
+            assert spawned_txs[4].date == datetime(2024, 2, 28, 10, 0, 0)
