@@ -102,6 +102,7 @@ declare global {
     deleteTag: (name: string) => Promise<void>;
     populateTestData: () => Promise<void>;
     exportTransactions: () => Promise<void>;
+    runRecurringTransactions: () => Promise<void>;
     // recurring.ts
     loadRecurring: () => Promise<void>;
     deleteRecurring: (id: number) => Promise<void>;

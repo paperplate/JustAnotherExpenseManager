@@ -103,3 +103,16 @@ def clear_all_transactions() -> Union[Response, Tuple[Response, int]]:
     except Exception as exc:  # pylint: disable=broad-except
         g.db.rollback()
         return jsonify({'error': str(exc)}), 500
+
+
+@settings_bp.route('/api/run-recurring', methods=['POST'])
+def run_recurring() -> Union[Response, Tuple[Response, int]]:
+    """
+    Manually trigger processing of recurring transactions.
+    """
+    try:
+        from JustAnotherExpenseManager.utils.services import process_recurring_transactions
+        process_recurring_transactions()
+        return jsonify({'success': True, 'message': 'Successfully processed recurring transactions'})
+    except Exception as exc:  # pylint: disable=broad-except
+        return jsonify({'error': str(exc)}), 500
