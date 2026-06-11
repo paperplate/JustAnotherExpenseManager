@@ -47,8 +47,7 @@ test.describe('Transactions UI', () => {
     let txPage = transactionsPage;
     await txPage.addTransactionBtn.click();
 
-    const descriptionInput = page.getByRole('textbox', { name: 'Description' });
-    const isInvalid = await descriptionInput.evaluate(el => !el.validity.valid);
+    const isInvalid = await transactionsPage.descriptionInput.evaluate(el => !el.validity.valid);
     expect(isInvalid).toBe(true);
   });
 

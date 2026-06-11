@@ -133,6 +133,9 @@ def get_transactions():
     time_range: Optional[str] = request.args.get('range', None)
     start_date: Optional[str] = request.args.get('start_date', None)
     end_date: Optional[str] = request.args.get('end_date', None)
+    description: Optional[str] = request.args.get('description', None)
+    min_amount: Optional[float] = request.args.get('min_amount', type=float)
+    max_amount: Optional[float] = request.args.get('max_amount', type=float)
 
     service = TransactionService(g.db)
     result = service.get_all_transactions(
@@ -141,7 +144,10 @@ def get_transactions():
         tags=tags_param,
         time_range=time_range,
         start_date=start_date,
-        end_date=end_date
+        end_date=end_date,
+        description=description,
+        min_amount=min_amount,
+        max_amount=max_amount
     )
 
     return _render_transactions_list(result)

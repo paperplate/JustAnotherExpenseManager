@@ -84,7 +84,7 @@ test.describe('Security', () => {
 
     test('should reject negative amounts via server', async ({ page, transactionsPage }) => {
       let txPage = transactionsPage;
-      await page.getByRole('textbox', { name: 'Description' }).fill('Negative Test');
+      await txPage.descriptionInput.fill('Negative Test');
       // Bypass HTML5 number min validation via JS — addTransaction cannot do this
       await page.evaluate(() => {
         const el = document.getElementById('amount') as HTMLInputElement;

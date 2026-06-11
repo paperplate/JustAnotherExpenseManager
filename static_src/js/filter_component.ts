@@ -90,6 +90,9 @@ interface UrlFilterParams {
   range: string;
   start_date: string;
   end_date: string;
+  description: string;
+  min_amount: string;
+  max_amount: string;
 }
 
 function getUrlFilterParams(): UrlFilterParams {
@@ -100,6 +103,9 @@ function getUrlFilterParams(): UrlFilterParams {
     range: params.get('range') ?? '',
     start_date: params.get('start_date') ?? '',
     end_date: params.get('end_date') ?? '',
+    description: params.get('description') ?? '',
+    min_amount: params.get('min_amount') ?? '',
+    max_amount: params.get('max_amount') ?? '',
   };
 }
 
@@ -120,6 +126,14 @@ function restoreTimeRangeFromUrl(): void {
   } else if (range) {
     timeRangeEl.value = range;
   }
+
+  const { description, min_amount, max_amount } = getUrlFilterParams();
+  const descEl = document.getElementById('filter-description') as HTMLInputElement | null;
+  const minEl = document.getElementById('min-amount') as HTMLInputElement | null;
+  const maxEl = document.getElementById('max-amount') as HTMLInputElement | null;
+  if (descEl) descEl.value = description;
+  if (minEl) minEl.value = min_amount;
+  if (maxEl) maxEl.value = max_amount;
 }
 
 async function loadCategories(): Promise<void> {
@@ -245,6 +259,9 @@ function applyFilters(): void {
   const timeRange = (document.getElementById('time-range') as HTMLSelectElement | null)?.value;
   const startDate = (document.getElementById('start-date') as HTMLInputElement | null)?.value;
   const endDate = (document.getElementById('end-date') as HTMLInputElement | null)?.value;
+  const description = (document.getElementById('filter-description') as HTMLInputElement | null)?.value;
+  const minAmount = (document.getElementById('min-amount') as HTMLInputElement | null)?.value;
+  const maxAmount = (document.getElementById('max-amount') as HTMLInputElement | null)?.value;
 
   const categories = Array.from(
     document.querySelectorAll<HTMLLIElement>('#category-options-list .filter-option.selected')
@@ -265,6 +282,9 @@ function applyFilters(): void {
   if (timeRange && timeRange !== 'custom') params.push(`range=${timeRange}`);
   if (startDate) params.push(`start_date=${startDate}`);
   if (endDate) params.push(`end_date=${endDate}`);
+  if (description) params.push(`description=${encodeURIComponent(description)}`);
+  if (minAmount) params.push(`min_amount=${encodeURIComponent(minAmount)}`);
+  if (maxAmount) params.push(`max_amount=${encodeURIComponent(maxAmount)}`);
 
   const url = params.length > 0 ? `${targetUrl}?${params.join('&')}` : targetUrl;
 

@@ -5,6 +5,7 @@ import { FilterComponent } from './FilterComponent';
 import { SplitBillComponent } from './SplitBillComponent';
 
 export class TransactionsPage extends BasePage {
+  readonly inputForm: Locator;
   readonly descriptionInput: Locator;
   readonly amountInput: Locator;
   readonly typeSelect: Locator;
@@ -25,6 +26,7 @@ export class TransactionsPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/transactions', 'Transactions - Expense Manager');
+    this.inputForm = page.getByTitle('Add Transaction');
     this.descriptionInput = page.getByRole('textbox', { name: 'Description' }).first();
     this.amountInput = page.getByRole('spinbutton', { name: 'Amount ($)' });
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
