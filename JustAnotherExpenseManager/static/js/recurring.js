@@ -41,26 +41,48 @@ var loadRecurring = async () => {
 		const listDiv = document.getElementById("recurring-list");
 		if (!listDiv) return;
 		if (data.length === 0) {
-			listDiv.innerHTML = "<p>No active recurring transactions.</p>";
+			listDiv.textContent = "No active recurring transactions.";
 			return;
 		}
-		let html = "<table class=\"transactions-table\"><thead><tr><th>Description</th><th>Amount</th><th>Type</th><th>Frequency</th><th>Next Date</th><th>Actions</th></tr></thead><tbody>";
+		const table = document.createElement("table");
+		table.className = "transactions-table";
+		const thead = document.createElement("thead");
+		thead.innerHTML = "<tr><th>Description</th><th>Amount</th><th>Type</th><th>Frequency</th><th>Next Date</th><th>Actions</th></tr>";
+		table.appendChild(thead);
+		const tbody = document.createElement("tbody");
 		data.forEach((tx) => {
-			html += `
-                <tr>
-                    <td>${tx.description}</td>
-                    <td class="amount amount-${tx.type}">$${(tx.amount_cents / 100).toFixed(2)}</td>
-                    <td><span class="type-badge type-${tx.type}">${tx.type}</span></td>
-                    <td>${tx.frequency}</td>
-                    <td>${tx.next_date}</td>
-                    <td>
-                        <button class="btn btn-delete" onclick="window.deleteRecurring(${tx.id})">Delete</button>
-                    </td>
-                </tr>
-            `;
+			const row = document.createElement("tr");
+			const descCell = document.createElement("td");
+			descCell.textContent = tx.description;
+			row.appendChild(descCell);
+			const amountCell = document.createElement("td");
+			amountCell.className = `amount amount-${tx.type}`;
+			amountCell.textContent = `$${(tx.amount_cents / 100).toFixed(2)}`;
+			row.appendChild(amountCell);
+			const typeCell = document.createElement("td");
+			const typeBadge = document.createElement("span");
+			typeBadge.className = `type-badge type-${tx.type}`;
+			typeBadge.textContent = tx.type;
+			typeCell.appendChild(typeBadge);
+			row.appendChild(typeCell);
+			const freqCell = document.createElement("td");
+			freqCell.textContent = tx.frequency;
+			row.appendChild(freqCell);
+			const dateCell = document.createElement("td");
+			dateCell.textContent = tx.next_date || "";
+			row.appendChild(dateCell);
+			const actionsCell = document.createElement("td");
+			const deleteBtn = document.createElement("button");
+			deleteBtn.className = "btn btn-delete";
+			deleteBtn.textContent = "Delete";
+			deleteBtn.addEventListener("click", () => deleteRecurring(tx.id));
+			actionsCell.appendChild(deleteBtn);
+			row.appendChild(actionsCell);
+			tbody.appendChild(row);
 		});
-		html += "</tbody></table>";
-		listDiv.innerHTML = html;
+		table.appendChild(tbody);
+		listDiv.textContent = "";
+		listDiv.appendChild(table);
 	} catch (e) {
 		console.error("Error loading recurring:", e);
 	}
