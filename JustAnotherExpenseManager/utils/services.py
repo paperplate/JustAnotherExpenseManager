@@ -42,9 +42,9 @@ def _apply_transaction_filters(
     if description:
         stmt = stmt.where(Transaction.description.icontains(description))
     if min_amount is not None:
-        stmt = stmt.where(Transaction.amount_cents >= math.ceil(min_amount * 100))
+        stmt = stmt.where(Transaction.amount_cents >= round(min_amount * 100))
     if max_amount is not None:
-        stmt = stmt.where(Transaction.amount_cents <= math.floor(max_amount * 100))
+        stmt = stmt.where(Transaction.amount_cents <= round(max_amount * 100))
 
     if time_range and not (start_date or end_date):
         today = datetime.now().date()
@@ -339,26 +339,26 @@ class StatsService:
         return result
 
     def count_months(
-            self,
-            categories: Optional[str] = None,
-            time_range: Optional[str] = None,
-            start_date: Optional[str] = None,
-            end_date: Optional[str] = None,
-            tags: Optional[str] = None,
-            description: Optional[str] = None,
-            min_amount: Optional[float] = None,
-            max_amount: Optional[float] = None
-        ) -> int:
-            """Count unique months with transactions."""
-            stmt = select(Transaction)
-            stmt = _apply_transaction_filters(
-                stmt, categories, tags, time_range, start_date, end_date,
-                description, min_amount, max_amount
-            )
-            transactions = self.db.scalars(stmt).all()
+        self,
+        categories: Optional[str] = None,
+        time_range: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        tags: Optional[str] = None,
+        description: Optional[str] = None,
+        min_amount: Optional[float] = None,
+        max_amount: Optional[float] = None
+    ) -> int:
+        """Count unique months with transactions."""
+        stmt = select(Transaction)
+        stmt = _apply_transaction_filters(
+            stmt, categories, tags, time_range, start_date, end_date,
+            description, min_amount, max_amount
+        )
+        transactions = self.db.scalars(stmt).all()
 
-            unique_months = set(trans.date.strftime('%Y-%m') for trans in transactions)
-            return len(unique_months)
+        unique_months = set(trans.date.strftime('%Y-%m') for trans in transactions)
+        return len(unique_months)
 
 class CategoryService:
     """Service class for category and tag management."""

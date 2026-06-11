@@ -26,7 +26,7 @@ export class TransactionsPage extends BasePage {
 
   constructor(page: Page) {
     super(page, '/transactions', 'Transactions - Expense Manager');
-    this.inputForm = page.getByTitle('Add Transaction');
+    this.inputForm = page.locator('#add-transaction-form');
     this.descriptionInput = page.getByRole('textbox', { name: 'Description' }).first();
     this.amountInput = page.getByRole('spinbutton', { name: 'Amount ($)' });
     this.typeSelect = page.getByRole('combobox', { name: 'Type' });
