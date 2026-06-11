@@ -5,8 +5,10 @@ scheduler = APScheduler()
 
 def init_scheduler(app):
     scheduler.init_app(app)
-    scheduler.start()
-    
+
+    if not app.config.get('TESTING', False):
+        scheduler.start()
+
     # Run daily at midnight
     @scheduler.task('cron', id='process_recurring', day='*', hour=0, minute=0)
     def run_process_recurring_transactions():

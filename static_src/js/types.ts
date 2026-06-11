@@ -14,7 +14,7 @@ interface RecurringTransaction {
   end_date?: string;
   next_date?: string;
   is_active?: boolean;
-  category: string;
+  category?: string;
 }
 
 interface ApiSuccess {

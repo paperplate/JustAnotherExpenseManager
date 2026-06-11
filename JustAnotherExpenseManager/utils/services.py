@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any, Tuple
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import func, select
 from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta # dependency of sqlalchemy
 
 from JustAnotherExpenseManager.models import Transaction, Tag, TransactionType, DT_FORMAT
 from JustAnotherExpenseManager.models.dtos import TransactionDTO
@@ -539,22 +540,22 @@ def process_recurring_transactions():
     from JustAnotherExpenseManager.models.dtos import RecurringFrequency
     from datetime import datetime, timedelta
     import calendar
-    
+
     session = db.session
     now = datetime.now()
-    
+
     active_recurring = session.query(RecurringTransaction).filter(
-        RecurringTransaction.is_active == True,
+        RecurringTransaction.is_active,
         RecurringTransaction.next_date <= now
     ).all()
-    
+
     for rt in active_recurring:
         while rt.next_date <= now:
             # Check end_date against next_date, not now, so we spawn exactly up to end_date
             if rt.end_date and rt.next_date > rt.end_date:
                 rt.is_active = False
                 break
-                
+
             # Spawn transaction
             new_tx = Transaction(
                 description=rt.description,
@@ -563,29 +564,29 @@ def process_recurring_transactions():
                 date=rt.next_date,
                 recurring_id=rt.id
             )
-            
+
             # Copy tags
             for tag in rt.tags:
                 new_tx.add_tag(tag)
-                
+
             session.add(new_tx)
-            
+
             # Update recurring dates
             rt.last_processed_date = rt.next_date
-            
+
             if rt.frequency == RecurringFrequency.DAILY:
                 rt.next_date = rt.next_date + timedelta(days=1)
             elif rt.frequency == RecurringFrequency.WEEKLY:
                 rt.next_date = rt.next_date + timedelta(days=7)
             elif rt.frequency == RecurringFrequency.MONTHLY:
-                # Handle variable month lengths roughly
-                days_in_month = calendar.monthrange(rt.next_date.year, rt.next_date.month)[1]
-                rt.next_date = rt.next_date + timedelta(days=days_in_month)
+                rt.next_date = rt.next_date + relativedelta(months=1)
             elif rt.frequency == RecurringFrequency.YEARLY:
                 # Handle leap years
                 try:
                     rt.next_date = rt.next_date.replace(year=rt.next_date.year + 1)
                 except ValueError:
-                    rt.next_date = rt.next_date.replace(year=rt.next_date.year + 1, day=28)
-                
+                    next_year = rt.next_date.year + 1
+                    max_day = calendar.monthrange(next_year, rt.next_date.month)[1]
+                    rt.next_date = rt.next_date.replace(year=next_year, day=min(rt.next_date.day, max_day))
+
     session.commit()

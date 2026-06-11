@@ -77,9 +77,14 @@ var deleteRecurring = async (id) => {
 var submitRecurring = async (e) => {
 	e.preventDefault();
 	const form = e.target;
+	const amountInput = form.querySelector("#amount");
+	if (!amountInput.validity.valid) {
+		alert("Please enter valid amount");
+		return;
+	}
 	const data = {
 		description: form.querySelector("#description").value,
-		amount_dollars: parseFloat(form.querySelector("#amount").value),
+		amount_dollars: parseFloat(amountInput.value),
 		type: form.querySelector("#type").value,
 		category: form.querySelector("#category").value,
 		frequency: form.querySelector("#frequency").value,
