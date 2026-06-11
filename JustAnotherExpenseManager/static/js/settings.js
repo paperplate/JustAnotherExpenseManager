@@ -2155,6 +2155,23 @@ async function populateTestData() {
 		if (resultDiv) resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
 	}
 }
+async function runRecurringTransactions() {
+	const resultDiv = document.getElementById("recurring-result");
+	if (resultDiv) resultDiv.innerHTML = "<p style=\"color: #666;\">⏳ Processing...</p>";
+	try {
+		const result = await (await fetch("/api/run-recurring", { method: "POST" })).json();
+		if (result.success) {
+			if (resultDiv) {
+				resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
+				setTimeout(() => {
+					resultDiv.innerHTML = "";
+				}, 3e3);
+			}
+		} else if (resultDiv) resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${result.error}</p>`;
+	} catch (error) {
+		if (resultDiv) resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${error.message}</p>`;
+	}
+}
 async function exportTransactions() {
 	const startDate = document.getElementById("export-start-date").value;
 	const endDate = document.getElementById("export-end-date").value;
@@ -2207,4 +2224,6 @@ window.closeEditTagModal = closeEditTagModal;
 window.saveEditTag = saveEditTag;
 window.deleteTag = deleteTag;
 window.populateTestData = populateTestData;
+window.exportTransactions = exportTransactions;
+window.runRecurringTransactions = runRecurringTransactions;
 //#endregion

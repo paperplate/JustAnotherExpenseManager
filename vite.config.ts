@@ -13,6 +13,7 @@ export default defineConfig({
         stats: resolve(__dirname, 'static_src/js/stats.ts'),
         transactions: resolve(__dirname, 'static_src/js/transactions.ts'),
         split_bill: resolve(__dirname, 'static_src/js/split_bill.ts'),
+        recurring: resolve(__dirname, 'static_src/js/recurring.ts'),
       },
       output: {
         entryFileNames: '[name].js',

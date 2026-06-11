@@ -15,7 +15,7 @@ from sqlalchemy import delete as sa_delete
 from JustAnotherExpenseManager import create_app
 from JustAnotherExpenseManager.config import TestingConfig
 from JustAnotherExpenseManager.utils.database import db as _db
-from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags
+from JustAnotherExpenseManager.models import Transaction, Tag, transaction_tags, RecurringTransaction, recurring_transaction_tags
 
 
 @contextmanager
@@ -33,7 +33,9 @@ def captured_templates(app):
 def _clear_tables(session):
     """Delete all rows from transactional tables in dependency order."""
     session.execute(sa_delete(transaction_tags))
+    session.execute(sa_delete(recurring_transaction_tags))
     session.query(Transaction).delete(synchronize_session=False)
+    session.query(RecurringTransaction).delete(synchronize_session=False)
     session.query(Tag).delete(synchronize_session=False)
     session.commit()
 

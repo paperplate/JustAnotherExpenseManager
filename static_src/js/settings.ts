@@ -440,6 +440,33 @@ async function populateTestData(): Promise<void> {
   }
 }
 
+async function runRecurringTransactions(): Promise<void> {
+  const resultDiv = document.getElementById('recurring-result');
+  if (resultDiv) resultDiv.innerHTML = '<p style="color: #666;">⏳ Processing...</p>';
+
+  try {
+    const response = await fetch('/api/run-recurring', { method: 'POST' });
+    const result: ApiResult = await response.json();
+
+    if (result.success) {
+      if (resultDiv) {
+        resultDiv.innerHTML = `<p style="color: #00b894; font-weight: 600;">✓ ${result.message}</p>`;
+        setTimeout(() => {
+          resultDiv.innerHTML = '';
+        }, 3000);
+      }
+    } else {
+      if (resultDiv) {
+        resultDiv.innerHTML = `<p style="color: #d63031;">❌ ${(result as ApiError).error}</p>`;
+      }
+    }
+  } catch (error) {
+    if (resultDiv) {
+      resultDiv.innerHTML = `<p style="color: #d63031;">❌ Error: ${(error as Error).message}</p>`;
+    }
+  }
+}
+
 async function exportTransactions(): Promise<void> {
   const startDate = (document.getElementById('export-start-date') as HTMLInputElement).value;
   const endDate = (document.getElementById('export-end-date') as HTMLInputElement).value;
@@ -499,4 +526,7 @@ window.editTag = editTag;
 window.closeEditTagModal = closeEditTagModal;
 window.saveEditTag = saveEditTag;
 window.deleteTag = deleteTag;
+
 window.populateTestData = populateTestData;
+window.exportTransactions = exportTransactions;
+window.runRecurringTransactions = runRecurringTransactions;

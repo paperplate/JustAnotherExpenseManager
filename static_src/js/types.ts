@@ -4,6 +4,19 @@ interface Category {
   category_name: string;
 }
 
+interface RecurringTransaction {
+  id?: number;
+  description: string;
+  amount_cents: number;
+  type: string;
+  frequency: string;
+  start_date: string;
+  end_date?: string;
+  next_date?: string;
+  is_active?: boolean;
+  category?: string;
+}
+
 interface ApiSuccess {
   success: true;
   message?: string;
@@ -89,6 +102,11 @@ declare global {
     deleteTag: (name: string) => Promise<void>;
     populateTestData: () => Promise<void>;
     exportTransactions: () => Promise<void>;
+    runRecurringTransactions: () => Promise<void>;
+    // recurring.ts
+    loadRecurring: () => Promise<void>;
+    deleteRecurring: (id: number) => Promise<void>;
+    submitRecurring: (e: Event) => Promise<void>;
   }
 }
 
@@ -101,4 +119,5 @@ export {
   SortableInstance,
   SortableOptions,
   SortableEvent,
+  RecurringTransaction,
 };
