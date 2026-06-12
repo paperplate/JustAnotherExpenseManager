@@ -48,7 +48,10 @@ function getUrlFilterParams() {
 		tags: params.get("tags")?.split(",").filter(Boolean) ?? [],
 		range: params.get("range") ?? "",
 		start_date: params.get("start_date") ?? "",
-		end_date: params.get("end_date") ?? ""
+		end_date: params.get("end_date") ?? "",
+		description: params.get("description") ?? "",
+		min_amount: params.get("min_amount") ?? "",
+		max_amount: params.get("max_amount") ?? ""
 	};
 }
 function restoreTimeRangeFromUrl() {
@@ -64,6 +67,13 @@ function restoreTimeRangeFromUrl() {
 		if (startEl) startEl.value = start_date;
 		if (endEl) endEl.value = end_date;
 	} else if (range) timeRangeEl.value = range;
+	const { description, min_amount, max_amount } = getUrlFilterParams();
+	const descEl = document.getElementById("filter-description");
+	const minEl = document.getElementById("min-amount");
+	const maxEl = document.getElementById("max-amount");
+	if (descEl) descEl.value = description;
+	if (minEl) minEl.value = min_amount;
+	if (maxEl) maxEl.value = max_amount;
 }
 async function loadCategories() {
 	try {
@@ -144,6 +154,9 @@ function applyFilters() {
 	const timeRange = document.getElementById("time-range")?.value;
 	const startDate = document.getElementById("start-date")?.value;
 	const endDate = document.getElementById("end-date")?.value;
+	const description = document.getElementById("filter-description")?.value;
+	const minAmount = document.getElementById("min-amount")?.value;
+	const maxAmount = document.getElementById("max-amount")?.value;
 	const categories = Array.from(document.querySelectorAll("#category-options-list .filter-option.selected")).map((el) => el.dataset.value).filter((v) => Boolean(v));
 	const tags = Array.from(document.querySelectorAll("#tag-options-list .filter-option.selected")).map((el) => el.dataset.value).filter((v) => Boolean(v));
 	const filterSection = document.querySelector(".filter-section");
@@ -155,6 +168,9 @@ function applyFilters() {
 	if (timeRange && timeRange !== "custom") params.push(`range=${timeRange}`);
 	if (startDate) params.push(`start_date=${startDate}`);
 	if (endDate) params.push(`end_date=${endDate}`);
+	if (description) params.push(`description=${encodeURIComponent(description)}`);
+	if (minAmount) params.push(`min_amount=${encodeURIComponent(minAmount)}`);
+	if (maxAmount) params.push(`max_amount=${encodeURIComponent(maxAmount)}`);
 	const url = params.length > 0 ? `${targetUrl}?${params.join("&")}` : targetUrl;
 	const newPageUrl = params.length > 0 ? `${window.location.pathname}?${params.join("&")}` : window.location.pathname;
 	history.pushState(null, "", newPageUrl);

@@ -36,6 +36,9 @@ def get_stats() -> str:
     time_range: Optional[str] = request.args.get('range', None)
     start_date: Optional[str] = request.args.get('start_date', None)
     end_date: Optional[str] = request.args.get('end_date', None)
+    description: Optional[str] = request.args.get('description', None)
+    min_amount: Optional[float] = request.args.get('min_amount', type=float)
+    max_amount: Optional[float] = request.args.get('max_amount', type=float)
     page: int = request.args.get('page', 1, type=int)
 
     # Use g.db (set by app.before_request)
@@ -43,7 +46,8 @@ def get_stats() -> str:
 
     # Get summary stats
     stats: Dict[str, float] = service.get_summary_stats(
-        categories_param, tags_param, time_range, start_date, end_date
+        categories_param, tags_param, time_range, start_date, end_date,
+        description, min_amount, max_amount
     )
 
     # Get all categories for dropdown
@@ -51,12 +55,13 @@ def get_stats() -> str:
 
     # Get category breakdown
     category_breakdown = service.get_category_breakdown(
-        categories_param, tags_param, time_range, start_date, end_date
+        categories_param, tags_param, time_range, start_date, end_date,
+        description, min_amount, max_amount
     )
 
     # Get monthly data with pagination
     monthly = service.get_monthly_data(
-        categories_param, tags_param
+        categories_param, tags_param, description, min_amount, max_amount
     )
 
     return render_template(
@@ -88,18 +93,22 @@ def chart_data() -> Response:
     time_range: Optional[str] = request.args.get('range', None)
     start_date: Optional[str] = request.args.get('start_date', None)
     end_date: Optional[str] = request.args.get('end_date', None)
+    description: Optional[str] = request.args.get('description', None)
+    min_amount: Optional[float] = request.args.get('min_amount', type=float)
+    max_amount: Optional[float] = request.args.get('max_amount', type=float)
 
     # Use g.db
     service = StatsService(g.db)  # Only pass db_session
 
     # Category data
     category_data = service.get_category_breakdown(
-        categories_param, tags_param, time_range, start_date, end_date
+        categories_param, tags_param, time_range, start_date, end_date,
+        description, min_amount, max_amount
     )
 
     # Monthly data
     monthly_data = service.get_monthly_data(
-        categories_param, tags_param
+        categories_param, tags_param, description, min_amount, max_amount
     )
 
     return jsonify({

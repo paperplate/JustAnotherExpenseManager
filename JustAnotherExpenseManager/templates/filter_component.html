@@ -13,6 +13,20 @@
     </div>
 
     <div class="filter-group">
+        <label for="filter-description">Description:</label>
+        <input type="text" id="filter-description" placeholder="Search description..." onchange="applyFilters()">
+    </div>
+
+    <div class="filter-group">
+        <label>Amount Range:</label>
+        <div style="display: flex; gap: 10px;">
+            <input type="number" id="min-amount" placeholder="Min" step="0.01" onchange="applyFilters()" style="width: 80px;">
+            <span>-</span>
+            <input type="number" id="max-amount" placeholder="Max" step="0.01" onchange="applyFilters()" style="width: 80px;">
+        </div>
+    </div>
+
+    <div class="filter-group">
         <label>Filter by Categories:</label>
         <details id="category-details" class="filter-details">
             <summary id="category-summary">All Categories</summary>
