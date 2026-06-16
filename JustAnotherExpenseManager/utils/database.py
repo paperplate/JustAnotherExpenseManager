@@ -102,7 +102,6 @@ def init_database(app: Flask) -> None:
         print(f"Using database: {db_type}")
 
     db.create_all()
-    _migrate_sort_order()
     _seed_default_categories()
 
     if not db_exists:
@@ -142,21 +141,7 @@ def check_health() -> bool:
         return False
 
 
-def _migrate_sort_order() -> None:
-    """
-    Add the ``sort_order`` column to ``tags`` if it does not already exist.
 
-    Safe to run on every startup — it is a no-op when the column is present.
-    Supports SQLite, PostgreSQL, and MySQL.
-    """
-    inspector = sa_inspect(db.engine)
-    tag_columns = [col['name'] for col in inspector.get_columns('tags')]
-    if 'sort_order' not in tag_columns:
-        db.session.execute(
-            text('ALTER TABLE tags ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
-        )
-        db.session.commit()
-        print("Migration applied: added sort_order column to tags.")
 
 
 def _seed_default_categories() -> None:
