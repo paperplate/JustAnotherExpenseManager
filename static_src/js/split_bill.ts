@@ -65,19 +65,30 @@ class SplitBillComponent {
   }
 
   private bindGlobalEvent(): void {
-    window.addEventListener("splitBillUpdate", (e: Event) => {
+    window.addEventListener("splitBillUpdate", async (e: Event) => {
       const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail ?? {};
-      this.total = detail.total || 0;
       console.log('Received splitBillUpdate:', detail);
-      if (detail.source === 'transactions') {
-        const txs = Array.isArray(detail.transactions) ? detail.transactions : [];
-        //this.transactions = detail.transactions || [];
-        this.transactions = txs.map((tx) => ({
-          amount: Number(tx?.amount) || 0,
-          tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
+      if (detail.source === 'transactions' && detail.transactions && detail.transactions.length > 0) {
+        this.total = detail.total || 0;
+        this.transactions = detail.transactions.map((tx) => ({
+          amount: Number(tx.amount) || 0,
+          tags: Array.isArray(tx.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
         }));
+        this.renderTotalAndTable();
+      } else {
+        try {
+          const url = '/api/transactions' + window.location.search;
+          const separator = url.includes('?') ? '&' : '?';
+          const res = await fetch(url + separator + 'json=true');
+          const data = await res.json();
+          this.transactions = data.transactions || [];
+          this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+        } catch (err) {
+          console.error(err);
+          this.total = detail.total || 0;
+        }
+        this.renderTotalAndTable();
       }
-      this.renderTotalAndTable();
     });
   }
 

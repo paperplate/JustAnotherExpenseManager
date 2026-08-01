@@ -418,16 +418,20 @@ function emitSplitBillTotal() {
 			});
 		}
 	});
-	const useChecked = checkedTx.length > 0;
-	const total = useChecked ? checkedTotal : uncheckedTotal;
-	const transactions = useChecked ? checkedTx : uncheckedTx;
-	window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
-		total,
+	if (checkedTx.length > 0) window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
+		total: checkedTotal,
 		source: "transactions",
-		transactions
+		transactions: checkedTx
+	} }));
+	else window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
+		total: uncheckedTotal,
+		source: "summary"
 	} }));
 }
 document.querySelector("#filter-form")?.addEventListener("submit", () => {
+	setTimeout(emitSplitBillTotal, 100);
+});
+window.addEventListener("transactionsUpdated", () => {
 	setTimeout(emitSplitBillTotal, 100);
 });
 document.addEventListener("change", (e) => {

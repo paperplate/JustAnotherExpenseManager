@@ -315,7 +315,7 @@ function applyFilters(): void {
               })
             );
           }
-        } else if (targetElement === '.transactions-container') {
+        } else if (targetElement === '#transactions-list') {
           window.dispatchEvent(new CustomEvent('transactionsUpdated'));
         }
       }

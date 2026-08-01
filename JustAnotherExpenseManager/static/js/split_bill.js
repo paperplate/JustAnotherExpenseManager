@@ -41,15 +41,28 @@ var SplitBillComponent = class {
 		} catch {}
 	}
 	bindGlobalEvent() {
-		window.addEventListener("splitBillUpdate", (e) => {
+		window.addEventListener("splitBillUpdate", async (e) => {
 			const detail = e.detail ?? {};
-			this.total = detail.total || 0;
 			console.log("Received splitBillUpdate:", detail);
-			if (detail.source === "transactions") this.transactions = (Array.isArray(detail.transactions) ? detail.transactions : []).map((tx) => ({
-				amount: Number(tx?.amount) || 0,
-				tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === "string") : []
-			}));
-			this.renderTotalAndTable();
+			if (detail.source === "transactions" && detail.transactions && detail.transactions.length > 0) {
+				this.total = detail.total || 0;
+				this.transactions = detail.transactions.map((tx) => ({
+					amount: Number(tx.amount) || 0,
+					tags: Array.isArray(tx.tags) ? tx.tags.filter((t) => typeof t === "string") : []
+				}));
+				this.renderTotalAndTable();
+			} else {
+				try {
+					const url = "/api/transactions" + window.location.search;
+					const separator = url.includes("?") ? "&" : "?";
+					this.transactions = (await (await fetch(url + separator + "json=true")).json()).transactions || [];
+					this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+				} catch (err) {
+					console.error(err);
+					this.total = detail.total || 0;
+				}
+				this.renderTotalAndTable();
+			}
 		});
 	}
 	generateId() {

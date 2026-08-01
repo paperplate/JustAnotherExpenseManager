@@ -185,7 +185,7 @@ function applyFilters() {
 					total: parseFloat(expenseElement.textContent?.replace(/[$,]/g, "") || "0") || 0,
 					source: "summary"
 				} }));
-			} else if (targetElement === ".transactions-container") window.dispatchEvent(new CustomEvent("transactionsUpdated"));
+			} else if (targetElement === "#transactions-list") window.dispatchEvent(new CustomEvent("transactionsUpdated"));
 		}
 	}).catch((error) => console.error("Error applying filters:", error));
 }
