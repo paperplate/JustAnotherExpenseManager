@@ -7,6 +7,7 @@ var SplitBillComponent = class {
 	people = [];
 	availableTags = [];
 	nextId = 1;
+	currentFetchController = null;
 	constructor(container) {
 		this.container = container;
 		this.loadPeople();
@@ -41,15 +42,38 @@ var SplitBillComponent = class {
 		} catch {}
 	}
 	bindGlobalEvent() {
-		window.addEventListener("splitBillUpdate", (e) => {
+		window.addEventListener("splitBillUpdate", async (e) => {
 			const detail = e.detail ?? {};
-			this.total = detail.total || 0;
 			console.log("Received splitBillUpdate:", detail);
-			if (detail.source === "transactions") this.transactions = (Array.isArray(detail.transactions) ? detail.transactions : []).map((tx) => ({
-				amount: Number(tx?.amount) || 0,
-				tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === "string") : []
-			}));
-			this.renderTotalAndTable();
+			if (detail.source === "transactions" && detail.transactions && detail.transactions.length > 0) {
+				this.total = detail.total || 0;
+				this.transactions = detail.transactions.map((tx) => ({
+					amount: Number(tx.amount) || 0,
+					tags: Array.isArray(tx.tags) ? tx.tags.filter((t) => typeof t === "string") : []
+				}));
+				this.renderTotalAndTable();
+			} else {
+				if (this.currentFetchController) this.currentFetchController.abort();
+				this.currentFetchController = new AbortController();
+				const signal = this.currentFetchController.signal;
+				try {
+					const url = "/api/transactions" + window.location.search;
+					const separator = url.includes("?") ? "&" : "?";
+					const txs = (await (await fetch(url + separator + "json=true", { signal })).json()).transactions || [];
+					if (detail.source === "summary") {
+						this.total = detail.total || 0;
+						this.transactions = txs.filter((tx) => tx.amount > 0);
+					} else {
+						this.transactions = txs;
+						this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+					}
+				} catch (err) {
+					if (err.name === "AbortError") return;
+					console.error(err);
+					this.total = detail.total || 0;
+				}
+				this.renderTotalAndTable();
+			}
 		});
 	}
 	generateId() {

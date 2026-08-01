@@ -23,6 +23,7 @@ class SplitBillComponent {
   private people: Person[] = [];
   private availableTags: string[] = [];
   private nextId: number = 1;
+  private currentFetchController: AbortController | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -65,19 +66,45 @@ class SplitBillComponent {
   }
 
   private bindGlobalEvent(): void {
-    window.addEventListener("splitBillUpdate", (e: Event) => {
+    window.addEventListener("splitBillUpdate", async (e: Event) => {
       const detail = (e as CustomEvent<SplitBillUpdateEvent>).detail ?? {};
-      this.total = detail.total || 0;
       console.log('Received splitBillUpdate:', detail);
-      if (detail.source === 'transactions') {
-        const txs = Array.isArray(detail.transactions) ? detail.transactions : [];
-        //this.transactions = detail.transactions || [];
-        this.transactions = txs.map((tx) => ({
-          amount: Number(tx?.amount) || 0,
-          tags: Array.isArray(tx?.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
+      if (detail.source === 'transactions' && detail.transactions && detail.transactions.length > 0) {
+        this.total = detail.total || 0;
+        this.transactions = detail.transactions.map((tx) => ({
+          amount: Number(tx.amount) || 0,
+          tags: Array.isArray(tx.tags) ? tx.tags.filter((t) => typeof t === 'string') : []
         }));
+        this.renderTotalAndTable();
+      } else {
+        if (this.currentFetchController) {
+          this.currentFetchController.abort();
+        }
+        this.currentFetchController = new AbortController();
+        const signal = this.currentFetchController.signal;
+
+        try {
+          const url = '/api/transactions' + window.location.search;
+          const separator = url.includes('?') ? '&' : '?';
+          const res = await fetch(url + separator + 'json=true', { signal });
+          const data = await res.json();
+          const txs = data.transactions || [];
+          if (detail.source === 'summary') {
+            this.total = detail.total || 0;
+            this.transactions = txs.filter((tx: any) => tx.amount > 0);
+          } else {
+            this.transactions = txs;
+            this.total = this.transactions.reduce((sum: number, tx: any) => sum + tx.amount, 0);
+          }
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            return; // Ignore aborted fetch
+          }
+          console.error(err);
+          this.total = detail.total || 0;
+        }
+        this.renderTotalAndTable();
       }
-      this.renderTotalAndTable();
     });
   }
 

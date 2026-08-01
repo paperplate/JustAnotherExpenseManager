@@ -150,6 +150,26 @@ def get_transactions():
         max_amount=max_amount
     )
 
+    if request.args.get('json') == 'true':
+        all_transactions = service.get_filtered_transactions_unpaginated(
+            categories=categories_param,
+            tags=tags_param,
+            time_range=time_range,
+            start_date=start_date,
+            end_date=end_date,
+            description=description,
+            min_amount=min_amount,
+            max_amount=max_amount
+        )
+        
+        tx_list = []
+        for t in all_transactions:
+            amount = -(t.amount_cents / 100.0) if t.type.value == 'income' else (t.amount_cents / 100.0)
+            tag_names = [tag.name for tag in t.tags if not tag.name.startswith('category:')]
+            tx_list.append({'amount': amount, 'tags': tag_names})
+        
+        return jsonify({'transactions': tx_list})
+
     return _render_transactions_list(result)
 
 

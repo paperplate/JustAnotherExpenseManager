@@ -279,9 +279,12 @@ function applyFilters(): void {
 
   if (categories.length > 0) params.push(`categories=${categories.join(',')}`);
   if (tags.length > 0) params.push(`tags=${tags.join(',')}`);
-  if (timeRange && timeRange !== 'custom') params.push(`range=${timeRange}`);
-  if (startDate) params.push(`start_date=${startDate}`);
-  if (endDate) params.push(`end_date=${endDate}`);
+  if (timeRange === 'custom') {
+    if (startDate) params.push(`start_date=${startDate}`);
+    if (endDate) params.push(`end_date=${endDate}`);
+  } else if (timeRange) {
+    params.push(`range=${timeRange}`);
+  }
   if (description) params.push(`description=${encodeURIComponent(description)}`);
   if (minAmount) params.push(`min_amount=${encodeURIComponent(minAmount)}`);
   if (maxAmount) params.push(`max_amount=${encodeURIComponent(maxAmount)}`);
@@ -315,7 +318,7 @@ function applyFilters(): void {
               })
             );
           }
-        } else if (targetElement === '.transactions-container') {
+        } else if (targetElement === '#transactions-list') {
           window.dispatchEvent(new CustomEvent('transactionsUpdated'));
         }
       }

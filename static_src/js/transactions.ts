@@ -537,17 +537,27 @@ function emitSplitBillTotal(): void {
   });
 
   const useChecked = checkedTx.length > 0;
-  const total = useChecked ? checkedTotal : uncheckedTotal;
-  const transactions = useChecked ? checkedTx : uncheckedTx;
-
-  window.dispatchEvent(
-    new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
-      detail: { total, source: 'transactions', transactions },
-    })
-  );
+  
+  if (useChecked) {
+    window.dispatchEvent(
+      new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
+        detail: { total: checkedTotal, source: 'transactions', transactions: checkedTx },
+      })
+    );
+  } else {
+    window.dispatchEvent(
+      new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
+        detail: { total: uncheckedTotal, source: 'summary' },
+      })
+    );
+  }
 }
 
 document.querySelector('#filter-form')?.addEventListener('submit', () => {
+  setTimeout(emitSplitBillTotal, 100);
+});
+
+window.addEventListener('transactionsUpdated', () => {
   setTimeout(emitSplitBillTotal, 100);
 });
 

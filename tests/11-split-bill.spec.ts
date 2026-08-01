@@ -196,10 +196,11 @@ test.describe('Split Bill', () => {
     await split.expectTotal(950);
   });
 
-  test('total updates when category filter is applied', async ({ request, summaryPage }) => {
+  test('total updates when category filter is applied', async ({ request, summaryPage, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [
       { description: 'Rent', amount: 800, type: 'expense', category: 'other' },
       { description: 'Groceries', amount: 150, type: 'expense', category: 'food' },
+      { description: 'Refund', amount: 50, type: 'income', category: 'food' },
     ]);
 
     await summaryPage.goto();
@@ -210,7 +211,20 @@ test.describe('Split Bill', () => {
     await summaryPage.scrollToSummary();
 
     await summaryPage.filter.selectCategory('food');
+    // Summary page expense-card total is expense-only
     await split.expectTotal(150);
+
+    // Also verify consistent behavior on Transactions page
+    await transactionsPage.goto();
+    await transactionsPage.scrollToTotals();
+    const splitTx = new SplitBillComponent(transactionsPage.page);
+    await splitTx.clearSessionStorage();
+    await transactionsPage.page.reload();
+    await transactionsPage.scrollToTotals();
+
+    await transactionsPage.filter.selectCategory('food');
+    // Transactions page defaults to net total of visible rows (no selection)
+    await splitTx.expectTotal(100);
   });
 
   // ── Total reflects transactions page ─────────────────────────────────────────
