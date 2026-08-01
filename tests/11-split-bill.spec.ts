@@ -200,6 +200,7 @@ test.describe('Split Bill', () => {
     await seedTransactionsViaAPI(request, [
       { description: 'Rent', amount: 800, type: 'expense', category: 'other' },
       { description: 'Groceries', amount: 150, type: 'expense', category: 'food' },
+      { description: 'Refund', amount: 50, type: 'income', category: 'food' },
     ]);
 
     await summaryPage.goto();
@@ -210,6 +211,7 @@ test.describe('Split Bill', () => {
     await summaryPage.scrollToSummary();
 
     await summaryPage.filter.selectCategory('food');
+    // Summary page expense-card total is expense-only
     await split.expectTotal(150);
 
     // Also verify consistent behavior on Transactions page
@@ -221,7 +223,8 @@ test.describe('Split Bill', () => {
     await transactionsPage.scrollToTotals();
 
     await transactionsPage.filter.selectCategory('food');
-    await splitTx.expectTotal(150);
+    // Transactions page defaults to net total of visible rows (no selection)
+    await splitTx.expectTotal(100);
   });
 
   // ── Total reflects transactions page ─────────────────────────────────────────

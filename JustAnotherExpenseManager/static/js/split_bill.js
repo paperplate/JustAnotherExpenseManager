@@ -59,8 +59,14 @@ var SplitBillComponent = class {
 				try {
 					const url = "/api/transactions" + window.location.search;
 					const separator = url.includes("?") ? "&" : "?";
-					this.transactions = (await (await fetch(url + separator + "json=true", { signal })).json()).transactions || [];
-					this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+					const txs = (await (await fetch(url + separator + "json=true", { signal })).json()).transactions || [];
+					if (detail.source === "summary") {
+						this.total = detail.total || 0;
+						this.transactions = txs.filter((tx) => tx.amount > 0);
+					} else {
+						this.transactions = txs;
+						this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+					}
 				} catch (err) {
 					if (err.name === "AbortError") return;
 					console.error(err);

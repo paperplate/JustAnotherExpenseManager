@@ -88,8 +88,14 @@ class SplitBillComponent {
           const separator = url.includes('?') ? '&' : '?';
           const res = await fetch(url + separator + 'json=true', { signal });
           const data = await res.json();
-          this.transactions = data.transactions || [];
-          this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
+          const txs = data.transactions || [];
+          if (detail.source === 'summary') {
+            this.total = detail.total || 0;
+            this.transactions = txs.filter((tx: any) => tx.amount > 0);
+          } else {
+            this.transactions = txs;
+            this.total = this.transactions.reduce((sum: number, tx: any) => sum + tx.amount, 0);
+          }
         } catch (err: any) {
           if (err.name === 'AbortError') {
             return; // Ignore aborted fetch
