@@ -166,6 +166,25 @@ test.describe('Summary page — filter combinations', () => {
     await expect(page.getByLabel('End Date:')).toBeVisible();
   });
 
+  test('toggling from custom range to preset range clears custom parameters', async ({ page, summaryPage }) => {
+    const yesterday = new Date(Date.now() - 86_400_000).toISOString().split('T')[0];
+    await summaryPage.filter.selectTime('custom', yesterday, yesterday);
+    
+    // Seeded transactions (TODAY) should be excluded
+    await expect(summaryPage.summaryExpenseValue).toHaveText('$0.00');
+    expect(page.url()).toContain('start_date=');
+    expect(page.url()).toContain('end_date=');
+    
+    // Switch to current month
+    await summaryPage.filter.selectTime('current_month');
+    
+    // Seeded transactions return, URL drops start_date/end_date and adds range
+    await expect(summaryPage.summaryExpenseValue).toHaveText('$265.00');
+    expect(page.url()).not.toContain('start_date=');
+    expect(page.url()).not.toContain('end_date=');
+    expect(page.url()).toContain('range=current_month');
+  });
+
   // ── Category + Time range ─────────────────────────────────────────────────────
 
   test('category:food + current_month — food expenses within current month', async ({ summaryPage }) => {
