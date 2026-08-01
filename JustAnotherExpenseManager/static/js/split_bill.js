@@ -7,6 +7,7 @@ var SplitBillComponent = class {
 	people = [];
 	availableTags = [];
 	nextId = 1;
+	currentFetchController = null;
 	constructor(container) {
 		this.container = container;
 		this.loadPeople();
@@ -52,12 +53,16 @@ var SplitBillComponent = class {
 				}));
 				this.renderTotalAndTable();
 			} else {
+				if (this.currentFetchController) this.currentFetchController.abort();
+				this.currentFetchController = new AbortController();
+				const signal = this.currentFetchController.signal;
 				try {
 					const url = "/api/transactions" + window.location.search;
 					const separator = url.includes("?") ? "&" : "?";
-					this.transactions = (await (await fetch(url + separator + "json=true")).json()).transactions || [];
+					this.transactions = (await (await fetch(url + separator + "json=true", { signal })).json()).transactions || [];
 					this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
 				} catch (err) {
+					if (err.name === "AbortError") return;
 					console.error(err);
 					this.total = detail.total || 0;
 				}

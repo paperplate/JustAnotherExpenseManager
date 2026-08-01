@@ -23,6 +23,7 @@ class SplitBillComponent {
   private people: Person[] = [];
   private availableTags: string[] = [];
   private nextId: number = 1;
+  private currentFetchController: AbortController | null = null;
 
   constructor(container: HTMLElement) {
     this.container = container;
@@ -76,14 +77,23 @@ class SplitBillComponent {
         }));
         this.renderTotalAndTable();
       } else {
+        if (this.currentFetchController) {
+          this.currentFetchController.abort();
+        }
+        this.currentFetchController = new AbortController();
+        const signal = this.currentFetchController.signal;
+
         try {
           const url = '/api/transactions' + window.location.search;
           const separator = url.includes('?') ? '&' : '?';
-          const res = await fetch(url + separator + 'json=true');
+          const res = await fetch(url + separator + 'json=true', { signal });
           const data = await res.json();
           this.transactions = data.transactions || [];
           this.total = this.transactions.reduce((sum, tx) => sum + tx.amount, 0);
-        } catch (err) {
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            return; // Ignore aborted fetch
+          }
           console.error(err);
           this.total = detail.total || 0;
         }

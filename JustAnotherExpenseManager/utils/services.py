@@ -167,6 +167,26 @@ class TransactionService:
             'all_months': sorted_months
         }
 
+    def get_filtered_transactions_unpaginated(
+        self,
+        categories: Optional[str] = None,
+        tags: Optional[str] = None,
+        time_range: Optional[str] = None,
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        description: Optional[str] = None,
+        min_amount: Optional[float] = None,
+        max_amount: Optional[float] = None
+    ) -> List[Transaction]:
+        """Get all matching transactions without pagination."""
+        stmt = select(Transaction).options(selectinload(Transaction.tags))
+        stmt = _apply_transaction_filters(
+            stmt, categories, tags, time_range, start_date, end_date,
+            description, min_amount, max_amount
+        )
+        stmt = stmt.order_by(Transaction.date.desc(), Transaction.id.desc())
+        return self.db.scalars(stmt).all()
+
     def update_transaction(
         self,
         transaction_id: int,

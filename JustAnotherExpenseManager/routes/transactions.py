@@ -151,28 +151,21 @@ def get_transactions():
     )
 
     if request.args.get('json') == 'true':
-        all_transactions = []
-        for page_num in range(1, result['total_pages'] + 1):
-            if page_num == page:
-                all_transactions.extend(result['transactions'])
-            else:
-                page_result = service.get_all_transactions(
-                    page=page_num,
-                    categories=categories_param,
-                    tags=tags_param,
-                    time_range=time_range,
-                    start_date=start_date,
-                    end_date=end_date,
-                    description=description,
-                    min_amount=min_amount,
-                    max_amount=max_amount
-                )
-                all_transactions.extend(page_result['transactions'])
+        all_transactions = service.get_filtered_transactions_unpaginated(
+            categories=categories_param,
+            tags=tags_param,
+            time_range=time_range,
+            start_date=start_date,
+            end_date=end_date,
+            description=description,
+            min_amount=min_amount,
+            max_amount=max_amount
+        )
         
         tx_list = []
         for t in all_transactions:
             amount = -(t.amount_cents / 100.0) if t.type.value == 'income' else (t.amount_cents / 100.0)
-            tag_names = [tag for tag in t.tags if not tag.startswith('category:')]
+            tag_names = [tag.name for tag in t.tags if not tag.name.startswith('category:')]
             tx_list.append({'amount': amount, 'tags': tag_names})
         
         return jsonify({'transactions': tx_list})
