@@ -15,8 +15,7 @@ class Base(DeclarativeBase, MappedAsDataclass):
 
 
 
-# db is now initialized later, conditionally, to avoid circular imports on module load.
-db: SQLAlchemy
+db =SQLAlchemy(model_class=Base)
 
 
 def build_database_url(
