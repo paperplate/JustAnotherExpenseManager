@@ -14,7 +14,7 @@ class Base(DeclarativeBase, MappedAsDataclass):
     pass
 
 
-db = SQLAlchemy(model_class=Base)
+db = SQLAlchemy(base=Base)
 
 
 def build_database_url(
