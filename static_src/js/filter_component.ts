@@ -306,19 +306,7 @@ function applyFilters(): void {
       const target = document.querySelector(targetElement);
       if (target) {
         target.innerHTML = html;
-        if (targetElement === '#stats-container') {
-          const expenseElement = target.querySelector<HTMLElement>('.summary-card.expense .summary-value');
-          if (expenseElement) {
-            window.dispatchEvent(
-              new CustomEvent('splitBillUpdate', {
-                detail: {
-                  total: parseFloat(expenseElement.textContent?.replace(/[$,]/g, '') || '0') || 0,
-                  source: 'summary'
-                },
-              })
-            );
-          }
-        } else if (targetElement === '#transactions-list') {
+        if (targetElement === '#transactions-list') {
           window.dispatchEvent(new CustomEvent('transactionsUpdated'));
         }
       }

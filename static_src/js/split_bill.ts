@@ -10,7 +10,7 @@ interface SplitBillTransaction {
 
 interface SplitBillUpdateEvent {
   total: number;
-  source: "summary" | "transactions";
+  source: "visible" | "transactions";
   transactions?: SplitBillTransaction[];
 }
 
@@ -89,7 +89,7 @@ class SplitBillComponent {
           const res = await fetch(url + separator + 'json=true', { signal });
           const data = await res.json();
           const txs = data.transactions || [];
-          if (detail.source === 'summary') {
+          if (detail.source === 'visible') {
             this.total = detail.total || 0;
             this.transactions = txs.filter((tx: any) => tx.amount > 0);
           } else {

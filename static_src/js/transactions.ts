@@ -547,7 +547,7 @@ function emitSplitBillTotal(): void {
   } else {
     window.dispatchEvent(
       new CustomEvent<SplitBillUpdateEvent>('splitBillUpdate', {
-        detail: { total: uncheckedTotal, source: 'summary' },
+        detail: { total: uncheckedTotal, source: 'visible' },
       })
     );
   }

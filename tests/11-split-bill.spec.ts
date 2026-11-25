@@ -2,11 +2,10 @@
  * Split Bill Feature Tests
  *
  * Covers:
- *   - Component rendering on summary and transactions pages
+ *   - Component rendering on transactions page (and absence from summary)
  *   - Adding / removing people (tags)
  *   - Automatic amount splitting based on transaction tags
  *   - Remainder row display for unallocated amounts
- *   - Total reflects summary expense card
  *   - Total reflects visible transactions (no selection)
  *   - Total reflects only checked rows (selection mode)
  *   - sessionStorage persistence across filter changes
@@ -24,12 +23,10 @@ test.describe('Split Bill', () => {
 
   // ── Rendering ─────────────────────────────────────────────────────────────────
 
-  test('component is visible on summary page', async ({ summaryPage }) => {
+  test('component is not present on summary page', async ({ summaryPage }) => {
     await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
-    await expect(split.root).toBeVisible();
-    await expect(split.nameInput).toBeVisible();
-    await expect(split.addBtn).toBeVisible();
+    await summaryPage.scrollToSummary();
+    await expect(new SplitBillComponent(summaryPage.page).root).toHaveCount(0);
   });
 
   test('component is visible on transactions page', async ({ transactionsPage }) => {
@@ -39,22 +36,22 @@ test.describe('Split Bill', () => {
     await expect(split.nameInput).toBeVisible();
   });
 
-  test('shows empty state before any people are added', async ({ summaryPage }) => {
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+  test('shows empty state before any people are added', async ({ transactionsPage }) => {
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
     await expect(split.tbody).toContainText('Add people (tags) above to split the bill based on transaction tags.');
   });
 
   // ── Add / Remove people ───────────────────────────────────────────────────────
 
-  test('adds a person via button click', async ({ request, summaryPage }) => {
+  test('adds a person via button click', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [{ description: 'Tx', amount: 10, type: 'expense', category: 'food', tags: 'Alice' }]);
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addPerson('Alice');
     await expect(split.row('Alice')).toBeVisible();
@@ -62,23 +59,23 @@ test.describe('Split Bill', () => {
 
 
 
-  test('clears name input after adding', async ({ request, summaryPage }) => {
+  test('clears name input after adding', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [{ description: 'Tx', amount: 10, type: 'expense', category: 'food', tags: 'Alice' }]);
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addPerson('Alice');
     await expect(split.nameInput).toHaveValue('');
   });
 
-  test('removes a person', async ({ request, summaryPage }) => {
+  test('removes a person', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [{ description: 'Tx', amount: 10, type: 'expense', category: 'food', tags: 'Alice,Bob' }]);
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addPerson('Alice');
     await split.addPerson('Bob');
@@ -87,23 +84,23 @@ test.describe('Split Bill', () => {
     await expect(split.row('Bob')).toBeVisible();
   });
 
-  test('shows empty state after removing all people', async ({ request, summaryPage }) => {
+  test('shows empty state after removing all people', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [{ description: 'Tx', amount: 10, type: 'expense', category: 'food', tags: 'Alice' }]);
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addPerson('Alice');
     await split.removeBtn('Alice').click();
     await expect(split.tbody).toContainText('Add people (tags) above to split the bill based on transaction tags.');
   });
 
-  test('ignores empty name input', async ({ summaryPage }) => {
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+  test('ignores empty name input', async ({ transactionsPage }) => {
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addBtn.click();
     await expect(split.tbody).toContainText('Add people (tags) above to split the bill based on transaction tags.');
@@ -175,56 +172,25 @@ test.describe('Split Bill', () => {
     await expect(split.remainderRow()).not.toHaveClass(/split-remainder-nonzero/);
   });
 
-  // ── Total reflects summary expense card ──────────────────────────────────────
+  // ── Total follows filters on transactions page ───────────────────────────────
 
-  test('total matches expense card value on summary page', async ({ request, summaryPage }) => {
-    await seedTransactionsViaAPI(request, [
-      { description: 'Rent', amount: 800, type: 'expense', category: 'other' },
-      { description: 'Groceries', amount: 150, type: 'expense', category: 'food' },
-      { description: 'Salary', amount: 3000, type: 'income', category: 'salary' },
-    ]);
-
-    await summaryPage.goto();
-    await summaryPage.scrollToSummary();
-
-    const split = new SplitBillComponent(summaryPage.page);
-    await split.clearSessionStorage();
-    await summaryPage.page.reload();
-    await summaryPage.scrollToSummary();
-
-    // expenses = 800 + 150 = 950
-    await split.expectTotal(950);
-  });
-
-  test('total updates when category filter is applied', async ({ request, summaryPage, transactionsPage }) => {
+  test('total updates when category filter is applied', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [
       { description: 'Rent', amount: 800, type: 'expense', category: 'other' },
       { description: 'Groceries', amount: 150, type: 'expense', category: 'food' },
       { description: 'Refund', amount: 50, type: 'income', category: 'food' },
     ]);
 
-    await summaryPage.goto();
-    await summaryPage.scrollToSummary();
-    const split = new SplitBillComponent(summaryPage.page);
-    await split.clearSessionStorage();
-    await summaryPage.page.reload();
-    await summaryPage.scrollToSummary();
-
-    await summaryPage.filter.selectCategory('food');
-    // Summary page expense-card total is expense-only
-    await split.expectTotal(150);
-
-    // Also verify consistent behavior on Transactions page
     await transactionsPage.goto();
     await transactionsPage.scrollToTotals();
-    const splitTx = new SplitBillComponent(transactionsPage.page);
-    await splitTx.clearSessionStorage();
+    const split = new SplitBillComponent(transactionsPage.page);
+    await split.clearSessionStorage();
     await transactionsPage.page.reload();
     await transactionsPage.scrollToTotals();
 
     await transactionsPage.filter.selectCategory('food');
-    // Transactions page defaults to net total of visible rows (no selection)
-    await splitTx.expectTotal(100);
+    // Net total of visible rows (no selection): 150 - 50
+    await split.expectTotal(100);
   });
 
   // ── Total reflects transactions page ─────────────────────────────────────────
@@ -334,45 +300,45 @@ test.describe('Split Bill', () => {
 
   // ── sessionStorage persistence ────────────────────────────────────────────────
 
-  test('people persist after navigating away and back', async ({ request, summaryPage }) => {
+  test('people persist after navigating away and back', async ({ request, transactionsPage }) => {
     await seedTransactionsViaAPI(request, [{ description: 'Tx', amount: 10, type: 'expense', category: 'food', tags: 'Alice,Bob' }]);
-    await summaryPage.goto();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
+    await transactionsPage.page.reload();
 
     await split.addPerson('Alice');
     await split.addPerson('Bob');
 
     // Navigate away then back within the same session
-    await summaryPage.page.goto('/transactions');
-    await summaryPage.page.goto('/summary');
-    await summaryPage.scrollToSummary();
+    await transactionsPage.page.goto('/summary');
+    await transactionsPage.page.goto('/transactions');
+    await transactionsPage.scrollToTotals();
 
-    const split2 = new SplitBillComponent(summaryPage.page);
+    const split2 = new SplitBillComponent(transactionsPage.page);
     await expect(split2.row('Alice')).toBeVisible();
     await expect(split2.row('Bob')).toBeVisible();
   });
 
-  test('people persist through filter changes on summary page', async ({
-    request, summaryPage,
+  test('people persist through filter changes on transactions page', async ({
+    request, transactionsPage,
   }) => {
     await seedTransactionsViaAPI(request, [
       { description: 'Groceries', amount: 120, type: 'expense', category: 'food', tags: 'Alice,Bob' },
     ]);
 
-    await summaryPage.goto();
-    await summaryPage.scrollToSummary();
-    const split = new SplitBillComponent(summaryPage.page);
+    await transactionsPage.goto();
+    await transactionsPage.scrollToTotals();
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.clearSessionStorage();
-    await summaryPage.page.reload();
-    await summaryPage.scrollToSummary();
+    await transactionsPage.page.reload();
+    await transactionsPage.scrollToTotals();
 
     await split.addPerson('Alice');
     await split.addPerson('Bob');
 
-    await summaryPage.filter.selectCategory('food');
-    await summaryPage.page.waitForLoadState('networkidle');
+    await transactionsPage.filter.selectCategory('food');
+    await transactionsPage.page.waitForLoadState('networkidle');
 
     await expect(split.row('Alice')).toBeVisible();
     await expect(split.row('Bob')).toBeVisible();
@@ -380,11 +346,10 @@ test.describe('Split Bill', () => {
 
   // ── Edge cases ────────────────────────────────────────────────────────────────
 
-  test('total shows $0.00 on page with no transactions', async ({ summaryPage }) => {
-    await summaryPage.goto();
-    await summaryPage.scrollToSummary();
+  test('total shows $0.00 on page with no transactions', async ({ transactionsPage }) => {
+    await transactionsPage.goto();
 
-    const split = new SplitBillComponent(summaryPage.page);
+    const split = new SplitBillComponent(transactionsPage.page);
     await split.expectTotal(0);
   });
 });

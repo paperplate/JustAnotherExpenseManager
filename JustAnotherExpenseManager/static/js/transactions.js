@@ -425,7 +425,7 @@ function emitSplitBillTotal() {
 	} }));
 	else window.dispatchEvent(new CustomEvent("splitBillUpdate", { detail: {
 		total: uncheckedTotal,
-		source: "summary"
+		source: "visible"
 	} }));
 }
 document.querySelector("#filter-form")?.addEventListener("submit", () => {
