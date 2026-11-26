@@ -60,7 +60,7 @@ var SplitBillComponent = class {
 					const url = "/api/transactions" + window.location.search;
 					const separator = url.includes("?") ? "&" : "?";
 					const txs = (await (await fetch(url + separator + "json=true", { signal })).json()).transactions || [];
-					if (detail.source === "summary") {
+					if (detail.source === "visible") {
 						this.total = detail.total || 0;
 						this.transactions = txs.filter((tx) => tx.amount > 0);
 					} else {
